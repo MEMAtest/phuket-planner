@@ -1,7 +1,7 @@
 import React from 'react';
 import { Icons } from '../data/staticData';
 
-const IconLegend: React.FC = () => {
+const IconLegend = () => {
   const iconItems = [
     { icon: <Icons.plane className="w-5 h-5 text-sky-600"/>, label: 'Travel', description: 'Flights, transfers, transportation' },
     { icon: <Icons.utensils className="w-5 h-5 text-rose-600"/>, label: 'Meal', description: 'Restaurants, food experiences' },
