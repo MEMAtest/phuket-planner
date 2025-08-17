@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { collection, onSnapshot, doc, updateDoc, addDoc, query, orderBy } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from './firebase/config';
-import { PlanDay, Activity } from './types';
 import { TRIP_DATA } from './data/staticData';
 import { Icons } from './data/staticData';
 import { useTrip } from './context/TripContext';
@@ -15,7 +14,7 @@ import CurrencyConverter from './components/CurrencyConverter';
 import KidComfortChecklist from './components/KidComfortChecklist';
 import IconLegend from './components/IconLegend';
 
-const App: React.FC = () => {
+const App = () => {
   const { 
     planData, 
     setPlanData, 
@@ -27,7 +26,7 @@ const App: React.FC = () => {
   } = useTrip();
   
   const [loading, setLoading] = useState(false);
-  const [firebaseError, setFirebaseError] = useState<string | null>(null);
+  const [firebaseError, setFirebaseError] = useState(null);
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
   
@@ -53,7 +52,7 @@ const App: React.FC = () => {
             const firebasePlan = snapshot.docs.map(doc => ({
               id: doc.id,
               ...doc.data()
-            } as PlanDay));
+            }));
             setPlanData(firebasePlan);
           } else {
             // Initialize Firebase with default data if empty
@@ -94,12 +93,12 @@ const App: React.FC = () => {
   };
   
   // Update Firebase when plan changes (if online and configured)
-  const handleUpdatePlan = async (dayIndex: number, updatedBlocks: Activity[]) => {
+  const handleUpdatePlan = async (dayIndex, updatedBlocks) => {
     updateDayPlan(dayIndex, updatedBlocks);
     
     if (isFirebaseConfigured() && isOnline && planData[dayIndex].id) {
       try {
-        const docRef = doc(db, 'itinerary', planData[dayIndex].id!);
+        const docRef = doc(db, 'itinerary', planData[dayIndex].id);
         await updateDoc(docRef, { 
           blocks: updatedBlocks,
           lastModified: new Date()
@@ -120,11 +119,11 @@ const App: React.FC = () => {
   };
   
   // Touch handlers for swipe navigation
-  const handleTouchStart = (e: React.TouchEvent) => {
+  const handleTouchStart = (e) => {
     setTouchStart(e.targetTouches[0].clientX);
   };
   
-  const handleTouchMove = (e: React.TouchEvent) => {
+  const handleTouchMove = (e) => {
     setTouchEnd(e.targetTouches[0].clientX);
   };
   
