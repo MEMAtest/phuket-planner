@@ -5,7 +5,7 @@ import App from './App';
 import { TripProvider } from './context/TripContext';
 
 const root = ReactDOM.createRoot(
-  document.getElementById('root') as HTMLElement
+  document.getElementById('root')
 );
 
 root.render(
