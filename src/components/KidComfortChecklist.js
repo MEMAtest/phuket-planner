@@ -1,15 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Icons } from '../data/staticData';
 
-interface ChecklistItem {
-  id: string;
-  text: string;
-  category: 'essential' | 'comfort' | 'entertainment' | 'safety';
-  checked: boolean;
-}
-
-const KidComfortChecklist: React.FC = () => {
-  const [items, setItems] = useState<ChecklistItem[]>(() => {
+const KidComfortChecklist = () => {
+  const [items, setItems] = useState(() => {
     // Load from localStorage or use defaults
     const saved = localStorage.getItem('kidChecklist');
     if (saved) {
@@ -52,15 +45,15 @@ const KidComfortChecklist: React.FC = () => {
   });
   
   const [customItem, setCustomItem] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<ChecklistItem['category']>('essential');
-  const [filter, setFilter] = useState<'all' | ChecklistItem['category']>('all');
+  const [selectedCategory, setSelectedCategory] = useState('essential');
+  const [filter, setFilter] = useState('all');
   
   // Save to localStorage whenever items change
   useEffect(() => {
     localStorage.setItem('kidChecklist', JSON.stringify(items));
   }, [items]);
   
-  const toggleItem = (id: string) => {
+  const toggleItem = (id) => {
     setItems(prev => prev.map(item => 
       item.id === id ? { ...item, checked: !item.checked } : item
     ));
@@ -68,7 +61,7 @@ const KidComfortChecklist: React.FC = () => {
   
   const addCustomItem = () => {
     if (customItem.trim()) {
-      const newItem: ChecklistItem = {
+      const newItem = {
         id: Date.now().toString(),
         text: customItem,
         category: selectedCategory,
@@ -79,7 +72,7 @@ const KidComfortChecklist: React.FC = () => {
     }
   };
   
-  const removeItem = (id: string) => {
+  const removeItem = (id) => {
     setItems(prev => prev.filter(item => item.id !== id));
   };
   
@@ -90,21 +83,23 @@ const KidComfortChecklist: React.FC = () => {
   const checkedCount = items.filter(item => item.checked).length;
   const progressPercentage = (checkedCount / items.length) * 100;
   
-  const getCategoryIcon = (category: ChecklistItem['category']) => {
+  const getCategoryIcon = (category) => {
     switch(category) {
       case 'essential': return '📋';
       case 'comfort': return '🛏️';
       case 'entertainment': return '🎮';
       case 'safety': return '🛡️';
+      default: return '📋';
     }
   };
   
-  const getCategoryColor = (category: ChecklistItem['category']) => {
+  const getCategoryColor = (category) => {
     switch(category) {
       case 'essential': return 'text-red-600 bg-red-50 border-red-200';
       case 'comfort': return 'text-blue-600 bg-blue-50 border-blue-200';
       case 'entertainment': return 'text-purple-600 bg-purple-50 border-purple-200';
       case 'safety': return 'text-emerald-600 bg-emerald-50 border-emerald-200';
+      default: return 'text-slate-600 bg-slate-50 border-slate-200';
     }
   };
   
@@ -138,7 +133,7 @@ const KidComfortChecklist: React.FC = () => {
         >
           All ({items.length})
         </button>
-        {(['essential', 'comfort', 'entertainment', 'safety'] as const).map(cat => (
+        {['essential', 'comfort', 'entertainment', 'safety'].map(cat => (
           <button
             key={cat}
             onClick={() => setFilter(cat)}
@@ -195,7 +190,7 @@ const KidComfortChecklist: React.FC = () => {
           />
           <select
             value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value as ChecklistItem['category'])}
+            onChange={(e) => setSelectedCategory(e.target.value)}
             className="px-3 py-2 border rounded-md text-sm"
           >
             <option value="essential">Essential</option>
