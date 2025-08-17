@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Icons, TRIP_DATA } from '../data/staticData';
-import { JetLagTask } from '../types';
 
-const JetLagTab: React.FC = () => {
-  const [tasks, setTasks] = useState<JetLagTask[]>(() => {
+const JetLagTab = () => {
+  const [tasks, setTasks] = useState(() => {
     // Load from localStorage or use defaults
     const saved = localStorage.getItem('jetLagTasks');
     if (saved) {
@@ -12,14 +11,14 @@ const JetLagTab: React.FC = () => {
     return TRIP_DATA.jetLagTasks.map(task => ({ ...task, completed: false }));
   });
   
-  const [lastCompletedId, setLastCompletedId] = useState<string | null>(null);
+  const [lastCompletedId, setLastCompletedId] = useState(null);
   
   // Save to localStorage whenever tasks change
   useEffect(() => {
     localStorage.setItem('jetLagTasks', JSON.stringify(tasks));
   }, [tasks]);
   
-  const toggleTask = (id: string) => {
+  const toggleTask = (id) => {
     let isCompleting = false;
     const newTasks = tasks.map(task => {
       if (task.id === id) {
