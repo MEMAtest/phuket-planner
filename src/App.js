@@ -4,9 +4,8 @@ import { db, isFirebaseConfigured } from './firebase/config';
 import { TRIP_DATA } from './data/staticData';
 import { Icons } from './data/staticData';
 import { useTrip } from './context/TripContext';
-import { checkWeatherAlert, getWeatherForecast } from './services/weatherService';
 
-// Import all components
+// Import only the components you have
 import Header from './components/Header';
 import DayCard from './components/DayCard';
 import JetLagTab from './components/JetLagTab';
@@ -14,7 +13,22 @@ import FoodHelperTab from './components/FoodHelperTab';
 import CurrencyConverter from './components/CurrencyConverter';
 import KidComfortChecklist from './components/KidComfortChecklist';
 import IconLegend from './components/IconLegend';
-import TravelDocuments from './components/TravelDocuments';
+
+// Temporary placeholder for TravelDocuments
+const TravelDocuments = () => (
+  <div className="bg-white rounded-xl shadow-lg p-6">
+    <h2 className="text-2xl font-bold text-slate-800 mb-4">📄 Travel Documents</h2>
+    <p className="text-slate-600">Documents section coming soon...</p>
+    <div className="mt-4 p-4 bg-amber-50 rounded-lg">
+      <p className="text-sm text-amber-800">
+        <strong>Quick Info:</strong><br/>
+        • Hotel: Anantara Mai Khao<br/>
+        • Dates: Aug 20-28, 2025<br/>
+        • Emergency: Tourist Police 1155
+      </p>
+    </div>
+  </div>
+);
 
 const App = () => {
   const { 
@@ -78,20 +92,23 @@ const App = () => {
     }
   }, [isOnline, setPlanData]);
   
-  // Check for weather alerts
+  // Check for weather alerts (only if weatherService exists)
   useEffect(() => {
     const fetchWeatherAlert = async () => {
       try {
-        const forecast = await getWeatherForecast('maiKhao');
-        const alert = checkWeatherAlert(forecast);
-        setWeatherAlert(alert);
+        // Only try if weatherService exists
+        const weatherModule = await import('./services/weatherService').catch(() => null);
+        if (weatherModule) {
+          const forecast = await weatherModule.getWeatherForecast('maiKhao');
+          const alert = weatherModule.checkWeatherAlert(forecast);
+          setWeatherAlert(alert);
+        }
       } catch (error) {
-        console.error('Error fetching weather alert:', error);
+        console.log('Weather service not available yet');
       }
     };
     
     fetchWeatherAlert();
-    // Check every hour
     const interval = setInterval(fetchWeatherAlert, 60 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
