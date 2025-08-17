@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { Icons, TRIP_DATA } from '../data/staticData';
-import { FoodItem } from '../types';
 
-const FoodCard: React.FC<{ item: FoodItem }> = ({ item }) => {
+const FoodCard = ({ item }) => {
   const spiceLevel = Array.from({ length: 3 }, (_, i) => (
     <Icons.flame 
       key={i} 
@@ -31,12 +30,12 @@ const FoodCard: React.FC<{ item: FoodItem }> = ({ item }) => {
   );
 };
 
-const FoodHelperTab: React.FC = () => {
-  const [activeSection, setActiveSection] = useState<'guide' | 'phrases' | 'tips'>('guide');
+const FoodHelperTab = () => {
+  const [activeSection, setActiveSection] = useState('guide');
   const [searchTerm, setSearchTerm] = useState('');
   
   // Filter food items based on search
-  const filterFoodItems = (items: FoodItem[]) => {
+  const filterFoodItems = (items) => {
     if (!searchTerm) return items;
     return items.filter(item => 
       item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -78,7 +77,7 @@ const FoodHelperTab: React.FC = () => {
           ].map(tab => (
             <button
               key={tab.id}
-              onClick={() => setActiveSection(tab.id as any)}
+              onClick={() => setActiveSection(tab.id)}
               className={`
                 flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm
                 transition-colors ${activeSection === tab.id 
