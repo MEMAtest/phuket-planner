@@ -4,6 +4,7 @@ import { db, isFirebaseConfigured } from './firebase/config';
 import { TRIP_DATA } from './data/staticData';
 import { Icons } from './data/staticData';
 import { useTrip } from './context/TripContext';
+import { checkWeatherAlert, getWeatherForecast } from './services/weatherService';
 
 // Import all components
 import Header from './components/Header';
@@ -29,6 +30,7 @@ const App = () => {
   const [firebaseError, setFirebaseError] = useState(null);
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
+  const [weatherAlert, setWeatherAlert] = useState(null);
   
   // Firebase sync (only if configured)
   useEffect(() => {
@@ -74,6 +76,24 @@ const App = () => {
       setLoading(false);
     }
   }, [isOnline, setPlanData]);
+  
+  // Check for weather alerts
+  useEffect(() => {
+    const fetchWeatherAlert = async () => {
+      try {
+        const forecast = await getWeatherForecast('maiKhao');
+        const alert = checkWeatherAlert(forecast);
+        setWeatherAlert(alert);
+      } catch (error) {
+        console.error('Error fetching weather alert:', error);
+      }
+    };
+    
+    fetchWeatherAlert();
+    // Check every hour
+    const interval = setInterval(fetchWeatherAlert, 60 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
   
   // Initialize Firebase with default data
   const initializeFirebase = async () => {
@@ -259,6 +279,17 @@ const App = () => {
   return (
     <div className="min-h-screen bg-slate-100">
       <Header />
+      
+      {/* Weather Alert Banner */}
+      {weatherAlert && (
+        <div className={`px-4 py-2 text-center text-sm font-semibold
+          ${weatherAlert.type === 'danger' ? 'bg-red-100 text-red-800 border-b-2 border-red-300' :
+            weatherAlert.type === 'warning' ? 'bg-amber-100 text-amber-800 border-b-2 border-amber-300' :
+            'bg-blue-100 text-blue-800 border-b-2 border-blue-300'}`}>
+          <Icons.alertTriangle className="inline w-4 h-4 mr-2"/>
+          {weatherAlert.message}
+        </div>
+      )}
       
       {/* Firebase Error Banner */}
       {firebaseError && (
