@@ -1,340 +1,153 @@
-import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, doc, updateDoc, addDoc, query, orderBy } from 'firebase/firestore';
-import { db, isFirebaseConfigured } from './firebase/config';
-import { TRIP_DATA } from './data/staticData';
-import { Icons } from './data/staticData';
-import { useTrip } from './context/TripContext';
+// TEMPORARILY replace your App.js with this diagnostic version
+// This will show you EXACTLY what's undefined
 
-// Import only the components you have
-import Header from './components/Header';
-import DayCard from './components/DayCard';
-import JetLagTab from './components/JetLagTab';
-import FoodHelperTab from './components/FoodHelperTab';
-import CurrencyConverter from './components/CurrencyConverter';
-import KidComfortChecklist from './components/KidComfortChecklist';
-import IconLegend from './components/IconLegend';
-
-// Temporary placeholder for TravelDocuments
-const TravelDocuments = () => (
-  <div className="bg-white rounded-xl shadow-lg p-6">
-    <h2 className="text-2xl font-bold text-slate-800 mb-4">📄 Travel Documents</h2>
-    <p className="text-slate-600">Documents section coming soon...</p>
-    <div className="mt-4 p-4 bg-amber-50 rounded-lg">
-      <p className="text-sm text-amber-800">
-        <strong>Quick Info:</strong><br/>
-        • Hotel: Anantara Mai Khao<br/>
-        • Dates: Aug 20-28, 2025<br/>
-        • Emergency: Tourist Police 1155
-      </p>
-    </div>
-  </div>
-);
+import React from 'react';
 
 const App = () => {
-  const { 
-    planData, 
-    setPlanData, 
-    updateDayPlan,
-    activeTab, 
-    currentDayIndex, 
-    setCurrentDayIndex,
-    isOnline 
-  } = useTrip();
-  
-  const [loading, setLoading] = useState(false);
-  const [firebaseError, setFirebaseError] = useState(null);
-  const [touchStart, setTouchStart] = useState(0);
-  const [touchEnd, setTouchEnd] = useState(0);
-  const [weatherAlert, setWeatherAlert] = useState(null);
-  
-  // Firebase sync (only if configured)
-  useEffect(() => {
-    if (!isFirebaseConfigured()) {
-      console.log('Firebase not configured, using local storage only');
-      return;
-    }
+  const diagnostics = {
+    'TripContext': null,
+    'Icons': null,
+    'TRIP_DATA': null,
+    'Header': null,
+    'DayCard': null,
+    'JetLagTab': null,
+    'FoodHelperTab': null,
+    'CurrencyConverter': null,
+    'KidComfortChecklist': null,
+    'IconLegend': null,
+    'TravelDocuments': null,
+    'useTrip hook': null,
+  };
+
+  const errors = [];
+
+  // Check TripContext
+  try {
+    const { useTrip } = require('./context/TripContext');
+    diagnostics['TripContext'] = '✅ Loaded';
     
-    if (!isOnline) {
-      console.log('Offline - using cached data');
-      return;
-    }
-    
-    setLoading(true);
-    
-    try {
-      const q = query(collection(db, 'itinerary'), orderBy('date'));
-      const unsubscribe = onSnapshot(q, 
-        (snapshot) => {
-          if (!snapshot.empty) {
-            const firebasePlan = snapshot.docs.map(doc => ({
-              id: doc.id,
-              ...doc.data()
-            }));
-            setPlanData(firebasePlan);
-          } else {
-            // Initialize Firebase with default data if empty
-            initializeFirebase();
-          }
-          setLoading(false);
-        },
-        (error) => {
-          console.error('Firebase sync error:', error);
-          setFirebaseError('Using offline mode - changes saved locally');
-          setLoading(false);
-        }
-      );
-      
-      return () => unsubscribe();
-    } catch (error) {
-      console.error('Firebase setup error:', error);
-      setFirebaseError('Using offline mode - changes saved locally');
-      setLoading(false);
-    }
-  }, [isOnline, setPlanData]);
-  
-  // Check for weather alerts (only if weatherService exists)
-  useEffect(() => {
-    const fetchWeatherAlert = async () => {
+    // Try to use the hook
+    const hookTest = () => {
       try {
-        // Only try if weatherService exists
-        const weatherModule = await import('./services/weatherService').catch(() => null);
-        if (weatherModule) {
-          const forecast = await weatherModule.getWeatherForecast('maiKhao');
-          const alert = weatherModule.checkWeatherAlert(forecast);
-          setWeatherAlert(alert);
-        }
-      } catch (error) {
-        console.log('Weather service not available yet');
+        const trip = useTrip();
+        diagnostics['useTrip hook'] = '✅ Working';
+      } catch (e) {
+        diagnostics['useTrip hook'] = `❌ Error: ${e.message}`;
       }
     };
+    // Can't call hook here directly, just mark as available
+    diagnostics['useTrip hook'] = '✅ Available';
+  } catch (e) {
+    diagnostics['TripContext'] = `❌ Error: ${e.message}`;
+    errors.push(`TripContext: ${e.message}`);
+  }
+
+  // Check Icons and TRIP_DATA
+  try {
+    const { Icons, TRIP_DATA } = require('./data/staticData');
     
-    fetchWeatherAlert();
-    const interval = setInterval(fetchWeatherAlert, 60 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, []);
-  
-  // Initialize Firebase with default data
-  const initializeFirebase = async () => {
-    if (!isFirebaseConfigured()) return;
+    if (Icons === undefined) {
+      diagnostics['Icons'] = '❌ UNDEFINED - This is your problem!';
+      errors.push('Icons is undefined in staticData.js');
+    } else if (typeof Icons !== 'object') {
+      diagnostics['Icons'] = `❌ Wrong type: ${typeof Icons}`;
+      errors.push(`Icons is ${typeof Icons} instead of object`);
+    } else {
+      diagnostics['Icons'] = `✅ Loaded (${Object.keys(Icons).length} icons)`;
+    }
     
+    if (TRIP_DATA === undefined) {
+      diagnostics['TRIP_DATA'] = '❌ UNDEFINED';
+      errors.push('TRIP_DATA is undefined in staticData.js');
+    } else {
+      diagnostics['TRIP_DATA'] = '✅ Loaded';
+    }
+  } catch (e) {
+    diagnostics['Icons'] = `❌ Import Error: ${e.message}`;
+    diagnostics['TRIP_DATA'] = `❌ Import Error: ${e.message}`;
+    errors.push(`staticData import: ${e.message}`);
+  }
+
+  // Check each component
+  const components = [
+    'Header',
+    'DayCard',
+    'JetLagTab',
+    'FoodHelperTab',
+    'CurrencyConverter',
+    'KidComfortChecklist',
+    'IconLegend',
+    'TravelDocuments'
+  ];
+
+  components.forEach(name => {
     try {
-      for (const day of TRIP_DATA.initialPlan) {
-        await addDoc(collection(db, 'itinerary'), {
-          ...day,
-          createdAt: new Date(),
-          lastModified: new Date()
-        });
+      const Component = require(`./components/${name}`).default;
+      if (Component === undefined) {
+        diagnostics[name] = '❌ Component is UNDEFINED';
+        errors.push(`${name} exports undefined`);
+      } else if (typeof Component !== 'function') {
+        diagnostics[name] = `❌ Not a function: ${typeof Component}`;
+        errors.push(`${name} is ${typeof Component}`);
+      } else {
+        diagnostics[name] = '✅ Loaded';
       }
-    } catch (error) {
-      console.error('Error initializing Firebase:', error);
+    } catch (e) {
+      diagnostics[name] = `❌ Error: ${e.message}`;
+      errors.push(`${name}: ${e.message}`);
     }
-  };
-  
-  // Update Firebase when plan changes (if online and configured)
-  const handleUpdatePlan = async (dayIndex, updatedBlocks) => {
-    updateDayPlan(dayIndex, updatedBlocks);
-    
-    if (isFirebaseConfigured() && isOnline && planData[dayIndex].id) {
-      try {
-        const docRef = doc(db, 'itinerary', planData[dayIndex].id);
-        await updateDoc(docRef, { 
-          blocks: updatedBlocks,
-          lastModified: new Date()
-        });
-      } catch (error) {
-        console.error('Error updating Firebase:', error);
-      }
-    }
-  };
-  
-  // Navigation functions
-  const goToNextDay = () => {
-    setCurrentDayIndex(prev => Math.min(prev + 1, planData.length - 1));
-  };
-  
-  const goToPrevDay = () => {
-    setCurrentDayIndex(prev => Math.max(prev - 1, 0));
-  };
-  
-  // Touch handlers for swipe navigation
-  const handleTouchStart = (e) => {
-    setTouchStart(e.targetTouches[0].clientX);
-  };
-  
-  const handleTouchMove = (e) => {
-    setTouchEnd(e.targetTouches[0].clientX);
-  };
-  
-  const handleTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-    
-    const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > 50;
-    const isRightSwipe = distance < -50;
-    
-    if (isLeftSwipe && currentDayIndex < planData.length - 1) {
-      goToNextDay();
-    }
-    if (isRightSwipe && currentDayIndex > 0) {
-      goToPrevDay();
-    }
-  };
-  
-  // Render content based on active tab
-  const renderContent = () => {
-    switch(activeTab) {
-      case 'Itinerary':
-        if (planData.length === 0) {
-          return (
-            <div className="text-center py-12">
-              <Icons.calendar className="w-12 h-12 text-slate-300 mx-auto mb-4"/>
-              <p className="text-slate-500">No itinerary data available</p>
-            </div>
-          );
-        }
+  });
+
+  return (
+    <div className="min-h-screen bg-slate-100 p-8">
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-3xl font-bold mb-6 text-slate-800">
+          🔍 Diagnostic Report
+        </h1>
         
-        const currentDay = planData[currentDayIndex];
-        return (
-          <div 
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-          >
-            {/* Day Navigation */}
-            <div className="flex items-center justify-between mb-4">
-              <button 
-                onClick={goToPrevDay} 
-                disabled={currentDayIndex === 0} 
-                className="px-4 py-2 bg-white rounded-lg shadow-md border disabled:opacity-50 
-                         disabled:cursor-not-allowed flex items-center gap-2 hover:bg-slate-50 
-                         transition-colors"
-              >
-                <Icons.chevronLeft className="w-5 h-5"/> 
-                <span className="hidden sm:inline">Previous</span>
-                <span className="sm:hidden">Prev</span>
-              </button>
-              
-              <div className="text-center">
-                <h2 className="font-bold text-xl text-slate-800">
-                  {new Date(currentDay.date).toLocaleDateString('en-US', { weekday: 'long' })}
-                </h2>
-                <p className="text-sm text-slate-500">
-                  {new Date(currentDay.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
-                </p>
-                <div className="flex justify-center gap-1 mt-2">
-                  {planData.map((_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setCurrentDayIndex(i)}
-                      className={`w-2 h-2 rounded-full transition-colors ${
-                        i === currentDayIndex ? 'bg-sky-600' : 'bg-slate-300'
-                      }`}
-                      aria-label={`Go to day ${i + 1}`}
-                    />
-                  ))}
-                </div>
+        {errors.length > 0 && (
+          <div className="bg-red-100 border-2 border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+            <h2 className="font-bold text-lg mb-2">🔴 Found {errors.length} Error(s):</h2>
+            <ul className="list-disc list-inside">
+              {errors.map((error, i) => (
+                <li key={i} className="text-sm">{error}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        
+        <div className="bg-white p-6 rounded-lg shadow-lg">
+          <h2 className="text-xl font-semibold mb-4">Component Status:</h2>
+          <div className="space-y-2">
+            {Object.entries(diagnostics).map(([name, status]) => (
+              <div key={name} className="flex justify-between items-center py-2 border-b">
+                <span className="font-medium">{name}:</span>
+                <span className={status?.includes('✅') ? 'text-green-600' : 'text-red-600'}>
+                  {status || '❓ Not checked'}
+                </span>
               </div>
-              
-              <button 
-                onClick={goToNextDay} 
-                disabled={currentDayIndex === planData.length - 1} 
-                className="px-4 py-2 bg-white rounded-lg shadow-md border disabled:opacity-50 
-                         disabled:cursor-not-allowed flex items-center gap-2 hover:bg-slate-50 
-                         transition-colors"
-              >
-                <span className="hidden sm:inline">Next</span>
-                <span className="sm:hidden">Next</span>
-                <Icons.chevronRight className="w-5 h-5"/>
-              </button>
-            </div>
-            
-            {/* Day Card */}
-            <DayCard 
-              dayData={currentDay} 
-              dayIndex={currentDayIndex} 
-              onUpdatePlan={handleUpdatePlan}
-              planData={planData}
-            />
-            
-            {/* Swipe Hint (shown on mobile) */}
-            <div className="sm:hidden text-center mt-4 text-xs text-slate-400">
-              Swipe left or right to navigate days
-            </div>
+            ))}
           </div>
-        );
-        
-      case 'JetLag':
-        return <JetLagTab />;
-        
-      case 'FoodHelper':
-        return <FoodHelperTab />;
-        
-      case 'Tools&Info':
-        return (
-          <div className="space-y-8">
-            <CurrencyConverter />
-            <KidComfortChecklist />
-            <IconLegend />
-          </div>
-        );
-        
-      case 'Documents':
-        return <TravelDocuments />;
-        
-      default:
-        return null;
-    }
-  };
-  
-  // Loading state
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-100 flex items-center justify-center">
-        <div className="text-center">
-          <Icons.plane className="w-12 h-12 text-sky-600 animate-pulse mx-auto mb-4"/>
-          <p className="text-slate-600">Loading your trip planner...</p>
+        </div>
+
+        <div className="mt-6 bg-blue-50 p-4 rounded-lg">
+          <h3 className="font-semibold mb-2">📝 How to Fix:</h3>
+          <ol className="list-decimal list-inside text-sm space-y-1">
+            <li>Look for any ❌ marks above</li>
+            <li>If Icons is undefined, check your staticData.js exports</li>
+            <li>If a component is undefined, check the export statement</li>
+            <li>Make sure all files use: <code className="bg-white px-1">export default ComponentName</code></li>
+            <li>Icons should be: <code className="bg-white px-1">export const Icons = {'{...}'}</code></li>
+          </ol>
+        </div>
+
+        <div className="mt-4 p-4 bg-yellow-50 rounded-lg">
+          <p className="text-sm">
+            <strong>Most Common Fix:</strong> Add <code className="bg-white px-2 py-1 rounded">export</code> 
+            before <code className="bg-white px-2 py-1 rounded">const Icons</code> in your staticData.js file
+          </p>
         </div>
       </div>
-    );
-  }
-  
-  return (
-    <div className="min-h-screen bg-slate-100">
-      <Header />
-      
-      {/* Weather Alert Banner */}
-      {weatherAlert && (
-        <div className={`px-4 py-2 text-center text-sm font-semibold
-          ${weatherAlert.type === 'danger' ? 'bg-red-100 text-red-800 border-b-2 border-red-300' :
-            weatherAlert.type === 'warning' ? 'bg-amber-100 text-amber-800 border-b-2 border-amber-300' :
-            'bg-blue-100 text-blue-800 border-b-2 border-blue-300'}`}>
-          <Icons.alertTriangle className="inline w-4 h-4 mr-2"/>
-          {weatherAlert.message}
-        </div>
-      )}
-      
-      {/* Firebase Error Banner */}
-      {firebaseError && (
-        <div className="bg-amber-100 text-amber-800 px-4 py-2 text-center text-sm">
-          <Icons.alertTriangle className="inline w-4 h-4 mr-2"/>
-          {firebaseError}
-        </div>
-      )}
-      
-      {/* Main Content */}
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {renderContent()}
-      </main>
-      
-      {/* Footer */}
-      <footer className="text-center py-8 text-xs text-slate-400">
-        <p>Phuket Trip Planner v2.0 • Built with ❤️ for family adventures</p>
-        {isFirebaseConfigured() && (
-          <p className="mt-1">
-            {isOnline ? '🟢 Online - Syncing' : '🔴 Offline - Local Only'}
-          </p>
-        )}
-      </footer>
     </div>
   );
 };
