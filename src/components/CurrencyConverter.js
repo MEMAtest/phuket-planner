@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Icons } from '../data/staticData';
 import { useTrip } from '../context/TripContext';
 
-const CurrencyConverter: React.FC = () => {
+const CurrencyConverter = () => {
   const { preferences } = useTrip();
   const [rate] = useState(preferences.exchangeRate);
   const [gbp, setGbp] = useState(100);
   const [thb, setThb] = useState(100 * rate);
-  const [lastChanged, setLastChanged] = useState<'gbp' | 'thb'>('gbp');
+  const [lastChanged, setLastChanged] = useState('gbp');
   
   // Common amounts for quick conversion
   const quickAmounts = {
@@ -15,21 +15,21 @@ const CurrencyConverter: React.FC = () => {
     thb: [500, 1000, 2000, 5000, 10000]
   };
   
-  const handleGbpChange = (value: string) => {
+  const handleGbpChange = (value) => {
     const val = parseFloat(value) || 0;
     setGbp(val);
     setThb(parseFloat((val * rate).toFixed(2)));
     setLastChanged('gbp');
   };
   
-  const handleThbChange = (value: string) => {
+  const handleThbChange = (value) => {
     const val = parseFloat(value) || 0;
     setThb(val);
     setGbp(parseFloat((val / rate).toFixed(2)));
     setLastChanged('thb');
   };
   
-  const setQuickAmount = (amount: number, currency: 'gbp' | 'thb') => {
+  const setQuickAmount = (amount, currency) => {
     if (currency === 'gbp') {
       handleGbpChange(amount.toString());
     } else {
