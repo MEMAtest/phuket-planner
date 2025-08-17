@@ -1,16 +1,10 @@
-import React, { useState, FormEvent } from 'react';
-import { Activity, ActivityType } from '../types';
+import React, { useState } from 'react';
 import { generateId } from '../utils/helpers';
 
-interface AddActivityFormProps {
-  onAdd: (activity: Activity) => void;
-  onCancel: () => void;
-}
-
-const AddActivityForm: React.FC<AddActivityFormProps> = ({ onAdd, onCancel }) => {
+const AddActivityForm = ({ onAdd, onCancel }) => {
   const [title, setTitle] = useState('');
   const [time, setTime] = useState('');
-  const [type, setType] = useState<ActivityType>('indoor');
+  const [type, setType] = useState('indoor');
   const [notes, setNotes] = useState('');
   const [cost, setCost] = useState('');
   const [showQuickAdd, setShowQuickAdd] = useState(false);
@@ -18,26 +12,26 @@ const AddActivityForm: React.FC<AddActivityFormProps> = ({ onAdd, onCancel }) =>
   // Quick-add templates
   const templates = {
     meals: [
-      { title: "Breakfast at hotel", type: "eat" as ActivityType, time: "08:00" },
-      { title: "Lunch", type: "eat" as ActivityType, time: "12:30" },
-      { title: "Dinner", type: "eat" as ActivityType, time: "18:30" }
+      { title: "Breakfast at hotel", type: "eat", time: "08:00" },
+      { title: "Lunch", type: "eat", time: "12:30" },
+      { title: "Dinner", type: "eat", time: "18:30" }
     ],
     transport: [
-      { title: "Hotel shuttle", type: "travel" as ActivityType, time: "09:00" },
-      { title: "Grab to location", type: "travel" as ActivityType, time: "10:00" },
-      { title: "Return to hotel", type: "travel" as ActivityType, time: "17:00" }
+      { title: "Hotel shuttle", type: "travel", time: "09:00" },
+      { title: "Grab to location", type: "travel", time: "10:00" },
+      { title: "Return to hotel", type: "travel", time: "17:00" }
     ],
     kids: [
-      { title: "Kids' nap time", type: "nap" as ActivityType, time: "13:00" },
-      { title: "Pool time", type: "outdoor" as ActivityType, time: "16:00" },
-      { title: "Kids' club", type: "indoor" as ActivityType, time: "10:00" }
+      { title: "Kids' nap time", type: "nap", time: "13:00" },
+      { title: "Pool time", type: "outdoor", time: "16:00" },
+      { title: "Kids' club", type: "indoor", time: "10:00" }
     ]
   };
   
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     if (title && time) {
-      const newActivity: Activity = {
+      const newActivity = {
         id: generateId(),
         title,
         time,
@@ -52,8 +46,8 @@ const AddActivityForm: React.FC<AddActivityFormProps> = ({ onAdd, onCancel }) =>
     }
   };
   
-  const handleQuickAdd = (template: any) => {
-    const newActivity: Activity = {
+  const handleQuickAdd = (template) => {
+    const newActivity = {
       id: generateId(),
       title: template.title,
       time: template.time,
@@ -135,7 +129,7 @@ const AddActivityForm: React.FC<AddActivityFormProps> = ({ onAdd, onCancel }) =>
             />
             <select 
               value={type}
-              onChange={(e) => setType(e.target.value as ActivityType)}
+              onChange={(e) => setType(e.target.value)}
               className="px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-sky-500 
                        focus:border-sky-500"
             >
