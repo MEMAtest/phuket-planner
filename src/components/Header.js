@@ -3,7 +3,7 @@ import { Icons } from '../data/staticData';
 import { downloadICS } from '../utils/helpers';
 import { useTrip } from '../context/TripContext';
 
-const Header: React.FC = () => {
+const Header = () => {
   const { activeTab, setActiveTab, planData, isOnline, collaborators } = useTrip();
   
   const tabs = ['Itinerary', 'Jet Lag', 'Food Helper', 'Tools & Info'];
