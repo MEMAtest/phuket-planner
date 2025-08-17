@@ -1,8 +1,7 @@
-import { ActivityType, PlanDay } from '../types';
 import { Icons } from '../data/staticData';
 
 // Weather Icon Helper
-export const getWeatherIcon = (summary: string) => {
+export const getWeatherIcon = (summary) => {
   const s = summary.toLowerCase();
   if (s.includes("storm") || s.includes("rain")) {
     return <Icons.cloudRain className="w-6 h-6 text-blue-500" />;
@@ -13,7 +12,7 @@ export const getWeatherIcon = (summary: string) => {
 };
 
 // Activity Type Icon Helper
-export const getTypeIcon = (type: ActivityType, props: any = { className: "w-5 h-5" }) => {
+export const getTypeIcon = (type, props = { className: "w-5 h-5" }) => {
   const iconMap = {
     travel: <Icons.plane {...props} />,
     eat: <Icons.utensils {...props} />,
@@ -26,7 +25,7 @@ export const getTypeIcon = (type: ActivityType, props: any = { className: "w-5 h
 };
 
 // Activity Type Color Helper
-export const getTypeColor = (type: ActivityType): string => {
+export const getTypeColor = (type) => {
   const colorMap = {
     travel: 'bg-sky-100 text-sky-800',
     eat: 'bg-rose-100 text-rose-800',
@@ -39,7 +38,7 @@ export const getTypeColor = (type: ActivityType): string => {
 };
 
 // Generate ICS Calendar File
-export const generateICS = (planData: PlanDay[]): string => {
+export const generateICS = (planData) => {
   let icsString = `BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//PhuketPlanner//EN\n`;
   
   planData.forEach(day => {
@@ -52,7 +51,7 @@ export const generateICS = (planData: PlanDay[]): string => {
       const [, hour, minute] = timeMatch.map(Number);
       const [year, month, dayOfMonth] = day.date.split('-').map(Number);
       
-      const formatForICS = (h: number, m: number) => 
+      const formatForICS = (h, m) => 
         `${year}${String(month).padStart(2, '0')}${String(dayOfMonth).padStart(2, '0')}T${String(h).padStart(2, '0')}${String(m).padStart(2, '0')}00`;
 
       const startTime = formatForICS(hour, minute);
@@ -73,7 +72,7 @@ export const generateICS = (planData: PlanDay[]): string => {
 };
 
 // Download ICS File
-export const downloadICS = (planData: PlanDay[]) => {
+export const downloadICS = (planData) => {
   const icsContent = generateICS(planData);
   const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
   const link = document.createElement("a");
@@ -85,7 +84,7 @@ export const downloadICS = (planData: PlanDay[]) => {
 };
 
 // Format Date
-export const formatDate = (dateString: string, format: 'short' | 'long' = 'long') => {
+export const formatDate = (dateString, format = 'long') => {
   const date = new Date(dateString);
   if (format === 'short') {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -94,19 +93,19 @@ export const formatDate = (dateString: string, format: 'short' | 'long' = 'long'
 };
 
 // Check if date is today
-export const isToday = (dateString: string): boolean => {
+export const isToday = (dateString) => {
   const today = new Date();
   const date = new Date(dateString);
   return date.toDateString() === today.toDateString();
 };
 
 // Generate unique ID
-export const generateId = (): string => {
+export const generateId = () => {
   return `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 };
 
 // Currency converter
-export const convertCurrency = (amount: number, from: 'GBP' | 'THB', rate: number = 45.5): number => {
+export const convertCurrency = (amount, from, rate = 45.5) => {
   if (from === 'GBP') {
     return parseFloat((amount * rate).toFixed(2));
   }
@@ -114,7 +113,7 @@ export const convertCurrency = (amount: number, from: 'GBP' | 'THB', rate: numbe
 };
 
 // Get weather-based recommendations
-export const getWeatherRecommendations = (summary: string) => {
+export const getWeatherRecommendations = (summary) => {
   const isRainy = summary.toLowerCase().includes('rain') || 
                   summary.toLowerCase().includes('storm');
   
