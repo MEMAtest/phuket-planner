@@ -1,269 +1,325 @@
 import React, { useState, useEffect } from 'react';
-import { TRIP_DATA, Icons } from '../data/staticData';
-import AddActivityForm from './AddActivityForm';
-import WeatherWidget from './WeatherWidget';
-import ExpenseTracker from './ExpenseTracker';
-import ActivityNotes from './ActivityNotes';
-import NewsFeed from './NewsFeed';
-import SmartSuggestions from './SmartSuggestions';
-import { initializeExpenses, getExpenses } from '../services/expenseService';
+import { collection, onSnapshot, doc, updateDoc, addDoc, query, orderBy } from 'firebase/firestore';
+import { db, isFirebaseConfigured } from './firebase/config';
+import { TRIP_DATA } from './data/staticData';
+import { Icons } from './data/staticData';
+import { useTrip } from './context/TripContext';
+import { checkWeatherAlert, getWeatherForecast } from './services/weatherService';
 
-// Helper functions
-const getTypeIcon = (type, props = { className: "w-5 h-5" }) => {
-  const iconMap = {
-    travel: <Icons.plane {...props} />,
-    eat: <Icons.utensils {...props} />,
-    nap: <Icons.clock {...props} />,
-    indoor: <Icons.bookOpen {...props} />,
-    outdoor: <Icons.sun {...props} />,
-    mixed: <Icons.ferrisWheel {...props} />
-  };
-  return iconMap[type] || <Icons.ferrisWheel {...props} />;
-};
+// Import all components
+import Header from './components/Header';
+import DayCard from './components/DayCard';
+import JetLagTab from './components/JetLagTab';
+import FoodHelperTab from './components/FoodHelperTab';
+import CurrencyConverter from './components/CurrencyConverter';
+import KidComfortChecklist from './components/KidComfortChecklist';
+import IconLegend from './components/IconLegend';
+import TravelDocuments from './components/TravelDocuments';
 
-const getTypeColor = (type) => {
-  const colorMap = {
-    travel: 'bg-sky-100 text-sky-800',
-    eat: 'bg-rose-100 text-rose-800',
-    nap: 'bg-amber-100 text-amber-800',
-    indoor: 'bg-indigo-100 text-indigo-800',
-    outdoor: 'bg-emerald-100 text-emerald-800',
-    mixed: 'bg-cyan-100 text-cyan-800'
-  };
-  return colorMap[type] || 'bg-slate-100 text-slate-800';
-};
-
-const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
-  const recommendations = TRIP_DATA.recommendations[dayData.location] || [];
-  const fact = TRIP_DATA.phuketFacts[dayIndex % TRIP_DATA.phuketFacts.length];
-  const [isAdding, setIsAdding] = useState(false);
-  const [expandedActivity, setExpandedActivity] = useState(null);
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const [expenses, setExpenses] = useState(null);
-  const [weatherData, setWeatherData] = useState(null);
-
+const App = () => {
+  const { 
+    planData, 
+    setPlanData, 
+    updateDayPlan,
+    activeTab, 
+    currentDayIndex, 
+    setCurrentDayIndex,
+    isOnline 
+  } = useTrip();
+  
+  const [loading, setLoading] = useState(false);
+  const [firebaseError, setFirebaseError] = useState(null);
+  const [touchStart, setTouchStart] = useState(0);
+  const [touchEnd, setTouchEnd] = useState(0);
+  const [weatherAlert, setWeatherAlert] = useState(null);
+  
+  // Firebase sync (only if configured)
   useEffect(() => {
-    // Initialize expenses if needed
-    if (!getExpenses()) {
-      initializeExpenses(planData || [dayData]);
+    if (!isFirebaseConfigured()) {
+      console.log('Firebase not configured, using local storage only');
+      return;
     }
-    setExpenses(getExpenses());
-
-    // Update time every minute
-    const interval = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 60000);
-
+    
+    if (!isOnline) {
+      console.log('Offline - using cached data');
+      return;
+    }
+    
+    setLoading(true);
+    
+    try {
+      const q = query(collection(db, 'itinerary'), orderBy('date'));
+      const unsubscribe = onSnapshot(q, 
+        (snapshot) => {
+          if (!snapshot.empty) {
+            const firebasePlan = snapshot.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data()
+            }));
+            setPlanData(firebasePlan);
+          } else {
+            // Initialize Firebase with default data if empty
+            initializeFirebase();
+          }
+          setLoading(false);
+        },
+        (error) => {
+          console.error('Firebase sync error:', error);
+          setFirebaseError('Using offline mode - changes saved locally');
+          setLoading(false);
+        }
+      );
+      
+      return () => unsubscribe();
+    } catch (error) {
+      console.error('Firebase setup error:', error);
+      setFirebaseError('Using offline mode - changes saved locally');
+      setLoading(false);
+    }
+  }, [isOnline, setPlanData]);
+  
+  // Check for weather alerts
+  useEffect(() => {
+    const fetchWeatherAlert = async () => {
+      try {
+        const forecast = await getWeatherForecast('maiKhao');
+        const alert = checkWeatherAlert(forecast);
+        setWeatherAlert(alert);
+      } catch (error) {
+        console.error('Error fetching weather alert:', error);
+      }
+    };
+    
+    fetchWeatherAlert();
+    // Check every hour
+    const interval = setInterval(fetchWeatherAlert, 60 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [dayData, planData]);
-
-  const handleAddItem = (newItem) => {
-    const updatedBlocks = [...dayData.blocks, newItem].sort(
-      (a, b) => (a.time || "99").localeCompare(b.time || "99")
-    );
-    onUpdatePlan(dayIndex, updatedBlocks);
-    setIsAdding(false);
+  }, []);
+  
+  // Initialize Firebase with default data
+  const initializeFirebase = async () => {
+    if (!isFirebaseConfigured()) return;
+    
+    try {
+      for (const day of TRIP_DATA.initialPlan) {
+        await addDoc(collection(db, 'itinerary'), {
+          ...day,
+          createdAt: new Date(),
+          lastModified: new Date()
+        });
+      }
+    } catch (error) {
+      console.error('Error initializing Firebase:', error);
+    }
   };
-
-  const handleRemoveItem = (blockId) => {
-    onUpdatePlan(dayIndex, dayData.blocks.filter(b => b.id !== blockId));
+  
+  // Update Firebase when plan changes (if online and configured)
+  const handleUpdatePlan = async (dayIndex, updatedBlocks) => {
+    updateDayPlan(dayIndex, updatedBlocks);
+    
+    if (isFirebaseConfigured() && isOnline && planData[dayIndex].id) {
+      try {
+        const docRef = doc(db, 'itinerary', planData[dayIndex].id);
+        await updateDoc(docRef, { 
+          blocks: updatedBlocks,
+          lastModified: new Date()
+        });
+      } catch (error) {
+        console.error('Error updating Firebase:', error);
+      }
+    }
   };
-
-  const toggleActivityExpansion = (blockId) => {
-    setExpandedActivity(expandedActivity === blockId ? null : blockId);
+  
+  // Navigation functions
+  const goToNextDay = () => {
+    setCurrentDayIndex(prev => Math.min(prev + 1, planData.length - 1));
   };
-
-  const handleExpenseAdded = () => {
-    setExpenses(getExpenses());
+  
+  const goToPrevDay = () => {
+    setCurrentDayIndex(prev => Math.max(prev - 1, 0));
   };
-
-  return (
-    <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-      {/* Header Section */}
-      <div className="p-4 bg-slate-50 border-b">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          {/* Day Info */}
-          <div>
-            <p className="text-xs font-semibold text-sky-600">
-              {dayData.dow.toUpperCase()}
-            </p>
-            <h2 className="text-xl font-bold text-slate-800">
-              {new Date(dayData.date).toLocaleDateString('en-US', { 
-                month: 'long', 
-                day: 'numeric' 
-              })}
-            </h2>
-            <p className="text-sm text-slate-600 mt-1">
-              📍 {dayData.location === 'maiKhao' ? 'Mai Khao Area' : 'Phuket Old Town'}
-            </p>
-          </div>
-          
-          {/* Weather Widget */}
-          <div className="flex-1 max-w-sm">
-            <WeatherWidget 
-              location={dayData.location} 
-              date={dayData.date}
-              onWeatherUpdate={setWeatherData}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Smart Suggestions */}
-      <div className="p-4 border-b">
-        <SmartSuggestions
-          currentTime={currentTime}
-          dayData={dayData}
-          weatherData={weatherData}
-          expenses={expenses?.days[dayData.date]}
-        />
-      </div>
-
-      {/* Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-5">
-        {/* Left Column - Timeline & Expenses */}
-        <div className="lg:col-span-3 p-4">
-          {/* Expense Tracker */}
-          <div className="mb-4">
-            <ExpenseTracker
-              date={dayData.date}
-              activityId={null}
-              onExpenseAdded={handleExpenseAdded}
-            />
-          </div>
-
-          {/* Timeline */}
-          <h3 className="font-semibold text-slate-700 mb-3">Timeline</h3>
-          <div className="space-y-2">
-            {dayData.blocks.map(block => (
-              <div key={block.id}>
-                <div 
-                  className="flex items-center group cursor-pointer"
-                  onClick={() => toggleActivityExpansion(block.id)}
-                >
-                  <div className={`p-2 rounded-full ${getTypeColor(block.type)} mr-3`}>
-                    {getTypeIcon(block.type)}
-                  </div>
-                  <div className="flex-grow">
-                    <p className="font-medium text-sm text-slate-800">
-                      {block.title}
-                    </p>
-                    <p className="text-xs text-slate-500">{block.time}</p>
-                  </div>
-                  <Icons.chevronDown 
-                    className={`w-4 h-4 text-slate-400 transition-transform
-                      ${expandedActivity === block.id ? 'rotate-180' : ''}`}
-                  />
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleRemoveItem(block.id);
-                    }}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity 
-                             text-rose-500 hover:text-rose-700 p-1 ml-2"
-                  >
-                    <Icons.trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-                
-                {/* Expanded Activity Details */}
-                {expandedActivity === block.id && (
-                  <div className="ml-11 mt-2">
-                    <ActivityNotes
-                      activityId={block.id}
-                      activityTitle={block.title}
-                      date={dayData.date}
-                    />
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* Add Activity Button/Form */}
-          {isAdding ? (
-            <AddActivityForm 
-              onAdd={handleAddItem} 
-              onCancel={() => setIsAdding(false)} 
-            />
-          ) : (
-            <button 
-              onClick={() => setIsAdding(true)} 
-              className="mt-3 w-full text-left flex items-center gap-2 text-sm 
-                       font-semibold text-sky-600 hover:text-sky-800 p-2 
-                       rounded-lg hover:bg-sky-50 transition-colors"
-            >
-              <Icons.plusCircle className="w-5 h-5" />
-              Add Activity
-            </button>
-          )}
-        </div>
-
-        {/* Right Column - News, Recommendations, Facts */}
-        <div className="lg:col-span-2 p-4 bg-slate-50 lg:border-l">
-          {/* News Feed */}
-          <div className="mb-4">
-            <NewsFeed 
-              currentDate={dayData.date}
-              location={dayData.location}
-            />
-          </div>
-
-          {/* Local Options */}
-          <h3 className="font-semibold text-slate-700 mb-3">Local Options</h3>
-          <div className="space-y-3 mb-4">
-            {recommendations.slice(0, 3).map(item => (
-              <div 
-                key={item.name} 
-                className="bg-white rounded-lg p-3 flex items-start gap-3 
-                         border hover:shadow-md transition-shadow"
+  
+  // Touch handlers for swipe navigation
+  const handleTouchStart = (e) => {
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+  
+  const handleTouchMove = (e) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+  
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > 50;
+    const isRightSwipe = distance < -50;
+    
+    if (isLeftSwipe && currentDayIndex < planData.length - 1) {
+      goToNextDay();
+    }
+    if (isRightSwipe && currentDayIndex > 0) {
+      goToPrevDay();
+    }
+  };
+  
+  // Render content based on active tab
+  const renderContent = () => {
+    switch(activeTab) {
+      case 'Itinerary':
+        if (planData.length === 0) {
+          return (
+            <div className="text-center py-12">
+              <Icons.calendar className="w-12 h-12 text-slate-300 mx-auto mb-4"/>
+              <p className="text-slate-500">No itinerary data available</p>
+            </div>
+          );
+        }
+        
+        const currentDay = planData[currentDayIndex];
+        return (
+          <div 
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
+            {/* Day Navigation */}
+            <div className="flex items-center justify-between mb-4">
+              <button 
+                onClick={goToPrevDay} 
+                disabled={currentDayIndex === 0} 
+                className="px-4 py-2 bg-white rounded-lg shadow-md border disabled:opacity-50 
+                         disabled:cursor-not-allowed flex items-center gap-2 hover:bg-slate-50 
+                         transition-colors"
               >
-                <div className="flex-shrink-0 mt-1 text-sky-600">
-                  {item.type === 'eat' ? (
-                    <Icons.utensils className="w-5 h-5" />
-                  ) : (
-                    <Icons.ferrisWheel className="w-5 h-5" />
-                  )}
-                </div>
-                <div className="flex-1">
-                  <a 
-                    href={item.map} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    className="font-semibold text-sm text-slate-800 
-                             hover:text-sky-600 transition-colors"
-                  >
-                    {item.name}
-                  </a>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    {item.notes}
-                  </p>
-                  <p className="text-xs font-semibold text-slate-600 mt-1">
-                    {item.travelTime}
-                  </p>
-                </div>
-                <div className="flex items-center gap-1 text-xs font-bold 
-                              text-amber-600 bg-amber-100 px-2 py-1 rounded-full">
-                  <Icons.star className="w-3 h-3 fill-current" />
-                  <span>{item.rating.toFixed(1)}</span>
+                <Icons.chevronLeft className="w-5 h-5"/> 
+                <span className="hidden sm:inline">Previous</span>
+                <span className="sm:hidden">Prev</span>
+              </button>
+              
+              <div className="text-center">
+                <h2 className="font-bold text-xl text-slate-800">
+                  {new Date(currentDay.date).toLocaleDateString('en-US', { weekday: 'long' })}
+                </h2>
+                <p className="text-sm text-slate-500">
+                  {new Date(currentDay.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
+                </p>
+                <div className="flex justify-center gap-1 mt-2">
+                  {planData.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setCurrentDayIndex(i)}
+                      className={`w-2 h-2 rounded-full transition-colors ${
+                        i === currentDayIndex ? 'bg-sky-600' : 'bg-slate-300'
+                      }`}
+                      aria-label={`Go to day ${i + 1}`}
+                    />
+                  ))}
                 </div>
               </div>
-            ))}
+              
+              <button 
+                onClick={goToNextDay} 
+                disabled={currentDayIndex === planData.length - 1} 
+                className="px-4 py-2 bg-white rounded-lg shadow-md border disabled:opacity-50 
+                         disabled:cursor-not-allowed flex items-center gap-2 hover:bg-slate-50 
+                         transition-colors"
+              >
+                <span className="hidden sm:inline">Next</span>
+                <span className="sm:hidden">Next</span>
+                <Icons.chevronRight className="w-5 h-5"/>
+              </button>
+            </div>
+            
+            {/* Day Card */}
+            <DayCard 
+              dayData={currentDay} 
+              dayIndex={currentDayIndex} 
+              onUpdatePlan={handleUpdatePlan}
+              planData={planData}
+            />
+            
+            {/* Swipe Hint (shown on mobile) */}
+            <div className="sm:hidden text-center mt-4 text-xs text-slate-400">
+              Swipe left or right to navigate days
+            </div>
           </div>
-
-          {/* Phuket Fact of the Day */}
-          <div className="mt-4 pt-4 border-t border-slate-200">
-            <h3 className="font-semibold text-slate-700 mb-2">
-              Phuket Fact of the Day
-            </h3>
-            <p className="text-sm text-slate-600 italic">
-              "{fact}"
-            </p>
+        );
+        
+      case 'JetLag':
+        return <JetLagTab />;
+        
+      case 'FoodHelper':
+        return <FoodHelperTab />;
+        
+      case 'Tools&Info':
+        return (
+          <div className="space-y-8">
+            <CurrencyConverter />
+            <KidComfortChecklist />
+            <IconLegend />
           </div>
+        );
+        
+      case 'Documents':
+        return <TravelDocuments />;
+        
+      default:
+        return null;
+    }
+  };
+  
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-100 flex items-center justify-center">
+        <div className="text-center">
+          <Icons.plane className="w-12 h-12 text-sky-600 animate-pulse mx-auto mb-4"/>
+          <p className="text-slate-600">Loading your trip planner...</p>
         </div>
       </div>
+    );
+  }
+  
+  return (
+    <div className="min-h-screen bg-slate-100">
+      <Header />
+      
+      {/* Weather Alert Banner */}
+      {weatherAlert && (
+        <div className={`px-4 py-2 text-center text-sm font-semibold
+          ${weatherAlert.type === 'danger' ? 'bg-red-100 text-red-800 border-b-2 border-red-300' :
+            weatherAlert.type === 'warning' ? 'bg-amber-100 text-amber-800 border-b-2 border-amber-300' :
+            'bg-blue-100 text-blue-800 border-b-2 border-blue-300'}`}>
+          <Icons.alertTriangle className="inline w-4 h-4 mr-2"/>
+          {weatherAlert.message}
+        </div>
+      )}
+      
+      {/* Firebase Error Banner */}
+      {firebaseError && (
+        <div className="bg-amber-100 text-amber-800 px-4 py-2 text-center text-sm">
+          <Icons.alertTriangle className="inline w-4 h-4 mr-2"/>
+          {firebaseError}
+        </div>
+      )}
+      
+      {/* Main Content */}
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {renderContent()}
+      </main>
+      
+      {/* Footer */}
+      <footer className="text-center py-8 text-xs text-slate-400">
+        <p>Phuket Trip Planner v2.0 • Built with ❤️ for family adventures</p>
+        {isFirebaseConfigured() && (
+          <p className="mt-1">
+            {isOnline ? '🟢 Online - Syncing' : '🔴 Offline - Local Only'}
+          </p>
+        )}
+      </footer>
     </div>
   );
 };
 
-export default DayCard;
+export default App;
