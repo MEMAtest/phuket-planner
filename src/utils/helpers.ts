@@ -1,0 +1,145 @@
+import { ActivityType, PlanDay } from '../types';
+import { Icons } from '../data/staticData';
+
+// Weather Icon Helper
+export const getWeatherIcon = (summary: string) => {
+  const s = summary.toLowerCase();
+  if (s.includes("storm") || s.includes("rain")) {
+    return <Icons.cloudRain className="w-6 h-6 text-blue-500" />;
+  } else if (s.includes("cloud")) {
+    return <Icons.cloud className="w-6 h-6 text-slate-500" />;
+  }
+  return <Icons.sun className="w-6 h-6 text-amber-500" />;
+};
+
+// Activity Type Icon Helper
+export const getTypeIcon = (type: ActivityType, props: any = { className: "w-5 h-5" }) => {
+  const iconMap = {
+    travel: <Icons.plane {...props} />,
+    eat: <Icons.utensils {...props} />,
+    nap: <Icons.clock {...props} />,
+    indoor: <Icons.ferrisWheel {...props} />,
+    outdoor: <Icons.sun {...props} />,
+    mixed: <Icons.ferrisWheel {...props} />
+  };
+  return iconMap[type] || <Icons.ferrisWheel {...props} />;
+};
+
+// Activity Type Color Helper
+export const getTypeColor = (type: ActivityType): string => {
+  const colorMap = {
+    travel: 'bg-sky-100 text-sky-800',
+    eat: 'bg-rose-100 text-rose-800',
+    nap: 'bg-amber-100 text-amber-800',
+    indoor: 'bg-indigo-100 text-indigo-800',
+    outdoor: 'bg-emerald-100 text-emerald-800',
+    mixed: 'bg-cyan-100 text-cyan-800'
+  };
+  return colorMap[type] || 'bg-slate-100 text-slate-800';
+};
+
+// Generate ICS Calendar File
+export const generateICS = (planData: PlanDay[]): string => {
+  let icsString = `BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//PhuketPlanner//EN\n`;
+  
+  planData.forEach(day => {
+    day.blocks.forEach(block => {
+      if (!block.time || !/\d/.test(block.time)) return;
+      
+      const timeMatch = block.time.match(/(\d{2}):(\d{2})/);
+      if (!timeMatch) return;
+      
+      const [, hour, minute] = timeMatch.map(Number);
+      const [year, month, dayOfMonth] = day.date.split('-').map(Number);
+      
+      const formatForICS = (h: number, m: number) => 
+        `${year}${String(month).padStart(2, '0')}${String(dayOfMonth).padStart(2, '0')}T${String(h).padStart(2, '0')}${String(m).padStart(2, '0')}00`;
+
+      const startTime = formatForICS(hour, minute);
+      const endTime = formatForICS(hour + 1, minute);
+
+      icsString += `BEGIN:VEVENT\n`;
+      icsString += `UID:${block.id}@phuketplanner\n`;
+      icsString += `DTSTAMP:${new Date().toISOString().replace(/[-:]|\.\d{3}/g, '')}Z\n`;
+      icsString += `DTSTART;TZID=Asia/Bangkok:${startTime}\n`;
+      icsString += `DTEND;TZID=Asia/Bangkok:${endTime}\n`;
+      icsString += `SUMMARY:${block.title}\n`;
+      icsString += `END:VEVENT\n`;
+    });
+  });
+  
+  icsString += `END:VCALENDAR`;
+  return icsString;
+};
+
+// Download ICS File
+export const downloadICS = (planData: PlanDay[]) => {
+  const icsContent = generateICS(planData);
+  const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute("download", "Phuket_Itinerary.ics");
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
+// Format Date
+export const formatDate = (dateString: string, format: 'short' | 'long' = 'long') => {
+  const date = new Date(dateString);
+  if (format === 'short') {
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+  return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+};
+
+// Check if date is today
+export const isToday = (dateString: string): boolean => {
+  const today = new Date();
+  const date = new Date(dateString);
+  return date.toDateString() === today.toDateString();
+};
+
+// Generate unique ID
+export const generateId = (): string => {
+  return `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+};
+
+// Currency converter
+export const convertCurrency = (amount: number, from: 'GBP' | 'THB', rate: number = 45.5): number => {
+  if (from === 'GBP') {
+    return parseFloat((amount * rate).toFixed(2));
+  }
+  return parseFloat((amount / rate).toFixed(2));
+};
+
+// Get weather-based recommendations
+export const getWeatherRecommendations = (summary: string) => {
+  const isRainy = summary.toLowerCase().includes('rain') || 
+                  summary.toLowerCase().includes('storm');
+  
+  if (isRainy) {
+    return {
+      icon: <Icons.alertTriangle className="w-4 h-4 text-amber-500"/>,
+      message: "Indoor activities recommended today",
+      suggestions: [
+        "Visit Phuket Aquarium",
+        "Shopping at Central Festival", 
+        "Thai cooking class",
+        "Kids' Club activities",
+        "Spa treatments"
+      ]
+    };
+  }
+  return {
+    icon: <Icons.sun className="w-4 h-4 text-green-500"/>,
+    message: "Great day for outdoor activities!",
+    suggestions: [
+      "Beach time",
+      "Island hopping",
+      "Snorkeling",
+      "National park visit",
+      "Outdoor dining"
+    ]
+  };
+};
