@@ -1,7 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TRIP_DATA, Icons } from '../data/staticData';
 import AddActivityForm from './AddActivityForm';
 import WeatherWidget from './WeatherWidget';
+import ExpenseTracker from './ExpenseTracker';
+import ActivityNotes from './ActivityNotes';
+import SmartSuggestions from './SmartSuggestions';
+import { initializeExpenses, getExpenses } from '../services/expenseService';
 
 // Helper functions
 const getTypeIcon = (type, props = { className: "w-5 h-5" }) => {
@@ -28,10 +32,29 @@ const getTypeColor = (type) => {
   return colorMap[type] || 'bg-slate-100 text-slate-800';
 };
 
-const DayCard = ({ dayData, dayIndex, onUpdatePlan }) => {
+const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
   const recommendations = TRIP_DATA.recommendations[dayData.location] || [];
   const fact = TRIP_DATA.phuketFacts[dayIndex % TRIP_DATA.phuketFacts.length];
   const [isAdding, setIsAdding] = useState(false);
+  const [expandedActivity, setExpandedActivity] = useState(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [expenses, setExpenses] = useState(null);
+  const [weatherData, setWeatherData] = useState(null);
+
+  useEffect(() => {
+    // Initialize expenses if needed
+    if (!getExpenses()) {
+      initializeExpenses(planData || [dayData]);
+    }
+    setExpenses(getExpenses());
+
+    // Update time every minute
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [dayData, planData]);
 
   const handleAddItem = (newItem) => {
     const updatedBlocks = [...dayData.blocks, newItem].sort(
@@ -43,6 +66,14 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan }) => {
 
   const handleRemoveItem = (blockId) => {
     onUpdatePlan(dayIndex, dayData.blocks.filter(b => b.id !== blockId));
+  };
+
+  const toggleActivityExpansion = (blockId) => {
+    setExpandedActivity(expandedActivity === blockId ? null : blockId);
+  };
+
+  const handleExpenseAdded = () => {
+    setExpenses(getExpenses());
   };
 
   return (
@@ -68,35 +99,82 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan }) => {
           
           {/* Weather Widget */}
           <div className="flex-1 max-w-sm">
-            <WeatherWidget location={dayData.location} date={dayData.date} />
+            <WeatherWidget 
+              location={dayData.location} 
+              date={dayData.date}
+              onWeatherUpdate={setWeatherData}
+            />
           </div>
         </div>
       </div>
 
+      {/* Smart Suggestions */}
+      <div className="p-4 border-b">
+        <SmartSuggestions
+          currentTime={currentTime}
+          dayData={dayData}
+          weatherData={weatherData}
+          expenses={expenses?.days[dayData.date]}
+        />
+      </div>
+
       {/* Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-5">
-        {/* Timeline Section */}
+        {/* Left Column - Timeline & Expenses */}
         <div className="lg:col-span-3 p-4">
+          {/* Expense Tracker */}
+          <div className="mb-4">
+            <ExpenseTracker
+              date={dayData.date}
+              activityId={null}
+              onExpenseAdded={handleExpenseAdded}
+            />
+          </div>
+
+          {/* Timeline */}
           <h3 className="font-semibold text-slate-700 mb-3">Timeline</h3>
           <div className="space-y-2">
             {dayData.blocks.map(block => (
-              <div key={block.id} className="flex items-center group">
-                <div className={`p-2 rounded-full ${getTypeColor(block.type)} mr-3`}>
-                  {getTypeIcon(block.type)}
-                </div>
-                <div className="flex-grow">
-                  <p className="font-medium text-sm text-slate-800">
-                    {block.title}
-                  </p>
-                  <p className="text-xs text-slate-500">{block.time}</p>
-                </div>
-                <button 
-                  onClick={() => handleRemoveItem(block.id)} 
-                  className="opacity-0 group-hover:opacity-100 transition-opacity 
-                           text-rose-500 hover:text-rose-700 p-1"
+              <div key={block.id}>
+                <div 
+                  className="flex items-center group cursor-pointer"
+                  onClick={() => toggleActivityExpansion(block.id)}
                 >
-                  <Icons.trash2 className="w-4 h-4" />
-                </button>
+                  <div className={`p-2 rounded-full ${getTypeColor(block.type)} mr-3`}>
+                    {getTypeIcon(block.type)}
+                  </div>
+                  <div className="flex-grow">
+                    <p className="font-medium text-sm text-slate-800">
+                      {block.title}
+                    </p>
+                    <p className="text-xs text-slate-500">{block.time}</p>
+                  </div>
+                  <Icons.chevronDown 
+                    className={`w-4 h-4 text-slate-400 transition-transform
+                      ${expandedActivity === block.id ? 'rotate-180' : ''}`}
+                  />
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemoveItem(block.id);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity 
+                             text-rose-500 hover:text-rose-700 p-1 ml-2"
+                  >
+                    <Icons.trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+                
+                {/* Expanded Activity Details */}
+                {expandedActivity === block.id && (
+                  <div className="ml-11 mt-2">
+                    <ActivityNotes
+                      activityId={block.id}
+                      activityTitle={block.title}
+                      date={dayData.date}
+                    />
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -120,11 +198,10 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan }) => {
           )}
         </div>
 
-        {/* Recommendations Section */}
+        {/* Right Column - Recommendations & Facts */}
         <div className="lg:col-span-2 p-4 bg-slate-50 lg:border-l">
+          {/* Local Options */}
           <h3 className="font-semibold text-slate-700 mb-3">Local Options</h3>
-          
-          {/* Restaurant/Activity Recommendations */}
           <div className="space-y-3 mb-4">
             {recommendations.map(item => (
               <div 
