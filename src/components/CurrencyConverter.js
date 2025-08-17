@@ -1,151 +1,170 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Icons } from '../data/staticData';
-import { useTrip } from '../context/TripContext';
 
 const CurrencyConverter = () => {
-  const { preferences } = useTrip();
-  const [rate] = useState(preferences.exchangeRate);
+  // Default exchange rate
+  const DEFAULT_RATE = 43.5; // 1 GBP = 43.5 THB approximately
+  
+  const [rate, setRate] = useState(() => {
+    // Try to load from localStorage first
+    const saved = localStorage.getItem('exchange_rate');
+    return saved ? parseFloat(saved) : DEFAULT_RATE;
+  });
+  
   const [gbp, setGbp] = useState(100);
   const [thb, setThb] = useState(100 * rate);
-  const [lastChanged, setLastChanged] = useState('gbp');
-  
-  // Common amounts for quick conversion
-  const quickAmounts = {
-    gbp: [10, 20, 50, 100, 200],
-    thb: [500, 1000, 2000, 5000, 10000]
-  };
-  
-  const handleGbpChange = (value) => {
-    const val = parseFloat(value) || 0;
-    setGbp(val);
-    setThb(parseFloat((val * rate).toFixed(2)));
-    setLastChanged('gbp');
-  };
-  
-  const handleThbChange = (value) => {
-    const val = parseFloat(value) || 0;
-    setThb(val);
-    setGbp(parseFloat((val / rate).toFixed(2)));
-    setLastChanged('thb');
-  };
-  
-  const setQuickAmount = (amount, currency) => {
-    if (currency === 'gbp') {
-      handleGbpChange(amount.toString());
-    } else {
-      handleThbChange(amount.toString());
+  const [lastUpdated, setLastUpdated] = useState(() => {
+    const saved = localStorage.getItem('exchange_rate_updated');
+    return saved || new Date().toISOString();
+  });
+  const [loading, setLoading] = useState(false);
+
+  // Save rate to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('exchange_rate', rate.toString());
+    localStorage.setItem('exchange_rate_updated', lastUpdated);
+  }, [rate, lastUpdated]);
+
+  // Fetch latest exchange rate
+  const fetchExchangeRate = async () => {
+    setLoading(true);
+    try {
+      // Using exchangerate-api.com free tier
+      const response = await fetch('https://api.exchangerate-api.com/v4/latest/GBP');
+      if (response.ok) {
+        const data = await response.json();
+        const newRate = data.rates?.THB || DEFAULT_RATE;
+        setRate(newRate);
+        setLastUpdated(new Date().toISOString());
+        // Recalculate THB with new rate
+        setThb(gbp * newRate);
+      }
+    } catch (error) {
+      console.log('Could not fetch exchange rate, using default:', DEFAULT_RATE);
+    } finally {
+      setLoading(false);
     }
   };
-  
-  // Useful reference amounts
-  const references = [
-    { item: "Street food meal", thb: 60, icon: "🍜" },
-    { item: "Taxi ride (10 min)", thb: 200, icon: "🚕" },
-    { item: "Beer at restaurant", thb: 120, icon: "🍺" },
-    { item: "Bottle of water", thb: 20, icon: "💧" },
-    { item: "Entrance to attraction", thb: 500, icon: "🎫" },
-    { item: "Massage (1 hour)", thb: 400, icon: "💆" }
-  ];
-  
+
+  // Check if rate is older than 12 hours
+  useEffect(() => {
+    const lastUpdate = new Date(lastUpdated);
+    const now = new Date();
+    const hoursSinceUpdate = (now - lastUpdate) / (1000 * 60 * 60);
+    
+    if (hoursSinceUpdate > 12) {
+      fetchExchangeRate();
+    }
+  }, []);
+
+  const handleGbpChange = (e) => {
+    const val = parseFloat(e.target.value) || 0;
+    setGbp(val);
+    setThb(parseFloat((val * rate).toFixed(2)));
+  };
+
+  const handleThbChange = (e) => {
+    const val = parseFloat(e.target.value) || 0;
+    setThb(val);
+    setGbp(parseFloat((val / rate).toFixed(2)));
+  };
+
+  const handleRateChange = (e) => {
+    const val = parseFloat(e.target.value) || DEFAULT_RATE;
+    setRate(val);
+    setThb(parseFloat((gbp * val).toFixed(2)));
+    setLastUpdated(new Date().toISOString());
+  };
+
+  // Format date for display
+  const formatUpdateTime = () => {
+    const date = new Date(lastUpdated);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   return (
     <div className="bg-white p-4 sm:p-6 rounded-xl shadow-lg">
-      <h3 className="font-bold text-lg text-slate-800 mb-4 flex items-center gap-2">
-        <Icons.repeat className="w-6 h-6 text-sky-600"/>
-        Currency Converter
-      </h3>
+      <div className="flex justify-between items-start mb-4">
+        <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
+          {Icons.repeat ? <Icons.repeat className="w-6 h-6 text-sky-600"/> : <span>💱</span>}
+          Currency Converter
+        </h3>
+        <button
+          onClick={fetchExchangeRate}
+          disabled={loading}
+          className="text-sm px-3 py-1 bg-sky-100 text-sky-700 rounded-lg hover:bg-sky-200 transition-colors disabled:opacity-50"
+          title="Update exchange rate"
+        >
+          {loading ? 'Updating...' : 'Update Rate'}
+        </button>
+      </div>
       
-      {/* Main Converter */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
         <div>
-          <label className="block text-sm font-medium text-slate-600">GBP (£)</label>
-          <div className="mt-1 relative">
-            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500">£</span>
-            <input 
-              type="number" 
-              value={gbp} 
-              onChange={(e) => handleGbpChange(e.target.value)} 
-              className={`
-                pl-8 block w-full rounded-md border-2 shadow-sm text-lg font-bold
-                focus:ring-2 focus:ring-sky-500 focus:border-sky-500
-                ${lastChanged === 'gbp' ? 'border-sky-400' : 'border-slate-300'}
-              `}
-            />
-          </div>
-          {/* Quick amounts for GBP */}
-          <div className="flex gap-1 mt-2">
-            {quickAmounts.gbp.map(amount => (
-              <button
-                key={amount}
-                onClick={() => setQuickAmount(amount, 'gbp')}
-                className="px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded transition-colors"
-              >
-                £{amount}
-              </button>
-            ))}
-          </div>
+          <label className="block text-sm font-medium text-slate-600 mb-1">
+            GBP (£)
+          </label>
+          <input 
+            type="number" 
+            value={gbp} 
+            onChange={handleGbpChange} 
+            className="block w-full px-3 py-2 rounded-md border border-slate-300 shadow-sm text-lg font-bold focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+            placeholder="0.00"
+          />
         </div>
         
         <div>
-          <label className="block text-sm font-medium text-slate-600">THB (฿)</label>
-          <div className="mt-1 relative">
-            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500">฿</span>
-            <input 
-              type="number" 
-              value={thb} 
-              onChange={(e) => handleThbChange(e.target.value)} 
-              className={`
-                pl-8 block w-full rounded-md border-2 shadow-sm text-lg font-bold
-                focus:ring-2 focus:ring-sky-500 focus:border-sky-500
-                ${lastChanged === 'thb' ? 'border-sky-400' : 'border-slate-300'}
-              `}
+          <label className="block text-sm font-medium text-slate-600 mb-1">
+            THB (฿)
+          </label>
+          <input 
+            type="number" 
+            value={thb} 
+            onChange={handleThbChange} 
+            className="block w-full px-3 py-2 rounded-md border border-slate-300 shadow-sm text-lg font-bold focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+            placeholder="0.00"
+          />
+        </div>
+      </div>
+      
+      <div className="mt-4 pt-4 border-t border-slate-200">
+        <div className="flex items-center justify-between text-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-slate-600">Rate: 1 GBP =</span>
+            <input
+              type="number"
+              value={rate}
+              onChange={handleRateChange}
+              className="w-20 px-2 py-1 border rounded text-sm font-medium"
+              step="0.1"
             />
+            <span className="text-slate-600">THB</span>
           </div>
-          {/* Quick amounts for THB */}
-          <div className="flex gap-1 mt-2">
-            {quickAmounts.thb.map(amount => (
-              <button
-                key={amount}
-                onClick={() => setQuickAmount(amount, 'thb')}
-                className="px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded transition-colors"
-              >
-                ฿{amount.toLocaleString()}
-              </button>
-            ))}
-          </div>
+          <span className="text-xs text-slate-500">
+            Updated: {formatUpdateTime()}
+          </span>
         </div>
       </div>
       
-      <div className="text-center text-xs text-slate-500 mt-3 p-2 bg-slate-50 rounded">
-        Exchange Rate: 1 GBP ≈ {rate} THB
-        <br />
-        <span className="text-xs italic">Rates may vary at exchange counters</span>
-      </div>
-      
-      {/* Reference Prices */}
-      <div className="mt-6 pt-4 border-t">
-        <h4 className="font-semibold text-sm text-slate-700 mb-3">💰 Typical Prices in Phuket:</h4>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {references.map((ref, i) => (
-            <div key={i} className="flex items-center justify-between p-2 bg-slate-50 rounded">
-              <span className="flex items-center gap-2 text-sm">
-                <span>{ref.icon}</span>
-                <span className="text-slate-700">{ref.item}</span>
-              </span>
-              <span className="text-sm font-semibold">
-                <span className="text-slate-600">฿{ref.thb}</span>
-                <span className="text-slate-400 ml-1">(£{(ref.thb / rate).toFixed(1)})</span>
-              </span>
-            </div>
-          ))}
+      {/* Quick conversion reference */}
+      <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+        <div className="bg-slate-50 p-2 rounded">
+          <span className="font-medium">£10</span> = ฿{(10 * rate).toFixed(0)}
         </div>
-      </div>
-      
-      {/* Tips */}
-      <div className="mt-4 p-3 bg-amber-50 rounded-lg border border-amber-200">
-        <p className="text-xs text-amber-800">
-          <strong>💡 Tip:</strong> Always carry small notes (20, 50, 100 baht) for street vendors and taxis. 
-          Many places don't accept cards for small amounts.
-        </p>
+        <div className="bg-slate-50 p-2 rounded">
+          <span className="font-medium">£50</span> = ฿{(50 * rate).toFixed(0)}
+        </div>
+        <div className="bg-slate-50 p-2 rounded">
+          <span className="font-medium">£100</span> = ฿{(100 * rate).toFixed(0)}
+        </div>
+        <div className="bg-slate-50 p-2 rounded">
+          <span className="font-medium">£500</span> = ฿{(500 * rate).toFixed(0)}
+        </div>
       </div>
     </div>
   );
