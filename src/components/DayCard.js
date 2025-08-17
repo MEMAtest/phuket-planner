@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Icons, TRIP_DATA } from '../data/staticData';
 import { getWeatherIcon, getTypeIcon, getTypeColor, formatDate, getWeatherRecommendations } from '../utils/helpers';
+import WeatherWidget from './WeatherWidget';
 import AddActivityForm from './AddActivityForm';
 
 const DayCard = ({ dayData, dayIndex, onUpdatePlan }) => {
@@ -58,29 +59,12 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan }) => {
             <h2 className="text-xl font-bold text-slate-800">{formatDate(dayData.date)}</h2>
             <p className="text-sm text-slate-500 mt-1">📍 {dayData.location === 'maiKhao' ? 'Mai Khao Area' : 'Old Town'}</p>
           </div>
-          {forecast && (
-            <div className="text-right">
-              <div className="flex items-center gap-2">
-                {getWeatherIcon(forecast.summary)}
-                <span className="font-bold text-2xl text-slate-700">{forecast.hi}°</span>
-                <span className="text-slate-500">{forecast.lo}°C</span>
-              </div>
-              <p className="text-xs text-slate-500 capitalize">{forecast.summary}</p>
-            </div>
-          )}
+          {/* Live Weather Widget */}
+<div className="flex-1">
+  <WeatherWidget location={dayData.location} date={dayData.date} />
+</div>
         </div>
-        
-        {/* Weather Recommendations */}
-        {weatherRecs && (
-          <div className="mt-3 p-2 bg-amber-50 rounded-lg border border-amber-200">
-            <div className="flex items-center gap-2 text-xs font-semibold text-amber-800">
-              {weatherRecs.icon}
-              <span>{weatherRecs.message}</span>
-            </div>
-          </div>
-        )}
-      </div>
-      
+             
       {/* Day Progress Bar */}
       {dayData.blocks.length > 0 && (
         <div className="px-4 pt-3">
