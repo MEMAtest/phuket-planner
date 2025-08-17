@@ -1,19 +1,12 @@
 import React, { useState } from 'react';
-import { PlanDay, Activity } from '../types';
 import { Icons, TRIP_DATA } from '../data/staticData';
 import { getWeatherIcon, getTypeIcon, getTypeColor, formatDate, getWeatherRecommendations } from '../utils/helpers';
 import AddActivityForm from './AddActivityForm';
 
-interface DayCardProps {
-  dayData: PlanDay;
-  dayIndex: number;
-  onUpdatePlan: (dayIndex: number, updatedBlocks: Activity[]) => void;
-}
-
-const DayCard: React.FC<DayCardProps> = ({ dayData, dayIndex, onUpdatePlan }) => {
+const DayCard = ({ dayData, dayIndex, onUpdatePlan }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [showRecommendations, setShowRecommendations] = useState(true);
-  const [completedActivities, setCompletedActivities] = useState<Set<string | number>>(new Set());
+  const [completedActivities, setCompletedActivities] = useState(new Set());
   
   const forecast = TRIP_DATA.forecast.find(f => f.date === dayData.date);
   const recommendations = TRIP_DATA.recommendations[dayData.location] || [];
@@ -26,7 +19,7 @@ const DayCard: React.FC<DayCardProps> = ({ dayData, dayIndex, onUpdatePlan }) =>
     ? (completedCount / dayData.blocks.length) * 100 
     : 0;
   
-  const handleAddItem = (newItem: Activity) => {
+  const handleAddItem = (newItem) => {
     const updatedBlocks = [...dayData.blocks, newItem].sort((a, b) => 
       (a.time || "99").localeCompare(b.time || "99")
     );
@@ -34,7 +27,7 @@ const DayCard: React.FC<DayCardProps> = ({ dayData, dayIndex, onUpdatePlan }) =>
     setIsAdding(false);
   };
   
-  const handleRemoveItem = (blockId: string | number) => {
+  const handleRemoveItem = (blockId) => {
     onUpdatePlan(dayIndex, dayData.blocks.filter(b => b.id !== blockId));
     setCompletedActivities(prev => {
       const newSet = new Set(prev);
@@ -43,7 +36,7 @@ const DayCard: React.FC<DayCardProps> = ({ dayData, dayIndex, onUpdatePlan }) =>
     });
   };
   
-  const handleToggleComplete = (blockId: string | number) => {
+  const handleToggleComplete = (blockId) => {
     setCompletedActivities(prev => {
       const newSet = new Set(prev);
       if (newSet.has(blockId)) {
