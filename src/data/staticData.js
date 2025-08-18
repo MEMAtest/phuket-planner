@@ -1,10 +1,6 @@
-// src/data/staticData.js - FIXED VERSION
-// Remove TypeScript imports and syntax, add missing icons
+// src/data/staticData.js - COMPLETE FILE
 
-// NO TYPESCRIPT IMPORTS - Remove this line:
-// import { TripData } from '../types';
-
-// SVG Icons as React components - WITHOUT TypeScript syntax
+// SVG Icons as React components
 export const Icons = {
   plane: (props) => (
     <svg {...props} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -131,7 +127,6 @@ export const Icons = {
       <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
     </svg>
   ),
-  // ADD THIS MISSING ICON:
   x: (props) => (
     <svg {...props} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <line x1="18" y1="6" x2="6" y2="18"/>
@@ -140,7 +135,7 @@ export const Icons = {
   ),
 };
 
-// NO TYPE ANNOTATION - Just export the object
+// Main Trip Data
 export const TRIP_DATA = {
   hotel: { 
     name: "Anantara Mai Khao Phuket Villas" 
@@ -422,4 +417,356 @@ export const TRIP_DATA = {
     "Phuket's Old Town is famous for its Sino-Portuguese architecture, a blend of Chinese and European styles.",
     "The island was devastated by the 2004 Indian Ocean tsunami but has since made a remarkable recovery."
   ]
+};
+
+// Thai Phrases - Organized by context
+export const THAI_PHRASES = {
+  greetings: [
+    { thai: "สวัสดีครับ/ค่ะ", phonetic: "Sawadee krap/ka", english: "Hello", audio: "sawadee" },
+    { thai: "ขอบคุณครับ/ค่ะ", phonetic: "Khob khun krap/ka", english: "Thank you", audio: "khobkhun" },
+    { thai: "ขอโทษครับ/ค่ะ", phonetic: "Khor thot krap/ka", english: "Sorry/Excuse me", audio: "khorthot" },
+    { thai: "ลาก่อน", phonetic: "Laa gorn", english: "Goodbye", audio: "laagorn" },
+    { thai: "ไม่เป็นไร", phonetic: "Mai pen rai", english: "No problem/It's okay", audio: "maipenrai" }
+  ],
+  
+  kidsNeeds: [
+    { thai: "ห้องน้ำอยู่ที่ไหน", phonetic: "Hong nam yuu tee nai?", english: "Where is the bathroom?", audio: "hongnam" },
+    { thai: "น้ำดื่ม", phonetic: "Nam deum", english: "Drinking water", audio: "namdeum" },
+    { thai: "เด็กเล็ก", phonetic: "Dek lek", english: "Small child", audio: "deklek" },
+    { thai: "นมสำหรับเด็ก", phonetic: "Nom sam-rap dek", english: "Milk for children", audio: "nom" },
+    { thai: "ผ้าอ้อม", phonetic: "Paa om", english: "Diaper", audio: "paaom" },
+    { thai: "เก้าอี้เด็ก", phonetic: "Gao-ee dek", english: "High chair", audio: "gaoeedek" },
+    { thai: "อาหารเด็ก", phonetic: "Aa-haan dek", english: "Kids meal", audio: "ahaandek" }
+  ],
+  
+  restaurant: [
+    { thai: "ไม่เผ็ด", phonetic: "Mai phet", english: "Not spicy (MOST IMPORTANT!)", audio: "maiphet" },
+    { thai: "ไม่ใส่พริก", phonetic: "Mai sai prik", english: "No chili please", audio: "maisaiprik" },
+    { thai: "เช็คบิล", phonetic: "Check bin", english: "Bill please", audio: "checkbin" },
+    { thai: "อร่อย", phonetic: "Aroy", english: "Delicious", audio: "aroy" },
+    { thai: "น้ำเปล่า", phonetic: "Nam plao", english: "Plain water", audio: "namplao" },
+    { thai: "ข้าวเปล่า", phonetic: "Khao plao", english: "Plain rice", audio: "khaoplao" },
+    { thai: "ไก่", phonetic: "Gai", english: "Chicken", audio: "gai" },
+    { thai: "หมู", phonetic: "Moo", english: "Pork", audio: "moo" },
+    { thai: "ไม่ใส่ถั่ว", phonetic: "Mai sai tua", english: "No peanuts", audio: "maisaitua" }
+  ],
+  
+  shopping: [
+    { thai: "เท่าไหร่", phonetic: "Thao rai?", english: "How much?", audio: "thaorai" },
+    { thai: "แพงไป", phonetic: "Phaeng pai", english: "Too expensive", audio: "phaengpai" },
+    { thai: "ลดหน่อยได้ไหม", phonetic: "Lot noi dai mai?", english: "Can you reduce?", audio: "lotnoi" },
+    { thai: "เอาอันนี้", phonetic: "Ao an nee", english: "I'll take this", audio: "aoannee" },
+    { thai: "ไม่เอา", phonetic: "Mai ao", english: "I don't want it", audio: "maiao" },
+    { thai: "ดูอย่างอื่น", phonetic: "Doo yang uen", english: "Looking at others", audio: "dooyanguen" }
+  ],
+  
+  directions: [
+    { thai: "ไปที่ไหน", phonetic: "Pai tee nai?", english: "Where to go?", audio: "paitienai" },
+    { thai: "ตรงไป", phonetic: "Trong pai", english: "Go straight", audio: "trongpai" },
+    { thai: "เลี้ยวซ้าย", phonetic: "Liao sai", english: "Turn left", audio: "liaosai" },
+    { thai: "เลี้ยวขวา", phonetic: "Liao kwaa", english: "Turn right", audio: "liaokwaa" },
+    { thai: "หยุดที่นี่", phonetic: "Yut tee nee", english: "Stop here", audio: "yuttienee" },
+    { thai: "ไกลไหม", phonetic: "Glai mai?", english: "Is it far?", audio: "glaimai" }
+  ],
+  
+  emergency: [
+    { thai: "ช่วยด้วย", phonetic: "Chuay duay!", english: "Help!", audio: "chuayduay" },
+    { thai: "หมอ", phonetic: "Mor", english: "Doctor", audio: "mor" },
+    { thai: "โรงพยาบาล", phonetic: "Rong phayabaan", english: "Hospital", audio: "rongphayabaan" },
+    { thai: "ตำรวจ", phonetic: "Tam-ruat", english: "Police", audio: "tamruat" },
+    { thai: "เจ็บ", phonetic: "Jeb", english: "Hurt/Pain", audio: "jeb" },
+    { thai: "แพ้", phonetic: "Phae", english: "Allergic", audio: "phae" }
+  ],
+  
+  activities: [
+    { thai: "ชายหาด", phonetic: "Chai haad", english: "Beach", audio: "chaihaad" },
+    { thai: "สระว่ายน้ำ", phonetic: "Sa waai nam", english: "Swimming pool", audio: "sawaainam" },
+    { thai: "ช้าง", phonetic: "Chang", english: "Elephant", audio: "chang" },
+    { thai: "วัด", phonetic: "Wat", english: "Temple", audio: "wat" },
+    { thai: "ตลาด", phonetic: "Talaat", english: "Market", audio: "talaat" }
+  ]
+};
+
+// Price Guide for Phuket
+export const PRICE_GUIDE = {
+  food: {
+    title: "Food & Drinks",
+    items: [
+      { 
+        name: "Street Food Meal", 
+        thb: { min: 40, max: 80, typical: 60 }, 
+        gbp: { min: 0.9, max: 1.8, typical: 1.4 },
+        note: "Pad Thai, fried rice, etc.",
+        icon: "🍜"
+      },
+      { 
+        name: "Local Restaurant", 
+        thb: { min: 150, max: 300, typical: 200 }, 
+        gbp: { min: 3.4, max: 6.8, typical: 4.5 },
+        note: "Air-con, Thai menu",
+        icon: "🍽️"
+      },
+      { 
+        name: "Hotel Restaurant", 
+        thb: { min: 400, max: 800, typical: 600 }, 
+        gbp: { min: 9, max: 18, typical: 14 },
+        note: "International cuisine",
+        icon: "🏨"
+      },
+      { 
+        name: "Kids Meal", 
+        thb: { min: 100, max: 200, typical: 150 }, 
+        gbp: { min: 2.3, max: 4.5, typical: 3.4 },
+        note: "Most restaurants",
+        icon: "🧒"
+      },
+      { 
+        name: "Beer (Restaurant)", 
+        thb: { min: 80, max: 150, typical: 100 }, 
+        gbp: { min: 1.8, max: 3.4, typical: 2.3 },
+        note: "Local beer",
+        icon: "🍺"
+      },
+      { 
+        name: "Fresh Coconut", 
+        thb: { min: 30, max: 50, typical: 40 }, 
+        gbp: { min: 0.7, max: 1.1, typical: 0.9 },
+        note: "Beach/street vendor",
+        icon: "🥥"
+      },
+      { 
+        name: "Coffee", 
+        thb: { min: 40, max: 120, typical: 60 }, 
+        gbp: { min: 0.9, max: 2.7, typical: 1.4 },
+        note: "Local cafe to Starbucks",
+        icon: "☕"
+      },
+      { 
+        name: "Ice Cream", 
+        thb: { min: 25, max: 80, typical: 50 }, 
+        gbp: { min: 0.6, max: 1.8, typical: 1.1 },
+        note: "Street to shop",
+        icon: "🍦"
+      }
+    ]
+  },
+  
+  activities: {
+    title: "Activities & Attractions",
+    items: [
+      { 
+        name: "Splash Jungle Water Park", 
+        thb: { adult: 1295, child: 750 }, 
+        gbp: { adult: 29, child: 17 },
+        note: "Full day pass",
+        icon: "🏊"
+      },
+      { 
+        name: "Phuket Aquarium", 
+        thb: { adult: 180, child: 100 }, 
+        gbp: { adult: 4, child: 2.3 },
+        note: "Entry tickets",
+        icon: "🐠"
+      },
+      { 
+        name: "Elephant Sanctuary", 
+        thb: { adult: 3000, child: 1500 }, 
+        gbp: { adult: 68, child: 34 },
+        note: "Half-day ethical tour",
+        icon: "🐘"
+      },
+      { 
+        name: "Beach Chair Rental", 
+        thb: { typical: 100 }, 
+        gbp: { typical: 2.3 },
+        note: "Per chair per day",
+        icon: "🏖️"
+      },
+      { 
+        name: "Longtail Boat", 
+        thb: { min: 300, max: 1500 }, 
+        gbp: { min: 6.8, max: 34 },
+        note: "Per hour, negotiable",
+        icon: "⛵"
+      },
+      { 
+        name: "Thai Massage (1hr)", 
+        thb: { min: 300, max: 500, typical: 400 }, 
+        gbp: { min: 6.8, max: 11.4, typical: 9 },
+        note: "Beach vs spa",
+        icon: "💆"
+      },
+      { 
+        name: "Parasailing", 
+        thb: { typical: 1500 }, 
+        gbp: { typical: 34 },
+        note: "10-15 minutes",
+        icon: "🪂"
+      },
+      { 
+        name: "Jet Ski Rental", 
+        thb: { typical: 1500 }, 
+        gbp: { typical: 34 },
+        note: "30 minutes",
+        icon: "🚤"
+      }
+    ]
+  },
+  
+  transport: {
+    title: "Transportation",
+    items: [
+      { 
+        name: "Airport Taxi", 
+        thb: { min: 600, max: 800, typical: 700 }, 
+        gbp: { min: 14, max: 18, typical: 16 },
+        note: "HKT to Mai Khao",
+        icon: "🚕"
+      },
+      { 
+        name: "Grab/Bolt (10km)", 
+        thb: { min: 150, max: 250, typical: 200 }, 
+        gbp: { min: 3.4, max: 5.7, typical: 4.5 },
+        note: "App-based taxi",
+        icon: "📱"
+      },
+      { 
+        name: "Tuk-Tuk (Short)", 
+        thb: { min: 200, max: 400, typical: 300 }, 
+        gbp: { min: 4.5, max: 9, typical: 6.8 },
+        note: "Negotiate first!",
+        icon: "🛺"
+      },
+      { 
+        name: "Songthaew", 
+        thb: { typical: 30 }, 
+        gbp: { typical: 0.7 },
+        note: "Shared pickup truck",
+        icon: "🚐"
+      },
+      { 
+        name: "Motorbike Rental", 
+        thb: { typical: 250 }, 
+        gbp: { typical: 5.7 },
+        note: "Per day",
+        icon: "🏍️"
+      },
+      { 
+        name: "Car Rental", 
+        thb: { min: 1200, max: 2000 }, 
+        gbp: { min: 27, max: 45 },
+        note: "Per day with insurance",
+        icon: "🚗"
+      }
+    ]
+  },
+  
+  shopping: {
+    title: "Shopping & Essentials",
+    items: [
+      { 
+        name: "Sunscreen", 
+        thb: { min: 300, max: 500, typical: 400 }, 
+        gbp: { min: 6.8, max: 11.4, typical: 9 },
+        note: "SPF 50+",
+        icon: "🧴"
+      },
+      { 
+        name: "T-Shirt (Market)", 
+        thb: { min: 150, max: 250, typical: 200 }, 
+        gbp: { min: 3.4, max: 5.7, typical: 4.5 },
+        note: "Bargain hard!",
+        icon: "👕"
+      },
+      { 
+        name: "Diapers (Pack)", 
+        thb: { min: 300, max: 400, typical: 350 }, 
+        gbp: { min: 6.8, max: 9, typical: 8 },
+        note: "7-Eleven/Tesco",
+        icon: "👶"
+      },
+      { 
+        name: "Water (1.5L)", 
+        thb: { typical: 15 }, 
+        gbp: { typical: 0.3 },
+        note: "7-Eleven",
+        icon: "💧"
+      },
+      { 
+        name: "SIM Card", 
+        thb: { typical: 299 }, 
+        gbp: { typical: 6.8 },
+        note: "7 days unlimited",
+        icon: "📱"
+      },
+      { 
+        name: "Mosquito Repellent", 
+        thb: { typical: 150 }, 
+        gbp: { typical: 3.4 },
+        note: "DEET spray",
+        icon: "🦟"
+      },
+      { 
+        name: "Beach Toys", 
+        thb: { min: 100, max: 300 }, 
+        gbp: { min: 2.3, max: 6.8 },
+        note: "Bucket, spade set",
+        icon: "🏖️"
+      },
+      { 
+        name: "Souvenir Magnet", 
+        thb: { min: 50, max: 100 }, 
+        gbp: { min: 1.1, max: 2.3 },
+        note: "Night market",
+        icon: "🧲"
+      }
+    ]
+  },
+  
+  tips: {
+    title: "Money Tips",
+    items: [
+      "ATMs charge 220฿ fee - withdraw larger amounts",
+      "Always have cash - many places don't take cards",
+      "Night markets are cheaper than day markets",
+      "Bargain 30-50% off initial price at markets",
+      "7-Eleven has fixed prices - no bargaining",
+      "Tipping: 20-50฿ at restaurants, 20฿ for hotel staff",
+      "Grab/Bolt apps show fixed prices - no negotiation needed",
+      "Big C and Tesco Lotus are cheapest for supplies"
+    ]
+  }
+};
+
+// Daily Phrase Suggestions - Rotate based on activities
+export const getDailyPhrases = (dayActivities, dayIndex) => {
+  const phrases = [];
+  
+  // Always include a greeting
+  phrases.push(THAI_PHRASES.greetings[dayIndex % THAI_PHRASES.greetings.length]);
+  
+  // Add context-specific phrases based on activities
+  if (dayActivities.some(a => a.type === 'eat')) {
+    phrases.push(THAI_PHRASES.restaurant[0]); // Mai phet - most important!
+    phrases.push(THAI_PHRASES.restaurant[3]); // Aroy
+  }
+  
+  if (dayActivities.some(a => a.title.toLowerCase().includes('market') || 
+                             a.title.toLowerCase().includes('shopping'))) {
+    phrases.push(THAI_PHRASES.shopping[0]); // How much?
+    phrases.push(THAI_PHRASES.shopping[2]); // Can you reduce?
+  }
+  
+  if (dayActivities.some(a => a.title.toLowerCase().includes('beach'))) {
+    phrases.push(THAI_PHRASES.activities[0]); // Beach
+  }
+  
+  if (dayActivities.some(a => a.title.toLowerCase().includes('elephant'))) {
+    phrases.push(THAI_PHRASES.activities[2]); // Elephant
+  }
+  
+  // Always include a kids need phrase
+  phrases.push(THAI_PHRASES.kidsNeeds[dayIndex % THAI_PHRASES.kidsNeeds.length]);
+  
+  return phrases.slice(0, 5); // Return top 5 phrases for the day
 };
