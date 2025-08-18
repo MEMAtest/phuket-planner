@@ -13,6 +13,7 @@ import CurrencyConverter from './components/CurrencyConverter';
 import KidComfortChecklist from './components/KidComfortChecklist';
 import IconLegend from './components/IconLegend';
 import TravelDocuments from './components/TravelDocuments';
+import PriceGuide from './components/PriceGuide';
 
 const App = () => {
   const { 
@@ -268,6 +269,7 @@ const App = () => {
         return (
           <div className="space-y-8">
             <CurrencyConverter />
+            <PriceGuide />
             <KidComfortChecklist />
             <IconLegend />
           </div>
