@@ -49,13 +49,142 @@ const WeatherWidget = ({ location, date }) => {
     return <Icons.sun className={`${size} text-amber-500`} />;
   };
   
-  const getTodaysForecast = () => {
-    if (!forecast || !date) return null;
-    return forecast.find(f => f.date === date);
+  const getUVWarning = (uvi) => {
+    if (uvi >= 11) return { level: 'Extreme', color: 'text-purple-700 bg-purple-100', advice: 'Avoid sun 10am-4pm' };
+    if (uvi >= 8) return { level: 'Very High', color: 'text-red-700 bg-red-100', advice: 'Protect against sunburn' };
+    if (uvi >= 6) return { level: 'High', color: 'text-orange-700 bg-orange-100', advice: 'Protection required' };
+    if (uvi >= 3) return { level: 'Moderate', color: 'text-yellow-700 bg-yellow-100', advice: 'Stay in shade midday' };
+    return { level: 'Low', color: 'text-green-700 bg-green-100', advice: 'Enjoy safely' };
   };
   
-  const todaysForecast = getTodaysForecast();
-  const recommendations = getWeatherRecommendations(currentWeather);
+  const getActivityWindows = () => {
+    const windows = [];
+    const hour = new Date().getHours();
+    
+    // Morning window
+    if (currentWeather?.uvi < 6 && !currentWeather?.isRaining) {
+      windows.push({
+        time: 'Morning (7-10am)',
+        status: '✅ BEST',
+        reason: 'Low UV, cooler temps',
+        color: 'text-green-600'
+      });
+    } else {
+      windows.push({
+        time: 'Morning (7-10am)',
+        status: '⚠️ Good',
+        reason: 'Check UV levels',
+        color: 'text-amber-600'
+      });
+    }
+    
+    // Midday
+    if (currentWeather?.uvi >= 8) {
+      windows.push({
+        time: 'Midday (11am-2pm)',
+        status: '❌ Avoid outdoor',
+        reason: 'Extreme UV levels',
+        color: 'text-red-600'
+      });
+    } else {
+      windows.push({
+        time: 'Midday (11am-2pm)',
+        status: '⚠️ Use caution',
+        reason: 'High sun exposure',
+        color: 'text-amber-600'
+      });
+    }
+    
+    // Afternoon
+    if (forecast?.rainExpected) {
+      windows.push({
+        time: 'Afternoon (3-5pm)',
+        status: '🌧️ Rain likely',
+        reason: 'Indoor activities best',
+        color: 'text-blue-600'
+      });
+    } else {
+      windows.push({
+        time: 'Afternoon (3-5pm)',
+        status: '✅ Good',
+        reason: 'UV decreasing',
+        color: 'text-green-600'
+      });
+    }
+    
+    // Evening
+    windows.push({
+      time: 'Evening (5-7pm)',
+      status: '✅ Perfect',
+      reason: 'Golden hour for photos',
+      color: 'text-green-600'
+    });
+    
+    return windows;
+  };
+  
+  const getTodaysTips = () => {
+    const tips = [];
+    
+    // UV-based tips
+    if (currentWeather?.uvi >= 8) {
+      tips.push('🧴 Reapply sunscreen every 2 hours');
+      tips.push('👒 Hats & UV clothing for kids');
+    }
+    
+    // Humidity tips
+    if (currentWeather?.humidity > 85) {
+      tips.push('💧 Clothes dry slowly - pack extras');
+      tips.push('💦 Hydrate more frequently');
+    }
+    
+    // Rain tips
+    if (forecast?.rainAmount > 5) {
+      tips.push(`🌧️ ${forecast.rainAmount}mm rain expected`);
+      tips.push('☂️ Bring umbrellas/raincoats');
+    }
+    
+    // Beach tips
+    if (location === 'maiKhao') {
+      const hour = new Date().getHours();
+      if (hour < 12) {
+        tips.push('🏖️ Low tide morning - great for walking');
+      } else {
+        tips.push('🏊 High tide afternoon - better swimming');
+      }
+    }
+    
+    // Sunset time
+    tips.push('🌅 Sunset at 6:31pm - great photos');
+    
+    return tips;
+  };
+  
+  const getWeatherScore = () => {
+    let score = 10;
+    
+    // Deduct for rain
+    if (currentWeather?.isRaining) score -= 3;
+    if (forecast?.rainAmount > 10) score -= 2;
+    
+    // Deduct for extreme UV
+    if (currentWeather?.uvi >= 11) score -= 3;
+    else if (currentWeather?.uvi >= 8) score -= 1;
+    
+    // Deduct for high humidity
+    if (currentWeather?.humidity > 90) score -= 1;
+    
+    // Deduct for strong wind
+    if (currentWeather?.wind_speed > 10) score -= 2;
+    
+    return Math.max(0, Math.min(10, score));
+  };
+  
+  const todaysForecast = forecast?.find(f => f.date === date);
+  const activityWindows = getActivityWindows();
+  const todaysTips = getTodaysTips();
+  const weatherScore = getWeatherScore();
+  const uvInfo = getUVWarning(currentWeather?.uvi || 0);
   
   if (loading) {
     return (
@@ -67,7 +196,7 @@ const WeatherWidget = ({ location, date }) => {
   
   return (
     <div className="space-y-3">
-      {/* Current Weather */}
+      {/* Main Weather Card */}
       <div className="bg-gradient-to-r from-sky-50 to-blue-50 rounded-lg p-4">
         <div className="flex justify-between items-start">
           <div>
@@ -89,45 +218,104 @@ const WeatherWidget = ({ location, date }) => {
           
           <div className="text-right">
             {getWeatherIcon(currentWeather?.main, 'w-12 h-12')}
-            <div className="mt-2 text-xs text-slate-500">
-              <div>💧 {currentWeather?.humidity || '--'}%</div>
-              <div>💨 {currentWeather?.wind_speed || '--'} m/s</div>
+            {/* Weather Score */}
+            <div className="mt-2">
+              <div className="text-xs text-slate-500">Activity Score</div>
+              <div className="flex items-center gap-1 mt-1">
+                {[...Array(10)].map((_, i) => (
+                  <div
+                    key={i}
+                    className={`h-2 w-2 rounded-full ${
+                      i < weatherScore ? 'bg-green-500' : 'bg-slate-300'
+                    }`}
+                  />
+                ))}
+              </div>
+              <div className="text-xs font-bold text-slate-700">{weatherScore}/10</div>
             </div>
           </div>
         </div>
         
-        {/* Today's Forecast Summary */}
-        {todaysForecast && (
-          <div className="mt-3 pt-3 border-t border-sky-200">
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-slate-600">Today's Range</span>
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-slate-700">{todaysForecast.hi}°</span>
-                <span className="text-slate-400">/</span>
-                <span className="text-slate-500">{todaysForecast.lo}°</span>
-                {todaysForecast.rainAmount > 0 && (
-                  <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
-                    💧 {todaysForecast.rainAmount}mm
-                  </span>
-                )}
-              </div>
+        {/* Key Metrics */}
+        <div className="grid grid-cols-4 gap-2 mt-3 pt-3 border-t border-sky-200">
+          <div className="text-center">
+            <div className="text-xs text-slate-500">Humidity</div>
+            <div className="font-bold text-sm">{currentWeather?.humidity || '--'}%</div>
+          </div>
+          <div className="text-center">
+            <div className="text-xs text-slate-500">UV Index</div>
+            <div className={`font-bold text-sm px-1 rounded ${uvInfo.color}`}>
+              {currentWeather?.uvi || '--'}
             </div>
           </div>
-        )}
-        
-        {/* Hourly Toggle */}
-        {todaysForecast && todaysForecast.hourly && (
-          <button
-            onClick={() => setShowHourly(!showHourly)}
-            className="w-full mt-2 text-xs text-sky-600 hover:text-sky-700 font-semibold"
-          >
-            {showHourly ? 'Hide' : 'Show'} Hourly Forecast →
-          </button>
-        )}
+          <div className="text-center">
+            <div className="text-xs text-slate-500">Wind</div>
+            <div className="font-bold text-sm">{currentWeather?.wind_speed || '--'}m/s</div>
+          </div>
+          <div className="text-center">
+            <div className="text-xs text-slate-500">Rain</div>
+            <div className="font-bold text-sm">{todaysForecast?.rainAmount || '0'}mm</div>
+          </div>
+        </div>
       </div>
       
+      {/* UV Warning if high */}
+      {currentWeather?.uvi >= 6 && (
+        <div className={`p-3 rounded-lg ${uvInfo.color} flex items-center gap-2`}>
+          <span className="text-lg">☀️</span>
+          <div>
+            <div className="font-semibold text-sm">UV Index: {uvInfo.level}</div>
+            <div className="text-xs">{uvInfo.advice}</div>
+          </div>
+        </div>
+      )}
+      
+      {/* Activity Windows */}
+      <div className="bg-white rounded-lg p-3 border border-slate-200">
+        <h4 className="text-xs font-semibold text-slate-700 mb-2 flex items-center gap-1">
+          <Icons.clock className="w-4 h-4" />
+          ACTIVITY WINDOWS
+        </h4>
+        <div className="space-y-1">
+          {activityWindows.map((window, i) => (
+            <div key={i} className="flex justify-between items-center text-xs">
+              <span className="text-slate-600">{window.time}</span>
+              <div className="text-right">
+                <div className={`font-semibold ${window.color}`}>{window.status}</div>
+                <div className="text-slate-500 text-xs">{window.reason}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      
+      {/* Today's Tips */}
+      <div className="bg-amber-50 rounded-lg p-3 border border-amber-200">
+        <h4 className="text-xs font-semibold text-amber-800 mb-2">
+          💡 TODAY'S TIPS
+        </h4>
+        <ul className="space-y-1">
+          {todaysTips.map((tip, i) => (
+            <li key={i} className="text-xs text-amber-700 flex items-start gap-1">
+              <span className="mt-0.5">•</span>
+              <span>{tip}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+      
+      {/* Hourly Toggle */}
+      {todaysForecast?.hourly && (
+        <button
+          onClick={() => setShowHourly(!showHourly)}
+          className="w-full text-xs text-sky-600 hover:text-sky-700 font-semibold"
+        >
+          {showHourly ? 'Hide' : 'Show'} Hourly Forecast →
+        </button>
+      )}
+      
       {/* Hourly Forecast */}
-      {showHourly && todaysForecast && todaysForecast.hourly && (
+      {showHourly && todaysForecast?.hourly && (
         <div className="bg-white rounded-lg p-3 border border-slate-200">
           <h4 className="text-xs font-semibold text-slate-700 mb-2">Hourly Breakdown</h4>
           <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
@@ -142,24 +330,6 @@ const WeatherWidget = ({ location, date }) => {
               </div>
             ))}
           </div>
-        </div>
-      )}
-      
-      {/* Weather Recommendations */}
-      {recommendations.length > 0 && (
-        <div className="space-y-2">
-          {recommendations.map((rec, i) => (
-            <div 
-              key={i}
-              className={`p-2 rounded-lg text-xs font-medium flex items-center gap-2
-                ${rec.type === 'warning' ? 'bg-amber-50 text-amber-800 border border-amber-200' :
-                  rec.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' :
-                  'bg-blue-50 text-blue-800 border border-blue-200'}`}
-            >
-              <span className="text-base">{rec.icon}</span>
-              <span>{rec.message}</span>
-            </div>
-          ))}
         </div>
       )}
       
