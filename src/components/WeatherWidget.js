@@ -8,10 +8,10 @@ const WeatherWidget = ({ location, date }) => {
   const [loading, setLoading] = useState(true);
   const [showHourly, setShowHourly] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(null);
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'activities', 'comfort'
   
   useEffect(() => {
     fetchWeatherData();
-    // Refresh every 30 minutes
     const interval = setInterval(fetchWeatherData, 30 * 60 * 1000);
     return () => clearInterval(interval);
   }, [location, date]);
@@ -19,14 +19,10 @@ const WeatherWidget = ({ location, date }) => {
   const fetchWeatherData = async () => {
     setLoading(true);
     try {
-      // Get current weather
       const current = await getCurrentWeather(location);
       setCurrentWeather(current);
-      
-      // Get forecast
       const forecastData = await getWeatherForecast(location);
       setForecast(forecastData);
-      
       setLastUpdate(new Date());
     } catch (error) {
       console.error('Error fetching weather:', error);
@@ -37,7 +33,6 @@ const WeatherWidget = ({ location, date }) => {
   
   const getWeatherIcon = (condition, size = 'w-6 h-6') => {
     if (!condition) return <Icons.sun className={`${size} text-amber-500`} />;
-    
     const cond = condition.toLowerCase();
     if (cond.includes('rain') || cond.includes('drizzle')) {
       return <Icons.cloudRain className={`${size} text-blue-500`} />;
@@ -49,283 +44,402 @@ const WeatherWidget = ({ location, date }) => {
     return <Icons.sun className={`${size} text-amber-500`} />;
   };
   
-  const getUVWarning = (uvi) => {
-    if (uvi >= 11) return { level: 'Extreme', color: 'text-purple-700 bg-purple-100', advice: 'Avoid sun 10am-4pm' };
-    if (uvi >= 8) return { level: 'Very High', color: 'text-red-700 bg-red-100', advice: 'Protect against sunburn' };
-    if (uvi >= 6) return { level: 'High', color: 'text-orange-700 bg-orange-100', advice: 'Protection required' };
-    if (uvi >= 3) return { level: 'Moderate', color: 'text-yellow-700 bg-yellow-100', advice: 'Stay in shade midday' };
-    return { level: 'Low', color: 'text-green-700 bg-green-100', advice: 'Enjoy safely' };
-  };
-  
-  const getActivityWindows = () => {
-    const windows = [];
-    const hour = new Date().getHours();
-    
-    // Morning window
-    if (currentWeather?.uvi < 6 && !currentWeather?.isRaining) {
-      windows.push({
-        time: 'Morning (7-10am)',
-        status: '✅ BEST',
-        reason: 'Low UV, cooler temps',
-        color: 'text-green-600'
-      });
-    } else {
-      windows.push({
-        time: 'Morning (7-10am)',
-        status: '⚠️ Good',
-        reason: 'Check UV levels',
-        color: 'text-amber-600'
-      });
-    }
-    
-    // Midday
-    if (currentWeather?.uvi >= 8) {
-      windows.push({
-        time: 'Midday (11am-2pm)',
-        status: '❌ Avoid outdoor',
-        reason: 'Extreme UV levels',
-        color: 'text-red-600'
-      });
-    } else {
-      windows.push({
-        time: 'Midday (11am-2pm)',
-        status: '⚠️ Use caution',
-        reason: 'High sun exposure',
-        color: 'text-amber-600'
-      });
-    }
-    
-    // Afternoon
-    if (forecast?.rainExpected) {
-      windows.push({
-        time: 'Afternoon (3-5pm)',
-        status: '🌧️ Rain likely',
-        reason: 'Indoor activities best',
-        color: 'text-blue-600'
-      });
-    } else {
-      windows.push({
-        time: 'Afternoon (3-5pm)',
-        status: '✅ Good',
-        reason: 'UV decreasing',
-        color: 'text-green-600'
-      });
-    }
-    
-    // Evening
-    windows.push({
-      time: 'Evening (5-7pm)',
-      status: '✅ Perfect',
-      reason: 'Golden hour for photos',
-      color: 'text-green-600'
-    });
-    
-    return windows;
-  };
-  
-  const getTodaysTips = () => {
-    const tips = [];
-    
-    // UV-based tips
-    if (currentWeather?.uvi >= 8) {
-      tips.push('🧴 Reapply sunscreen every 2 hours');
-      tips.push('👒 Hats & UV clothing for kids');
-    }
-    
-    // Humidity tips
-    if (currentWeather?.humidity > 85) {
-      tips.push('💧 Clothes dry slowly - pack extras');
-      tips.push('💦 Hydrate more frequently');
-    }
-    
-    // Rain tips
-    if (forecast?.rainAmount > 5) {
-      tips.push(`🌧️ ${forecast.rainAmount}mm rain expected`);
-      tips.push('☂️ Bring umbrellas/raincoats');
-    }
-    
-    // Beach tips
-    if (location === 'maiKhao') {
-      const hour = new Date().getHours();
-      if (hour < 12) {
-        tips.push('🏖️ Low tide morning - great for walking');
-      } else {
-        tips.push('🏊 High tide afternoon - better swimming');
-      }
-    }
-    
-    // Sunset time
-    tips.push('🌅 Sunset at 6:31pm - great photos');
-    
-    return tips;
+  const getUVInfo = (uvi) => {
+    if (uvi >= 11) return { level: 'Extreme', color: 'bg-purple-600', textColor: 'text-purple-600', advice: 'Stay indoors 10am-4pm' };
+    if (uvi >= 8) return { level: 'Very High', color: 'bg-red-500', textColor: 'text-red-600', advice: 'Maximum protection needed' };
+    if (uvi >= 6) return { level: 'High', color: 'bg-orange-500', textColor: 'text-orange-600', advice: 'Protection required' };
+    if (uvi >= 3) return { level: 'Moderate', color: 'bg-yellow-500', textColor: 'text-yellow-600', advice: 'Hat & sunscreen' };
+    return { level: 'Low', color: 'bg-green-500', textColor: 'text-green-600', advice: 'Enjoy safely' };
   };
   
   const getWeatherScore = () => {
     let score = 10;
-    
-    // Deduct for rain
     if (currentWeather?.isRaining) score -= 3;
-    if (forecast?.rainAmount > 10) score -= 2;
-    
-    // Deduct for extreme UV
     if (currentWeather?.uvi >= 11) score -= 3;
     else if (currentWeather?.uvi >= 8) score -= 1;
-    
-    // Deduct for high humidity
     if (currentWeather?.humidity > 90) score -= 1;
-    
-    // Deduct for strong wind
     if (currentWeather?.wind_speed > 10) score -= 2;
-    
     return Math.max(0, Math.min(10, score));
   };
   
-  const todaysForecast = forecast?.find(f => f.date === date);
-  const activityWindows = getActivityWindows();
-  const todaysTips = getTodaysTips();
-  const weatherScore = getWeatherScore();
-  const uvInfo = getUVWarning(currentWeather?.uvi || 0);
+  const getActivitySuitability = () => {
+    const hour = new Date().getHours();
+    const uvi = currentWeather?.uvi || 5;
+    const temp = currentWeather?.temp || 30;
+    const rain = forecast?.[0]?.rainAmount || 0;
+    
+    return {
+      beach: {
+        score: hour < 10 && uvi < 6 && rain < 5 ? 9 : hour > 16 ? 7 : 4,
+        bestTime: '7-10am',
+        icon: '🏖️'
+      },
+      pool: {
+        score: temp > 25 && rain < 5 ? 8 : 5,
+        bestTime: '3-5pm',
+        icon: '🏊'
+      },
+      indoor: {
+        score: hour >= 11 && hour <= 14 ? 9 : 6,
+        bestTime: '11am-2pm',
+        icon: '🏛️'
+      },
+      dining: {
+        score: hour >= 18 && hour <= 20 && rain < 10 ? 9 : 6,
+        bestTime: '6-8pm',
+        icon: '🍽️'
+      }
+    };
+  };
+  
+  const getKidsComfort = () => {
+    const temp = currentWeather?.temp || 30;
+    const humidity = currentWeather?.humidity || 80;
+    const uvi = currentWeather?.uvi || 5;
+    
+    let babyScore = 10;
+    let kidsScore = 10;
+    
+    // Temperature impact
+    if (temp > 32) { babyScore -= 3; kidsScore -= 2; }
+    else if (temp > 30) { babyScore -= 2; kidsScore -= 1; }
+    
+    // Humidity impact
+    if (humidity > 85) { babyScore -= 2; kidsScore -= 1; }
+    
+    // UV impact
+    if (uvi > 8) { babyScore -= 3; kidsScore -= 2; }
+    else if (uvi > 6) { babyScore -= 2; kidsScore -= 1; }
+    
+    return {
+      baby: Math.max(0, babyScore),
+      kids: Math.max(0, kidsScore)
+    };
+  };
+  
+  const getTimeBasedTheme = () => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 8) return 'from-amber-50 to-orange-100'; // Dawn
+    if (hour >= 8 && hour < 12) return 'from-sky-50 to-blue-100'; // Morning
+    if (hour >= 12 && hour < 16) return 'from-yellow-50 to-amber-100'; // Afternoon
+    if (hour >= 16 && hour < 19) return 'from-orange-50 to-pink-100'; // Golden hour
+    return 'from-indigo-50 to-purple-100'; // Evening
+  };
   
   if (loading) {
     return (
       <div className="animate-pulse">
-        <div className="h-20 bg-slate-200 rounded-lg"></div>
+        <div className="h-96 bg-gradient-to-br from-slate-100 to-slate-200 rounded-2xl"></div>
       </div>
     );
   }
   
+  const weatherScore = getWeatherScore();
+  const uvInfo = getUVInfo(currentWeather?.uvi || 0);
+  const activities = getActivitySuitability();
+  const kidsComfort = getKidsComfort();
+  const theme = getTimeBasedTheme();
+  const todaysForecast = forecast?.find(f => f.date === date);
+  
+  // Calculate percentages for circular progress
+  const uvPercent = Math.min(100, (currentWeather?.uvi || 0) * 10);
+  const humidityPercent = currentWeather?.humidity || 0;
+  const rainPercent = Math.min(100, (todaysForecast?.rainAmount || 0) * 10);
+  
   return (
     <div className="space-y-3">
-      {/* Main Weather Card */}
-      <div className="bg-gradient-to-r from-sky-50 to-blue-50 rounded-lg p-4">
-        <div className="flex justify-between items-start">
+      {/* Hero Weather Card with Visual Impact */}
+      <div className={`bg-gradient-to-br ${theme} rounded-2xl p-5 shadow-lg border border-white/50`}>
+        <div className="flex justify-between items-start mb-4">
           <div>
-            <p className="text-xs font-semibold text-sky-600 uppercase">
-              {location === 'maiKhao' ? 'Mai Khao Beach' : 'Old Town Phuket'}
+            <p className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+              {location === 'maiKhao' ? '📍 Mai Khao Beach' : '📍 Old Town Phuket'}
             </p>
-            <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-3xl font-bold text-slate-800">
+            <div className="flex items-baseline gap-3 mt-2">
+              <span className="text-5xl font-bold text-slate-800">
                 {currentWeather?.temp || '--'}°
               </span>
-              <span className="text-sm text-slate-500">
-                Feels like {currentWeather?.feels_like || '--'}°
-              </span>
+              <div className="text-sm">
+                <p className="text-slate-600">Feels like {currentWeather?.feels_like || '--'}°</p>
+                <p className="text-slate-700 font-medium capitalize">{currentWeather?.description}</p>
+              </div>
             </div>
-            <p className="text-sm text-slate-600 capitalize mt-1">
-              {currentWeather?.description || 'Loading...'}
-            </p>
           </div>
           
           <div className="text-right">
-            {getWeatherIcon(currentWeather?.main, 'w-12 h-12')}
-            {/* Weather Score */}
-            <div className="mt-2">
-              <div className="text-xs text-slate-500">Activity Score</div>
-              <div className="flex items-center gap-1 mt-1">
-                {[...Array(10)].map((_, i) => (
-                  <div
-                    key={i}
-                    className={`h-2 w-2 rounded-full ${
-                      i < weatherScore ? 'bg-green-500' : 'bg-slate-300'
-                    }`}
+            {getWeatherIcon(currentWeather?.main, 'w-16 h-16')}
+            {/* Visual Activity Score */}
+            <div className="mt-3">
+              <div className="text-xs font-bold text-slate-600 mb-1">Activity Score</div>
+              <div className="relative w-24 h-24">
+                <svg className="transform -rotate-90 w-24 h-24">
+                  <circle cx="48" cy="48" r="36" stroke="#e2e8f0" strokeWidth="8" fill="none"/>
+                  <circle 
+                    cx="48" cy="48" r="36" 
+                    stroke={weatherScore >= 8 ? '#10b981' : weatherScore >= 5 ? '#f59e0b' : '#ef4444'}
+                    strokeWidth="8" 
+                    fill="none"
+                    strokeDasharray={`${(weatherScore / 10) * 226} 226`}
+                    strokeLinecap="round"
                   />
-                ))}
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-2xl font-bold text-slate-800">{weatherScore}</span>
+                  <span className="text-xs text-slate-600">/10</span>
+                </div>
               </div>
-              <div className="text-xs font-bold text-slate-700">{weatherScore}/10</div>
+              <p className="text-xs font-semibold text-slate-700 mt-1">
+                {weatherScore >= 8 ? 'EXCELLENT' : weatherScore >= 5 ? 'GOOD' : 'CHALLENGING'}
+              </p>
             </div>
           </div>
         </div>
         
-        {/* Key Metrics */}
-        <div className="grid grid-cols-4 gap-2 mt-3 pt-3 border-t border-sky-200">
-          <div className="text-center">
-            <div className="text-xs text-slate-500">Humidity</div>
-            <div className="font-bold text-sm">{currentWeather?.humidity || '--'}%</div>
-          </div>
-          <div className="text-center">
-            <div className="text-xs text-slate-500">UV Index</div>
-            <div className={`font-bold text-sm px-1 rounded ${uvInfo.color}`}>
-              {currentWeather?.uvi || '--'}
+        {/* Visual Metrics Dashboard */}
+        <div className="grid grid-cols-3 gap-3 mt-4">
+          {/* UV Index Gauge */}
+          <div className="bg-white/70 backdrop-blur rounded-xl p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-slate-600">UV</span>
+              <span className={`text-xs font-bold ${uvInfo.textColor}`}>{uvInfo.level}</span>
             </div>
+            <div className="relative h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div 
+                className={`absolute left-0 top-0 h-full ${uvInfo.color} transition-all duration-500`}
+                style={{ width: `${uvPercent}%` }}
+              />
+            </div>
+            <p className="text-xs text-slate-600 mt-1">{currentWeather?.uvi || 0}</p>
           </div>
-          <div className="text-center">
-            <div className="text-xs text-slate-500">Wind</div>
-            <div className="font-bold text-sm">{currentWeather?.wind_speed || '--'}m/s</div>
+          
+          {/* Humidity Gauge */}
+          <div className="bg-white/70 backdrop-blur rounded-xl p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-slate-600">💧</span>
+              <span className="text-xs font-bold text-blue-600">Humidity</span>
+            </div>
+            <div className="relative h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div 
+                className="absolute left-0 top-0 h-full bg-blue-500 transition-all duration-500"
+                style={{ width: `${humidityPercent}%` }}
+              />
+            </div>
+            <p className="text-xs text-slate-600 mt-1">{currentWeather?.humidity}%</p>
           </div>
-          <div className="text-center">
-            <div className="text-xs text-slate-500">Rain</div>
-            <div className="font-bold text-sm">{todaysForecast?.rainAmount || '0'}mm</div>
+          
+          {/* Rain Gauge */}
+          <div className="bg-white/70 backdrop-blur rounded-xl p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-slate-600">🌧️</span>
+              <span className="text-xs font-bold text-cyan-600">Rain</span>
+            </div>
+            <div className="relative h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div 
+                className="absolute left-0 top-0 h-full bg-cyan-500 transition-all duration-500"
+                style={{ width: `${rainPercent}%` }}
+              />
+            </div>
+            <p className="text-xs text-slate-600 mt-1">{todaysForecast?.rainAmount || 0}mm</p>
           </div>
         </div>
       </div>
       
-      {/* UV Warning if high */}
-      {currentWeather?.uvi >= 6 && (
-        <div className={`p-3 rounded-lg ${uvInfo.color} flex items-center gap-2`}>
-          <span className="text-lg">☀️</span>
-          <div>
-            <div className="font-semibold text-sm">UV Index: {uvInfo.level}</div>
-            <div className="text-xs">{uvInfo.advice}</div>
+      {/* Tab Navigation */}
+      <div className="flex gap-2 p-1 bg-white rounded-lg shadow-sm">
+        {['overview', 'activities', 'comfort'].map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`flex-1 py-2 px-3 rounded-md text-xs font-semibold transition-all ${
+              activeTab === tab 
+                ? 'bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-md' 
+                : 'text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            {tab === 'overview' && '📊 Overview'}
+            {tab === 'activities' && '🏃 Activities'}
+            {tab === 'comfort' && '👶 Family'}
+          </button>
+        ))}
+      </div>
+      
+      {/* Tab Content */}
+      {activeTab === 'overview' && (
+        <>
+          {/* Smart Timing Bar */}
+          <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-4 border border-indigo-200">
+            <h4 className="text-xs font-bold text-indigo-800 mb-3 flex items-center gap-2">
+              <span className="text-lg">⏰</span> TODAY'S OPTIMAL SCHEDULE
+            </h4>
+            <div className="relative">
+              <div className="absolute left-0 right-0 h-12 bg-white/50 rounded-lg" />
+              <div className="relative flex h-12">
+                {/* Morning */}
+                <div className="flex-1 flex items-center justify-center bg-green-400/30 rounded-l-lg border-r border-white">
+                  <span className="text-xs font-semibold text-green-700">7-10am Beach</span>
+                </div>
+                {/* Midday */}
+                <div className="flex-1 flex items-center justify-center bg-red-400/30 border-r border-white">
+                  <span className="text-xs font-semibold text-red-700">11-2pm Indoor</span>
+                </div>
+                {/* Afternoon */}
+                <div className="flex-1 flex items-center justify-center bg-blue-400/30 border-r border-white">
+                  <span className="text-xs font-semibold text-blue-700">3-5pm Pool</span>
+                </div>
+                {/* Evening */}
+                <div className="flex-1 flex items-center justify-center bg-amber-400/30 rounded-r-lg">
+                  <span className="text-xs font-semibold text-amber-700">6-8pm Dinner</span>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
+          
+          {/* Key Insights */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-lg p-3 border border-orange-200">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xl">🌅</span>
+                <span className="text-xs font-bold text-orange-800">Sunrise</span>
+              </div>
+              <p className="text-lg font-bold text-orange-900">6:14 AM</p>
+              <p className="text-xs text-orange-700">Best photos 6:30-7:00</p>
+            </div>
+            
+            <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-3 border border-purple-200">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xl">🌇</span>
+                <span className="text-xs font-bold text-purple-800">Sunset</span>
+              </div>
+              <p className="text-lg font-bold text-purple-900">6:31 PM</p>
+              <p className="text-xs text-purple-700">Golden hour 5:30-6:30</p>
+            </div>
+          </div>
+        </>
       )}
       
-      {/* Activity Windows */}
-      <div className="bg-white rounded-lg p-3 border border-slate-200">
-        <h4 className="text-xs font-semibold text-slate-700 mb-2 flex items-center gap-1">
-          <Icons.clock className="w-4 h-4" />
-          ACTIVITY WINDOWS
-        </h4>
-        <div className="space-y-1">
-          {activityWindows.map((window, i) => (
-            <div key={i} className="flex justify-between items-center text-xs">
-              <span className="text-slate-600">{window.time}</span>
-              <div className="text-right">
-                <div className={`font-semibold ${window.color}`}>{window.status}</div>
-                <div className="text-slate-500 text-xs">{window.reason}</div>
+      {activeTab === 'activities' && (
+        <div className="space-y-2">
+          {/* Activity Suitability Cards */}
+          {Object.entries(activities).map(([activity, data]) => (
+            <div key={activity} className="bg-white rounded-lg p-3 border border-slate-200 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">{data.icon}</span>
+                  <div>
+                    <p className="font-semibold text-sm capitalize text-slate-800">{activity}</p>
+                    <p className="text-xs text-slate-600">Best: {data.bestTime}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="flex items-center gap-1 mb-1">
+                    {[...Array(5)].map((_, i) => (
+                      <div
+                        key={i}
+                        className={`h-2 w-4 rounded-sm ${
+                          i < Math.ceil(data.score / 2) 
+                            ? data.score >= 8 ? 'bg-green-500' : data.score >= 5 ? 'bg-yellow-500' : 'bg-red-500'
+                            : 'bg-gray-200'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-xs font-bold text-slate-700">
+                    {data.score >= 8 ? 'Perfect' : data.score >= 5 ? 'Good' : 'Wait'}
+                  </p>
+                </div>
               </div>
             </div>
           ))}
         </div>
-      </div>
-      
-      {/* Today's Tips */}
-      <div className="bg-amber-50 rounded-lg p-3 border border-amber-200">
-        <h4 className="text-xs font-semibold text-amber-800 mb-2">
-          💡 TODAY'S TIPS
-        </h4>
-        <ul className="space-y-1">
-          {todaysTips.map((tip, i) => (
-            <li key={i} className="text-xs text-amber-700 flex items-start gap-1">
-              <span className="mt-0.5">•</span>
-              <span>{tip}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-      
-      {/* Hourly Toggle */}
-      {todaysForecast?.hourly && (
-        <button
-          onClick={() => setShowHourly(!showHourly)}
-          className="w-full text-xs text-sky-600 hover:text-sky-700 font-semibold"
-        >
-          {showHourly ? 'Hide' : 'Show'} Hourly Forecast →
-        </button>
       )}
       
-      {/* Hourly Forecast */}
+      {activeTab === 'comfort' && (
+        <div className="space-y-3">
+          {/* Kids Comfort Meters */}
+          <div className="bg-gradient-to-r from-pink-50 to-purple-50 rounded-xl p-4 border border-pink-200">
+            <h4 className="text-xs font-bold text-purple-800 mb-3">👶 FAMILY COMFORT INDEX</h4>
+            
+            <div className="space-y-3">
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-sm font-semibold text-slate-700">Baby Askia (1yr)</span>
+                  <span className="text-xs font-bold text-purple-600">{kidsComfort.baby}/10</span>
+                </div>
+                <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full transition-all duration-500 ${
+                      kidsComfort.baby >= 8 ? 'bg-green-500' : kidsComfort.baby >= 5 ? 'bg-yellow-500' : 'bg-red-500'
+                    }`}
+                    style={{ width: `${kidsComfort.baby * 10}%` }}
+                  />
+                </div>
+                <p className="text-xs text-slate-600 mt-1">
+                  {kidsComfort.baby >= 8 ? '✅ Perfect conditions' : kidsComfort.baby >= 5 ? '⚠️ Keep cool & hydrated' : '❌ Stay indoors'}
+                </p>
+              </div>
+              
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-sm font-semibold text-slate-700">Amari (4yr)</span>
+                  <span className="text-xs font-bold text-purple-600">{kidsComfort.kids}/10</span>
+                </div>
+                <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full transition-all duration-500 ${
+                      kidsComfort.kids >= 8 ? 'bg-green-500' : kidsComfort.kids >= 5 ? 'bg-yellow-500' : 'bg-red-500'
+                    }`}
+                    style={{ width: `${kidsComfort.kids * 10}%` }}
+                  />
+                </div>
+                <p className="text-xs text-slate-600 mt-1">
+                  {kidsComfort.kids >= 8 ? '✅ Great for activities' : kidsComfort.kids >= 5 ? '⚠️ Frequent breaks needed' : '❌ Too hot for outdoors'}
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Health Reminders */}
+          <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+            <h4 className="text-xs font-bold text-blue-800 mb-2">💙 HEALTH REMINDERS</h4>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-xs text-blue-700">
+                <span>🧴</span>
+                <span>Reapply sunscreen: 10am, 12pm, 2pm, 4pm</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-blue-700">
+                <span>💧</span>
+                <span>Hydration check every 30 minutes</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-blue-700">
+                <span>🦟</span>
+                <span>Bug spray after 5pm (high mosquito activity)</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-blue-700">
+                <span>👕</span>
+                <span>Light, breathable clothing recommended</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Hourly Forecast - Improved Visual */}
       {showHourly && todaysForecast?.hourly && (
-        <div className="bg-white rounded-lg p-3 border border-slate-200">
-          <h4 className="text-xs font-semibold text-slate-700 mb-2">Hourly Breakdown</h4>
+        <div className="bg-white rounded-xl p-4 shadow-md border border-slate-200">
+          <h4 className="text-sm font-bold text-slate-700 mb-3">Hourly Forecast</h4>
           <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
             {todaysForecast.hourly.slice(0, 8).map((hour, i) => (
-              <div key={i} className="flex-shrink-0 text-center p-2 bg-slate-50 rounded-lg min-w-[60px]">
-                <p className="text-xs text-slate-600">{hour.time}</p>
-                {getWeatherIcon(hour.description, 'w-5 h-5 mx-auto my-1')}
-                <p className="text-sm font-semibold">{hour.temp}°</p>
+              <div 
+                key={i} 
+                className={`flex-shrink-0 text-center p-3 rounded-xl min-w-[70px] ${
+                  hour.rain > 0 ? 'bg-blue-50 border border-blue-200' : 'bg-slate-50 border border-slate-200'
+                }`}
+              >
+                <p className="text-xs font-semibold text-slate-600">{hour.time}</p>
+                {getWeatherIcon(hour.description, 'w-6 h-6 mx-auto my-2')}
+                <p className="text-lg font-bold text-slate-800">{hour.temp}°</p>
                 {hour.rain > 0 && (
-                  <p className="text-xs text-blue-600">💧{hour.rain}mm</p>
+                  <p className="text-xs text-blue-600 font-semibold mt-1">💧{hour.rain}mm</p>
                 )}
               </div>
             ))}
@@ -333,20 +447,27 @@ const WeatherWidget = ({ location, date }) => {
         </div>
       )}
       
-      {/* Last Update */}
+      {/* Quick Actions Bar */}
+      <div className="flex gap-2 justify-center">
+        <button
+          onClick={() => setShowHourly(!showHourly)}
+          className="px-4 py-2 bg-white rounded-lg shadow-sm border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+        >
+          {showHourly ? '📊 Hide' : '📊 Show'} Hourly
+        </button>
+        <button
+          onClick={fetchWeatherData}
+          className="px-4 py-2 bg-white rounded-lg shadow-sm border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+        >
+          🔄 Refresh
+        </button>
+      </div>
+      
+      {/* Last Update - Subtle */}
       {lastUpdate && (
-        <div className="text-center">
-          <button
-            onClick={fetchWeatherData}
-            className="text-xs text-slate-400 hover:text-slate-600"
-          >
-            Updated {lastUpdate.toLocaleTimeString('en-US', { 
-              hour: 'numeric', 
-              minute: '2-digit',
-              hour12: true 
-            })} • Tap to refresh
-          </button>
-        </div>
+        <p className="text-center text-xs text-slate-400">
+          Updated {lastUpdate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+        </p>
       )}
     </div>
   );
