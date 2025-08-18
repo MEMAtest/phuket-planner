@@ -8,6 +8,8 @@ const TravelDocuments = () => {
   const [checklistItems, setChecklistItems] = useState({});
   const [editMode, setEditMode] = useState(false);
   const [editingTraveler, setEditingTraveler] = useState(null);
+  const [showPolicy, setShowPolicy] = useState(false);
+  const [copiedInsurance, setCopiedInsurance] = useState(null);
 
   // Calculate age in years and months
   const calculateAge = (birthDate) => {
@@ -174,6 +176,34 @@ const TravelDocuments = () => {
     return saved ? JSON.parse(saved) : defaultTravelers;
   });
 
+  // Insurance information
+  const insuranceInfo = {
+    provider: "Nationwide FlexPlus",
+    policyNumber: localStorage.getItem('insurance_policy') || "Enter policy number",
+    emergencyPhone: "+44 1603 605 159",
+    claimsPhone: "+44 800 051 3355",
+    coverage: {
+      medical: "Up to £10 million per person",
+      cancellation: "Up to £5,000 per person",
+      baggage: "Up to £2,500 per person",
+      personalMoney: "Up to £750 per person",
+      excess: "£75 per person per claim"
+    },
+    documents: [
+      "Policy certificate",
+      "European Health Insurance Card (EHIC)",
+      "Receipts for claims",
+      "Police report (if theft)"
+    ],
+    claimProcess: [
+      "Call emergency number immediately for medical emergencies",
+      "Keep all receipts and documentation",
+      "Report theft to local police within 24 hours",
+      "Submit claim within 31 days of return",
+      "Email claims to: travel.claims@nationwide.co.uk"
+    ]
+  };
+
   // Save travelers to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem('phuket_travelers', JSON.stringify(travelers));
@@ -215,6 +245,16 @@ const TravelDocuments = () => {
     navigator.clipboard.writeText(text);
     setCopiedField(fieldId);
     setTimeout(() => setCopiedField(null), 2000);
+  };
+
+  const copyInsuranceInfo = (text, field) => {
+    navigator.clipboard.writeText(text);
+    setCopiedInsurance(field);
+    setTimeout(() => setCopiedInsurance(null), 2000);
+  };
+
+  const updatePolicyNumber = (value) => {
+    localStorage.setItem('insurance_policy', value);
   };
 
   const copyAllPassportInfo = (traveler) => {
@@ -382,37 +422,6 @@ Blood Type: ${traveler.medical.bloodType}`;
               </div>
             </div>
 
-            {/* Vaccinations */}
-            <div className="border-t pt-4">
-              <h4 className="font-semibold mb-2">Vaccination Status</h4>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700">Last Updated</label>
-                  <input
-                    type="date"
-                    value={formData.vaccinations.lastUpdated}
-                    onChange={(e) => setFormData({
-                      ...formData, 
-                      vaccinations: {...formData.vaccinations, lastUpdated: e.target.value}
-                    })}
-                    className="mt-1 block w-full border rounded-md px-3 py-2"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700">COVID-19</label>
-                  <input
-                    type="text"
-                    value={formData.vaccinations.covid19}
-                    onChange={(e) => setFormData({
-                      ...formData, 
-                      vaccinations: {...formData.vaccinations, covid19: e.target.value}
-                    })}
-                    className="mt-1 block w-full border rounded-md px-3 py-2"
-                  />
-                </div>
-              </div>
-            </div>
-
             {/* Buttons */}
             <div className="flex justify-end gap-2 pt-4">
               <button
@@ -435,7 +444,7 @@ Blood Type: ${traveler.medical.bloodType}`;
     );
   };
 
-  // Emergency contacts and other data remain the same
+  // Emergency contacts
   const emergencyContacts = {
     thailand: [
       { name: "Tourist Police", number: "1155", note: "24/7 English support" },
@@ -509,6 +518,117 @@ Blood Type: ${t.medical.bloodType}
             🖨️ Print
           </button>
         </div>
+      </div>
+
+      {/* Insurance Section */}
+      <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+        <h3 className="font-bold text-lg text-blue-800 mb-4 flex items-center justify-between">
+          <span>🏥 Travel Insurance - Nationwide</span>
+          <button
+            onClick={() => setShowPolicy(!showPolicy)}
+            className="text-sm px-3 py-1 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200"
+          >
+            {showPolicy ? 'Hide' : 'Show'} Details
+          </button>
+        </h3>
+
+        {/* Quick Access Emergency Numbers */}
+        <div className="grid md:grid-cols-2 gap-3 mb-4">
+          <div className="bg-white p-3 rounded-lg">
+            <p className="text-xs text-slate-600 mb-1">24/7 Emergency Medical</p>
+            <button
+              onClick={() => copyInsuranceInfo(insuranceInfo.emergencyPhone, 'emergency')}
+              className="font-mono text-lg font-bold text-red-600 hover:text-red-800"
+            >
+              {insuranceInfo.emergencyPhone}
+              {copiedInsurance === 'emergency' && <span className="ml-2 text-sm">✓</span>}
+            </button>
+          </div>
+          <div className="bg-white p-3 rounded-lg">
+            <p className="text-xs text-slate-600 mb-1">Claims Hotline (UK Hours)</p>
+            <button
+              onClick={() => copyInsuranceInfo(insuranceInfo.claimsPhone, 'claims')}
+              className="font-mono text-lg font-bold text-blue-600 hover:text-blue-800"
+            >
+              {insuranceInfo.claimsPhone}
+              {copiedInsurance === 'claims' && <span className="ml-2 text-sm">✓</span>}
+            </button>
+          </div>
+        </div>
+
+        {/* Policy Number */}
+        <div className="bg-white p-3 rounded-lg mb-4">
+          <label className="text-xs text-slate-600 block mb-1">Policy Number</label>
+          <input
+            type="text"
+            defaultValue={insuranceInfo.policyNumber}
+            onChange={(e) => updatePolicyNumber(e.target.value)}
+            className="w-full px-3 py-2 border rounded-md font-mono text-sm"
+            placeholder="Enter your policy number"
+          />
+        </div>
+
+        {/* Detailed Coverage - Show/Hide */}
+        {showPolicy && (
+          <div className="space-y-4 mt-4">
+            {/* Coverage Details */}
+            <div className="bg-white p-4 rounded-lg">
+              <h4 className="font-semibold text-sm text-blue-800 mb-3">Coverage Limits</h4>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                {Object.entries(insuranceInfo.coverage).map(([key, value]) => (
+                  <div key={key} className="flex justify-between py-1 border-b border-slate-100">
+                    <span className="text-slate-600 capitalize">
+                      {key.replace(/([A-Z])/g, ' $1').trim()}:
+                    </span>
+                    <span className="font-medium text-slate-800">{value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Required Documents */}
+            <div className="bg-white p-4 rounded-lg">
+              <h4 className="font-semibold text-sm text-blue-800 mb-3">
+                Required Documents for Claims
+              </h4>
+              <ul className="space-y-1">
+                {insuranceInfo.documents.map((doc, i) => (
+                  <li key={i} className="flex items-start gap-2 text-xs text-slate-700">
+                    <span className="text-green-600 mt-0.5">✓</span>
+                    {doc}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Claim Process */}
+            <div className="bg-white p-4 rounded-lg">
+              <h4 className="font-semibold text-sm text-blue-800 mb-3">
+                How to Make a Claim
+              </h4>
+              <ol className="space-y-2">
+                {insuranceInfo.claimProcess.map((step, i) => (
+                  <li key={i} className="flex items-start gap-2 text-xs text-slate-700">
+                    <span className="flex-shrink-0 w-5 h-5 bg-blue-100 text-blue-800 
+                                 rounded-full flex items-center justify-center font-bold text-xs">
+                      {i + 1}
+                    </span>
+                    <span>{step}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+
+            {/* Important Notes */}
+            <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg">
+              <p className="text-xs text-amber-800">
+                <strong>⚠️ Important:</strong> Always call the emergency number BEFORE 
+                incurring major medical expenses. Pre-authorization may be required for 
+                expensive treatments.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Emergency Contacts Section */}
