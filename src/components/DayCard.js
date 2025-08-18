@@ -5,7 +5,40 @@ import WeatherWidget from './WeatherWidget';
 import ExpenseTracker from './ExpenseTracker';
 import ActivityNotes from './ActivityNotes';
 import SmartSuggestions from './SmartSuggestions';
+import NewsFeed from './NewsFeed';
+import DailyPhrases from './DailyPhrases';
 import { initializeExpenses, getExpenses } from '../services/expenseService';
+
+// Activity badge component
+const ActivityBadge = ({ type }) => {
+  const getBadgeInfo = (type) => {
+    switch(type) {
+      case 'indoor':
+        return { icon: '🏠', label: 'Indoor', color: 'bg-indigo-100 text-indigo-700' };
+      case 'outdoor':
+        return { icon: '☀️', label: 'Outdoor', color: 'bg-emerald-100 text-emerald-700' };
+      case 'mixed':
+        return { icon: '🌤️', label: 'Mixed', color: 'bg-cyan-100 text-cyan-700' };
+      case 'travel':
+        return { icon: '✈️', label: 'Travel', color: 'bg-sky-100 text-sky-700' };
+      case 'eat':
+        return { icon: '🍽️', label: 'Meal', color: 'bg-rose-100 text-rose-700' };
+      case 'nap':
+        return { icon: '😴', label: 'Rest', color: 'bg-amber-100 text-amber-700' };
+      default:
+        return { icon: '🎯', label: 'Activity', color: 'bg-slate-100 text-slate-700' };
+    }
+  };
+  
+  const badge = getBadgeInfo(type);
+  
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${badge.color}`}>
+      <span>{badge.icon}</span>
+      <span>{badge.label}</span>
+    </span>
+  );
+};
 
 // Helper functions
 const getTypeIcon = (type, props = { className: "w-5 h-5" }) => {
@@ -114,7 +147,15 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
           currentTime={currentTime}
           dayData={dayData}
           weatherData={weatherData}
-          expenses={expenses?.days[dayData.date]}
+          expenses={expenses?.days?.[dayData.date]}
+        />
+      </div>
+
+      {/* News Feed */}
+      <div className="p-4 border-b">
+        <NewsFeed
+          location={dayData.location}
+          date={dayData.date}
         />
       </div>
 
@@ -137,16 +178,20 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
             {dayData.blocks.map(block => (
               <div key={block.id}>
                 <div 
-                  className="flex items-center group cursor-pointer"
+                  className="flex items-center group cursor-pointer hover:bg-slate-50 rounded-lg p-2 transition-colors"
                   onClick={() => toggleActivityExpansion(block.id)}
                 >
                   <div className={`p-2 rounded-full ${getTypeColor(block.type)} mr-3`}>
                     {getTypeIcon(block.type)}
                   </div>
                   <div className="flex-grow">
-                    <p className="font-medium text-sm text-slate-800">
-                      {block.title}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-sm text-slate-800">
+                        {block.title}
+                      </p>
+                      {/* Activity badge */}
+                      <ActivityBadge type={block.type} />
+                    </div>
                     <p className="text-xs text-slate-500">{block.time}</p>
                   </div>
                   <Icons.chevronDown 
@@ -240,6 +285,14 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Thai Phrases for Today */}
+          <div className="mt-4 pt-4 border-t border-slate-200">
+            <h3 className="font-semibold text-slate-700 mb-2">
+              Today's Thai Phrases
+            </h3>
+            <DailyPhrases dayData={dayData} dayIndex={dayIndex} />
           </div>
 
           {/* Phuket Fact of the Day */}
