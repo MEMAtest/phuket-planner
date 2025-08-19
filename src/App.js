@@ -11,7 +11,7 @@ import SmartJetLagScheduler from './components/SmartJetLagScheduler';
 import FoodHelperTab from './components/FoodHelperTab';
 import CurrencyConverter from './components/CurrencyConverter';
 import KidComfortChecklist from './components/KidComfortChecklist';
-import IconLegend from './components/IconLegend';
+// import IconLegend from './components/IconLegend'; // REMOVED - This component has Icon issues
 import TravelDocuments from './components/TravelDocuments';
 import PriceGuide from './components/PriceGuide';
 
@@ -236,7 +236,43 @@ const App = () => {
             <CurrencyConverter />
             <PriceGuide />
             <KidComfortChecklist />
-            <IconLegend />
+            {/* IconLegend removed - has Icon rendering issues */}
+            {/* Emergency contacts section added here as replacement */}
+            <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 sm:p-6">
+              <h3 className="font-bold text-lg text-red-800 mb-4 flex items-center gap-2">
+                ⚠️ Emergency Contacts
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-red-200">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">👮</span>
+                    <span className="font-medium text-sm text-slate-700">Tourist Police</span>
+                  </div>
+                  <a href="tel:1155" className="font-bold text-red-600">1155</a>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-red-200">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">🚑</span>
+                    <span className="font-medium text-sm text-slate-700">Medical Emergency</span>
+                  </div>
+                  <a href="tel:1669" className="font-bold text-red-600">1669</a>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-red-200">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">🏨</span>
+                    <span className="font-medium text-sm text-slate-700">Hotel (Anantara)</span>
+                  </div>
+                  <a href="tel:+6676336000" className="font-bold text-red-600">+66 76 336 000</a>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-red-200">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">🇬🇧</span>
+                    <span className="font-medium text-sm text-slate-700">UK Embassy Bangkok</span>
+                  </div>
+                  <a href="tel:+6623058333" className="font-bold text-red-600">+66 2 305 8333</a>
+                </div>
+              </div>
+            </div>
           </div>
         );
         
