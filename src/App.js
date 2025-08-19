@@ -7,7 +7,8 @@ import { useTrip } from './context/TripContext';
 // Import all components
 import Header from './components/Header';
 import DayCard from './components/DayCard';
-import JetLagTab from './components/JetLagTab';
+// REMOVED: import JetLagTab from './components/JetLagTab';
+import SmartJetLagScheduler from './components/SmartJetLagScheduler'; // NEW IMPORT
 import FoodHelperTab from './components/FoodHelperTab';
 import CurrencyConverter from './components/CurrencyConverter';
 import KidComfortChecklist from './components/KidComfortChecklist';
@@ -260,7 +261,11 @@ const App = () => {
         );
         
       case 'JetLag':
-        return <JetLagTab />;
+        // UPDATED: Now using SmartJetLagScheduler with current date
+        const currentDate = planData && planData[currentDayIndex] 
+          ? planData[currentDayIndex].date 
+          : '2025-08-20'; // Default to trip start date
+        return <SmartJetLagScheduler currentDate={currentDate} />;
         
       case 'FoodHelper':
         return <FoodHelperTab />;
