@@ -1,518 +1,458 @@
 import React, { useState, useEffect } from 'react';
-import { Icons } from '../data/staticData';
+import { getCurrentWeather, getWeatherForecast } from '../services/weatherService';
 
-const SmartJetLagScheduler = ({ currentDate }) => {
-  const [currentDay, setCurrentDay] = useState(1);
-  const [selectedPerson, setSelectedPerson] = useState('all');
-  const [editMode, setEditMode] = useState(false);
-  const [actualSleepData, setActualSleepData] = useState(() => {
-    const saved = localStorage.getItem('jetlag_actual_sleep');
-    return saved ? JSON.parse(saved) : {};
-  });
-  const [editingPerson, setEditingPerson] = useState(null);
-  const [tempSleepData, setTempSleepData] = useState({});
+const WeatherWidget = ({ location, date }) => {
+  const [currentWeather, setCurrentWeather] = useState(null);
+  const [forecast, setForecast] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [showHourly, setShowHourly] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState(null);
+  const [activeTab, setActiveTab] = useState('overview');
   
-  // Calculate which day of the trip we're on
   useEffect(() => {
-    const tripStart = new Date('2025-08-20');
-    const current = currentDate ? new Date(currentDate) : new Date();
-    const dayNumber = Math.max(1, Math.ceil((current - tripStart) / (1000 * 60 * 60 * 24)) + 1);
-    setCurrentDay(Math.min(9, dayNumber));
-  }, [currentDate]);
+    fetchWeatherData();
+    const interval = setInterval(fetchWeatherData, 30 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [location, date]);
   
-  // Save actual sleep data whenever it changes
-  useEffect(() => {
-    localStorage.setItem('jetlag_actual_sleep', JSON.stringify(actualSleepData));
-  }, [actualSleepData]);
-  
-  // Family members with their specific needs
-  const familyMembers = [
-    { id: 'amari', name: 'Amari (4y)', ageGroup: 'child', color: 'bg-purple-100 text-purple-800' },
-    { id: 'askia', name: 'Askia (1y)', ageGroup: 'baby', color: 'bg-pink-100 text-pink-800' },
-    { id: 'parent1', name: 'Parent 1', ageGroup: 'adult', color: 'bg-blue-100 text-blue-800' },
-    { id: 'parent2', name: 'Parent 2', ageGroup: 'adult', color: 'bg-green-100 text-green-800' }
-  ];
-  
-  // Get sleep schedule based on day and age group
-  const getSleepSchedule = (day, ageGroup) => {
-    const schedules = {
-      adult: [
-        { day: 1, bedtime: '21:00', waketime: '05:00', naptime: null, quality: 'poor', note: 'First night - expect disrupted sleep' },
-        { day: 2, bedtime: '21:30', waketime: '05:30', naptime: '13:00-14:00', quality: 'fair', note: 'Improving but still adjusting' },
-        { day: 3, bedtime: '22:00', waketime: '06:00', naptime: null, quality: 'good', note: 'Should feel more normal' },
-        { day: 4, bedtime: '22:00', waketime: '06:30', naptime: null, quality: 'good', note: 'Fully adjusted' },
-        { day: 5, bedtime: '22:00', waketime: '06:30', naptime: null, quality: 'excellent', note: 'Normal schedule achieved' }
-      ],
-      child: [
-        { day: 1, bedtime: '19:00', waketime: '05:00', naptime: '12:00-14:00', quality: 'poor', note: 'Expect early morning wake-ups' },
-        { day: 2, bedtime: '19:30', waketime: '05:30', naptime: '12:30-14:00', quality: 'fair', note: 'Still waking early' },
-        { day: 3, bedtime: '20:00', waketime: '06:00', naptime: '13:00-14:30', quality: 'good', note: 'Getting better!' },
-        { day: 4, bedtime: '20:00', waketime: '06:30', naptime: '13:00-14:00', quality: 'good', note: 'Almost there' },
-        { day: 5, bedtime: '20:00', waketime: '06:30', naptime: '13:00-14:00', quality: 'excellent', note: 'Fully adjusted!' }
-      ],
-      baby: [
-        { day: 1, bedtime: '18:30', waketime: '05:00', naptime: '09:00-10:00, 13:00-15:00', quality: 'poor', note: 'Multiple night wakings expected' },
-        { day: 2, bedtime: '19:00', waketime: '05:30', naptime: '09:30-10:30, 13:00-15:00', quality: 'poor', note: 'Still very disrupted' },
-        { day: 3, bedtime: '19:00', waketime: '06:00', naptime: '09:30-10:30, 13:00-14:30', quality: 'fair', note: 'Slowly improving' },
-        { day: 4, bedtime: '19:00', waketime: '06:00', naptime: '09:30-10:30, 13:00-14:30', quality: 'good', note: 'Better nights' },
-        { day: 5, bedtime: '19:00', waketime: '06:00', naptime: '09:30-10:30, 13:00-14:30', quality: 'good', note: 'Routine established' }
-      ]
-    };
-    
-    const daySchedule = schedules[ageGroup]?.find(s => s.day === day) || 
-                       schedules[ageGroup]?.[schedules[ageGroup].length - 1];
-    
-    return daySchedule;
-  };
-  
-  // Get actual sleep data for a person on a specific day
-  const getActualSleep = (personId, day) => {
-    const key = `${personId}_day${day}`;
-    return actualSleepData[key] || null;
-  };
-  
-  // Start editing sleep data for a person
-  const startEdit = (member, day) => {
-    const key = `${member.id}_day${day}`;
-    const existing = actualSleepData[key] || {};
-    setEditingPerson(member.id);
-    setTempSleepData({
-      bedtime: existing.bedtime || '',
-      waketime: existing.waketime || '',
-      naptime: existing.naptime || '',
-      nightWakings: existing.nightWakings || 0,
-      notes: existing.notes || ''
-    });
-  };
-  
-  // Save edited sleep data
-  const saveEdit = () => {
-    if (editingPerson) {
-      const key = `${editingPerson}_day${currentDay}`;
-      setActualSleepData(prev => ({
-        ...prev,
-        [key]: {
-          ...tempSleepData,
-          timestamp: new Date().toISOString()
-        }
-      }));
-      setEditingPerson(null);
-      setTempSleepData({});
+  const fetchWeatherData = async () => {
+    setLoading(true);
+    try {
+      const current = await getCurrentWeather(location);
+      setCurrentWeather(current);
+      const forecastData = await getWeatherForecast(location);
+      setForecast(forecastData);
+      setLastUpdate(new Date());
+    } catch (error) {
+      console.error('Error fetching weather:', error);
+    } finally {
+      setLoading(false);
     }
   };
   
-  // Cancel edit
-  const cancelEdit = () => {
-    setEditingPerson(null);
-    setTempSleepData({});
+  const getWeatherEmoji = (condition) => {
+    if (!condition) return '☀️';
+    const cond = condition.toLowerCase();
+    if (cond.includes('rain') || cond.includes('drizzle')) return '🌧️';
+    if (cond.includes('storm') || cond.includes('thunder')) return '⛈️';
+    if (cond.includes('cloud') || cond.includes('overcast')) return '☁️';
+    if (cond.includes('snow')) return '❄️';
+    return '☀️';
   };
   
-  // Calculate sleep quality score
-  const calculateSleepScore = (planned, actual) => {
-    if (!actual || !actual.bedtime || !actual.waketime) return null;
-    
-    // Convert times to minutes for comparison
-    const timeToMinutes = (time) => {
-      const [hours, minutes] = time.split(':').map(Number);
-      return hours * 60 + minutes;
-    };
-    
-    const plannedBed = timeToMinutes(planned.bedtime);
-    const actualBed = timeToMinutes(actual.bedtime);
-    const plannedWake = timeToMinutes(planned.waketime);
-    const actualWake = timeToMinutes(actual.waketime);
-    
-    // Calculate differences (within 30 mins = good)
-    const bedDiff = Math.abs(plannedBed - actualBed);
-    const wakeDiff = Math.abs(plannedWake - actualWake);
-    
+  const getUVInfo = (uvi) => {
+    if (uvi >= 11) return { level: 'Extreme', color: 'bg-purple-600', textColor: 'text-purple-600', advice: 'Stay indoors 10am-4pm' };
+    if (uvi >= 8) return { level: 'Very High', color: 'bg-red-500', textColor: 'text-red-600', advice: 'Maximum protection needed' };
+    if (uvi >= 6) return { level: 'High', color: 'bg-orange-500', textColor: 'text-orange-600', advice: 'Protection required' };
+    if (uvi >= 3) return { level: 'Moderate', color: 'bg-yellow-500', textColor: 'text-yellow-600', advice: 'Hat & sunscreen' };
+    return { level: 'Low', color: 'bg-green-500', textColor: 'text-green-600', advice: 'Enjoy safely' };
+  };
+  
+  const getWeatherScore = () => {
     let score = 10;
-    if (bedDiff > 60) score -= 3;
-    else if (bedDiff > 30) score -= 1;
-    
-    if (wakeDiff > 60) score -= 3;
-    else if (wakeDiff > 30) score -= 1;
-    
-    if (actual.nightWakings > 3) score -= 2;
-    else if (actual.nightWakings > 1) score -= 1;
-    
+    if (currentWeather?.isRaining) score -= 3;
+    if (currentWeather?.uvi >= 11) score -= 3;
+    else if (currentWeather?.uvi >= 8) score -= 1;
+    if (currentWeather?.humidity > 90) score -= 1;
+    if (currentWeather?.wind_speed > 10) score -= 2;
     return Math.max(0, Math.min(10, score));
   };
   
-  // Get meal timing recommendations
-  const getMealSchedule = (day) => {
-    const meals = [
-      { day: 1, breakfast: '06:00', lunch: '12:00', dinner: '18:00', note: 'Eat at Phuket times immediately' },
-      { day: 2, breakfast: '06:30', lunch: '12:00', dinner: '18:30', note: 'Keep regular meal intervals' },
-      { day: 3, breakfast: '07:00', lunch: '12:30', dinner: '18:30', note: 'Normal schedule' },
-      { day: 4, breakfast: '07:00', lunch: '12:30', dinner: '19:00', note: 'Fully adjusted' },
-      { day: 5, breakfast: '07:00', lunch: '12:30', dinner: '19:00', note: 'Maintain consistency' }
-    ];
+  const getActivitySuitability = () => {
+    const hour = new Date().getHours();
+    const uvi = currentWeather?.uvi || 5;
+    const temp = currentWeather?.temp || 30;
+    const rain = forecast?.[0]?.rainAmount || 0;
     
-    return meals.find(m => m.day === day) || meals[meals.length - 1];
-  };
-  
-  // Get light exposure recommendations
-  const getLightExposure = (day) => {
-    const light = [
-      { day: 1, morning: 'Get outside by 6am', afternoon: 'Avoid screens after 7pm', priority: 'critical' },
-      { day: 2, morning: 'Sunrise walk recommended', afternoon: 'Dim lights by 8pm', priority: 'high' },
-      { day: 3, morning: 'Morning sun exposure', afternoon: 'Normal evening routine', priority: 'medium' },
-      { day: 4, morning: 'Continue morning light', afternoon: 'Regular bedtime routine', priority: 'low' },
-      { day: 5, morning: 'Maintain routine', afternoon: 'Normal schedule', priority: 'low' }
-    ];
-    
-    return light.find(l => l.day === day) || light[light.length - 1];
-  };
-  
-  const getQualityColor = (quality) => {
-    switch(quality) {
-      case 'excellent': return 'bg-green-100 text-green-800';
-      case 'good': return 'bg-blue-100 text-blue-800';
-      case 'fair': return 'bg-amber-100 text-amber-800';
-      case 'poor': return 'bg-red-100 text-red-800';
-      default: return 'bg-slate-100 text-slate-800';
-    }
-  };
-  
-  const mealSchedule = getMealSchedule(currentDay);
-  const lightSchedule = getLightExposure(currentDay);
-  
-  // Enhanced Sleep Timeline component with actual vs planned
-  const SleepTimeline = ({ schedule, actual, name, member }) => {
-    const hours = Array.from({ length: 24 }, (_, i) => i);
-    const sleepScore = calculateSleepScore(schedule, actual);
-    
-    const isInSleepRange = (hour, sleepData) => {
-      if (!sleepData.bedtime || !sleepData.waketime) return false;
-      const bedHour = parseInt(sleepData.bedtime.split(':')[0]);
-      const wakeHour = parseInt(sleepData.waketime.split(':')[0]);
-      
-      if (bedHour > wakeHour) {
-        return hour >= bedHour || hour < wakeHour;
+    return {
+      beach: {
+        score: hour < 10 && uvi < 6 && rain < 5 ? 9 : hour > 16 ? 7 : 4,
+        bestTime: '7-10am',
+        icon: '🏖️'
+      },
+      pool: {
+        score: temp > 25 && rain < 5 ? 8 : 5,
+        bestTime: '3-5pm',
+        icon: '🏊'
+      },
+      indoor: {
+        score: hour >= 11 && hour <= 14 ? 9 : 6,
+        bestTime: '11am-2pm',
+        icon: '🏛️'
+      },
+      dining: {
+        score: hour >= 18 && hour <= 20 && rain < 10 ? 9 : 6,
+        bestTime: '6-8pm',
+        icon: '🍽️'
       }
-      return hour >= bedHour && hour < wakeHour;
     };
+  };
+  
+  const getKidsComfort = () => {
+    const temp = currentWeather?.temp || 30;
+    const humidity = currentWeather?.humidity || 80;
+    const uvi = currentWeather?.uvi || 5;
     
-    const isNapTime = (hour, naptime) => {
-      if (!naptime) return false;
-      const naps = naptime.split(', ');
-      
-      for (const nap of naps) {
-        const [start, end] = nap.split('-');
-        if (!start || !end) continue;
-        const startHour = parseInt(start.split(':')[0]);
-        const endHour = parseInt(end.split(':')[0]);
-        
-        if (hour >= startHour && hour < endHour) return true;
-      }
-      return false;
+    let babyScore = 10;
+    let kidsScore = 10;
+    
+    if (temp > 32) { babyScore -= 3; kidsScore -= 2; }
+    else if (temp > 30) { babyScore -= 2; kidsScore -= 1; }
+    if (humidity > 85) { babyScore -= 2; kidsScore -= 1; }
+    if (uvi > 8) { babyScore -= 3; kidsScore -= 2; }
+    else if (uvi > 6) { babyScore -= 2; kidsScore -= 1; }
+    
+    return {
+      baby: Math.max(0, babyScore),
+      kids: Math.max(0, kidsScore)
     };
-    
+  };
+  
+  const getTimeBasedTheme = () => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 8) return 'from-amber-50 to-orange-100';
+    if (hour >= 8 && hour < 12) return 'from-sky-50 to-blue-100';
+    if (hour >= 12 && hour < 16) return 'from-yellow-50 to-amber-100';
+    if (hour >= 16 && hour < 19) return 'from-orange-50 to-pink-100';
+    return 'from-indigo-50 to-purple-100';
+  };
+  
+  if (loading) {
     return (
-      <div className="bg-white p-3 rounded-lg border border-slate-200">
-        <div className="flex justify-between items-center mb-2">
-          <h5 className="font-medium text-sm">{name}</h5>
-          <div className="flex items-center gap-2">
-            {sleepScore !== null && (
-              <span className={`text-xs px-2 py-1 rounded-full ${
-                sleepScore >= 8 ? 'bg-green-100 text-green-800' :
-                sleepScore >= 5 ? 'bg-amber-100 text-amber-800' :
-                'bg-red-100 text-red-800'
-              }`}>
-                Score: {sleepScore}/10
+      <div className="animate-pulse">
+        <div className="h-32 bg-slate-200 rounded-xl"></div>
+      </div>
+    );
+  }
+  
+  const weatherScore = getWeatherScore();
+  const uvInfo = getUVInfo(currentWeather?.uvi || 0);
+  const activities = getActivitySuitability();
+  const kidsComfort = getKidsComfort();
+  const theme = getTimeBasedTheme();
+  const todaysForecast = forecast?.find(f => f.date === date);
+  
+  const uvPercent = Math.min(100, (currentWeather?.uvi || 0) * 10);
+  const humidityPercent = currentWeather?.humidity || 0;
+  const rainPercent = Math.min(100, (todaysForecast?.rainAmount || 0) * 10);
+  
+  return (
+    <div className="space-y-2">
+      {/* Hero Weather Card */}
+      <div className={`bg-gradient-to-br ${theme} rounded-xl p-4 shadow-lg border border-white/50`}>
+        <div className="flex justify-between items-start">
+          <div>
+            <p className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+              {location === 'maiKhao' ? '📍 Mai Khao Beach' : '📍 Old Town Phuket'}
+            </p>
+            <div className="flex items-baseline gap-3 mt-1">
+              <span className="text-4xl font-bold text-slate-800">
+                {currentWeather?.temp || '--'}°
               </span>
-            )}
-            <span className={`text-xs px-2 py-1 rounded-full ${getQualityColor(schedule.quality)}`}>
-              Expected: {schedule.quality}
-            </span>
-            <button
-              onClick={() => startEdit(member, currentDay)}
-              className="text-xs px-2 py-1 bg-sky-100 text-sky-700 rounded-full hover:bg-sky-200"
-            >
-              {actual ? 'Edit' : 'Log'} Sleep
-            </button>
-          </div>
-        </div>
-        
-        {/* Timeline */}
-        <div className="space-y-1">
-          {/* Planned Schedule */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-500 w-12">Plan:</span>
-            <div className="relative h-6 bg-slate-100 rounded-lg overflow-hidden flex-1">
-              {hours.map(hour => (
-                <div
-                  key={hour}
-                  className={`absolute top-0 h-full border-r border-slate-200 ${
-                    isInSleepRange(hour, schedule) ? 'bg-indigo-400' :
-                    isNapTime(hour, schedule.naptime) ? 'bg-purple-300' :
-                    'bg-slate-100'
-                  }`}
-                  style={{ left: `${(hour / 24) * 100}%`, width: `${100 / 24}%` }}
-                />
-              ))}
+              <div className="text-sm">
+                <p className="text-slate-600">Feels like {currentWeather?.feels_like || '--'}°</p>
+                <p className="text-slate-700 font-medium capitalize">{currentWeather?.description}</p>
+              </div>
             </div>
           </div>
           
-          {/* Actual Schedule (if logged) */}
-          {actual && (
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-500 w-12">Actual:</span>
-              <div className="relative h-6 bg-slate-100 rounded-lg overflow-hidden flex-1">
-                {hours.map(hour => (
-                  <div
-                    key={hour}
-                    className={`absolute top-0 h-full border-r border-slate-200 ${
-                      isInSleepRange(hour, actual) ? 'bg-green-500' :
-                      isNapTime(hour, actual.naptime) ? 'bg-green-300' :
-                      'bg-slate-100'
-                    }`}
-                    style={{ left: `${(hour / 24) * 100}%`, width: `${100 / 24}%` }}
+          <div className="text-right">
+            <span className="text-5xl">{getWeatherEmoji(currentWeather?.main)}</span>
+            {/* Visual Activity Score */}
+            <div className="mt-2">
+              <div className="text-xs font-bold text-slate-600 mb-1">Activity Score</div>
+              <div className="relative w-20 h-20">
+                <svg className="transform -rotate-90 w-20 h-20">
+                  <circle cx="40" cy="40" r="32" stroke="#e2e8f0" strokeWidth="6" fill="none"/>
+                  <circle 
+                    cx="40" cy="40" r="32" 
+                    stroke={weatherScore >= 8 ? '#10b981' : weatherScore >= 5 ? '#f59e0b' : '#ef4444'}
+                    strokeWidth="6" 
+                    fill="none"
+                    strokeDasharray={`${(weatherScore / 10) * 201} 201`}
+                    strokeLinecap="round"
                   />
-                ))}
-                {/* Night wakings markers */}
-                {actual.nightWakings > 0 && (
-                  <div className="absolute top-0 left-0 right-0 h-full flex items-center justify-center">
-                    <span className="text-xs bg-red-500 text-white px-1 rounded">
-                      {actual.nightWakings} wake-ups
-                    </span>
-                  </div>
-                )}
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-xl font-bold text-slate-800">{weatherScore}</span>
+                  <span className="text-xs text-slate-600">/10</span>
+                </div>
               </div>
+              <p className="text-xs font-semibold text-slate-700 mt-1">
+                {weatherScore >= 8 ? 'EXCELLENT' : weatherScore >= 5 ? 'GOOD' : 'CHALLENGING'}
+              </p>
             </div>
-          )}
+          </div>
         </div>
         
-        {/* Time labels */}
-        <div className="flex justify-between text-xs text-slate-400 mt-1">
-          <span>12am</span>
-          <span>6am</span>
-          <span>12pm</span>
-          <span>6pm</span>
-          <span>12am</span>
-        </div>
-        
-        <p className="text-xs text-slate-600 mt-2">{schedule.note}</p>
-        {actual?.notes && (
-          <p className="text-xs text-green-600 mt-1">📝 {actual.notes}</p>
-        )}
-      </div>
-    );
-  };
-  
-  return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white p-4 rounded-xl">
-        <h2 className="text-xl font-bold mb-2 flex items-center gap-2">
-          {React.createElement(Icons.moon, { className: "w-6 h-6" })}
-          Smart Jet Lag Schedule - Day {currentDay}
-        </h2>
-        <p className="text-indigo-100 text-sm">
-          Personalized sleep schedules for your family's adjustment to Phuket time (+6 hours)
-        </p>
-        <div className="mt-2 flex gap-2">
-          <button
-            onClick={() => setEditMode(!editMode)}
-            className="px-3 py-1 bg-white/20 rounded-lg text-sm hover:bg-white/30"
-          >
-            {editMode ? 'View Mode' : 'Track Actual Sleep'}
-          </button>
+        {/* Visual Metrics Dashboard */}
+        <div className="grid grid-cols-3 gap-2 mt-3">
+          {/* UV Index Gauge */}
+          <div className="bg-white/70 backdrop-blur rounded-lg p-2">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-semibold text-slate-600">UV</span>
+              <span className={`text-xs font-bold ${uvInfo.textColor}`}>{uvInfo.level}</span>
+            </div>
+            <div className="relative h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div 
+                className={`absolute left-0 top-0 h-full ${uvInfo.color} transition-all duration-500`}
+                style={{ width: `${uvPercent}%` }}
+              />
+            </div>
+            <p className="text-xs text-slate-600 mt-0.5">{currentWeather?.uvi || 0}</p>
+          </div>
+          
+          {/* Humidity Gauge */}
+          <div className="bg-white/70 backdrop-blur rounded-lg p-2">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-semibold text-slate-600">💧</span>
+              <span className="text-xs font-bold text-blue-600">Humidity</span>
+            </div>
+            <div className="relative h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div 
+                className="absolute left-0 top-0 h-full bg-blue-500 transition-all duration-500"
+                style={{ width: `${humidityPercent}%` }}
+              />
+            </div>
+            <p className="text-xs text-slate-600 mt-0.5">{currentWeather?.humidity}%</p>
+          </div>
+          
+          {/* Rain Gauge */}
+          <div className="bg-white/70 backdrop-blur rounded-lg p-2">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-semibold text-slate-600">🌧️</span>
+              <span className="text-xs font-bold text-cyan-600">Rain</span>
+            </div>
+            <div className="relative h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div 
+                className="absolute left-0 top-0 h-full bg-cyan-500 transition-all duration-500"
+                style={{ width: `${rainPercent}%` }}
+              />
+            </div>
+            <p className="text-xs text-slate-600 mt-0.5">{todaysForecast?.rainAmount || 0}mm</p>
+          </div>
         </div>
       </div>
       
-      {/* Edit Dialog */}
-      {editingPerson && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
-            <h3 className="font-bold text-lg mb-4">
-              Log Sleep Data - {familyMembers.find(m => m.id === editingPerson)?.name}
-            </h3>
-            <div className="space-y-3">
-              <div>
-                <label className="text-sm font-medium text-slate-700">Bedtime</label>
-                <input
-                  type="time"
-                  value={tempSleepData.bedtime}
-                  onChange={(e) => setTempSleepData({ ...tempSleepData, bedtime: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-slate-700">Wake Time</label>
-                <input
-                  type="time"
-                  value={tempSleepData.waketime}
-                  onChange={(e) => setTempSleepData({ ...tempSleepData, waketime: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-slate-700">Nap Times (e.g., 13:00-14:00)</label>
-                <input
-                  type="text"
-                  value={tempSleepData.naptime}
-                  onChange={(e) => setTempSleepData({ ...tempSleepData, naptime: e.target.value })}
-                  placeholder="13:00-14:00, 16:00-16:30"
-                  className="w-full px-3 py-2 border rounded-lg"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-slate-700">Night Wakings</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={tempSleepData.nightWakings}
-                  onChange={(e) => setTempSleepData({ ...tempSleepData, nightWakings: parseInt(e.target.value) || 0 })}
-                  className="w-full px-3 py-2 border rounded-lg"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-slate-700">Notes</label>
-                <textarea
-                  value={tempSleepData.notes}
-                  onChange={(e) => setTempSleepData({ ...tempSleepData, notes: e.target.value })}
-                  placeholder="How did they sleep? Any issues?"
-                  className="w-full px-3 py-2 border rounded-lg"
-                  rows="2"
-                />
+      {/* Tab Navigation */}
+      <div className="flex gap-1 p-1 bg-white rounded-lg shadow-sm">
+        {['overview', 'activities', 'comfort'].map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`flex-1 py-1.5 px-2 rounded-md text-xs font-semibold transition-all ${
+              activeTab === tab 
+                ? 'bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-md' 
+                : 'text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            {tab === 'overview' && '📊 Overview'}
+            {tab === 'activities' && '🏃 Activities'}
+            {tab === 'comfort' && '👶 Family'}
+          </button>
+        ))}
+      </div>
+      
+      {/* Tab Content */}
+      <div className="space-y-2">
+        {activeTab === 'overview' && (
+          <>
+            {/* Smart Timing Bar */}
+            <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-3 border border-indigo-200">
+              <h4 className="text-xs font-bold text-indigo-800 mb-2 flex items-center gap-2">
+                <span className="text-sm">⏰</span> TODAY'S OPTIMAL SCHEDULE
+              </h4>
+              <div className="relative">
+                <div className="flex h-10 rounded-lg overflow-hidden">
+                  <div className="flex-1 flex items-center justify-center bg-green-400/30 border-r border-white">
+                    <span className="text-xs font-semibold text-green-700">7-10am Beach</span>
+                  </div>
+                  <div className="flex-1 flex items-center justify-center bg-red-400/30 border-r border-white">
+                    <span className="text-xs font-semibold text-red-700">11-2pm Indoor</span>
+                  </div>
+                  <div className="flex-1 flex items-center justify-center bg-blue-400/30 border-r border-white">
+                    <span className="text-xs font-semibold text-blue-700">3-5pm Pool</span>
+                  </div>
+                  <div className="flex-1 flex items-center justify-center bg-amber-400/30">
+                    <span className="text-xs font-semibold text-amber-700">6-8pm Dinner</span>
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="flex gap-2 mt-4">
-              <button
-                onClick={saveEdit}
-                className="flex-1 px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700"
-              >
-                Save
-              </button>
-              <button
-                onClick={cancelEdit}
-                className="flex-1 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300"
-              >
-                Cancel
-              </button>
+            
+            {/* Key Insights */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-lg p-2 border border-orange-200">
+                <div className="flex items-center gap-1 mb-1">
+                  <span className="text-lg">🌅</span>
+                  <span className="text-xs font-bold text-orange-800">Sunrise</span>
+                </div>
+                <p className="text-base font-bold text-orange-900">6:14 AM</p>
+                <p className="text-xs text-orange-700">Best photos 6:30-7:00</p>
+              </div>
+              
+              <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-2 border border-purple-200">
+                <div className="flex items-center gap-1 mb-1">
+                  <span className="text-lg">🌇</span>
+                  <span className="text-xs font-bold text-purple-800">Sunset</span>
+                </div>
+                <p className="text-base font-bold text-purple-900">6:31 PM</p>
+                <p className="text-xs text-purple-700">Golden hour 5:30-6:30</p>
+              </div>
             </div>
+          </>
+        )}
+        
+        {activeTab === 'activities' && (
+          <div className="space-y-1.5">
+            {Object.entries(activities).map(([activity, data]) => (
+              <div key={activity} className="bg-white rounded-lg p-2 border border-slate-200 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">{data.icon}</span>
+                    <div>
+                      <p className="font-semibold text-sm capitalize text-slate-800">{activity}</p>
+                      <p className="text-xs text-slate-600">Best: {data.bestTime}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="flex items-center gap-0.5 mb-0.5">
+                      {[...Array(5)].map((_, i) => (
+                        <div
+                          key={i}
+                          className={`h-1.5 w-3 rounded-sm ${
+                            i < Math.ceil(data.score / 2) 
+                              ? data.score >= 8 ? 'bg-green-500' : data.score >= 5 ? 'bg-yellow-500' : 'bg-red-500'
+                              : 'bg-gray-200'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <p className="text-xs font-bold text-slate-700">
+                      {data.score >= 8 ? 'Perfect' : data.score >= 5 ? 'Good' : 'Wait'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        
+        {activeTab === 'comfort' && (
+          <div className="space-y-2">
+            {/* Kids Comfort Meters */}
+            <div className="bg-gradient-to-r from-pink-50 to-purple-50 rounded-lg p-3 border border-pink-200">
+              <h4 className="text-xs font-bold text-purple-800 mb-2">👶 FAMILY COMFORT INDEX</h4>
+              
+              <div className="space-y-2">
+                <div>
+                  <div className="flex justify-between items-center mb-0.5">
+                    <span className="text-sm font-semibold text-slate-700">Baby Askia (1yr)</span>
+                    <span className="text-xs font-bold text-purple-600">{kidsComfort.baby}/10</span>
+                  </div>
+                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full transition-all duration-500 ${
+                        kidsComfort.baby >= 8 ? 'bg-green-500' : kidsComfort.baby >= 5 ? 'bg-yellow-500' : 'bg-red-500'
+                      }`}
+                      style={{ width: `${kidsComfort.baby * 10}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    {kidsComfort.baby >= 8 ? '✅ Perfect conditions' : kidsComfort.baby >= 5 ? '⚠️ Keep cool & hydrated' : '❌ Stay indoors'}
+                  </p>
+                </div>
+                
+                <div>
+                  <div className="flex justify-between items-center mb-0.5">
+                    <span className="text-sm font-semibold text-slate-700">Amari (4yr)</span>
+                    <span className="text-xs font-bold text-purple-600">{kidsComfort.kids}/10</span>
+                  </div>
+                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full transition-all duration-500 ${
+                        kidsComfort.kids >= 8 ? 'bg-green-500' : kidsComfort.kids >= 5 ? 'bg-yellow-500' : 'bg-red-500'
+                      }`}
+                      style={{ width: `${kidsComfort.kids * 10}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    {kidsComfort.kids >= 8 ? '✅ Great for activities' : kidsComfort.kids >= 5 ? '⚠️ Frequent breaks needed' : '❌ Too hot for outdoors'}
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Health Reminders */}
+            <div className="bg-blue-50 rounded-lg p-2 border border-blue-200">
+              <h4 className="text-xs font-bold text-blue-800 mb-1">💙 HEALTH REMINDERS</h4>
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2 text-xs text-blue-700">
+                  <span>🧴</span>
+                  <span>Reapply sunscreen: 10am, 12pm, 2pm, 4pm</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-blue-700">
+                  <span>💧</span>
+                  <span>Hydration check every 30 minutes</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-blue-700">
+                  <span>🦟</span>
+                  <span>Bug spray after 5pm (high mosquito activity)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+      
+      {/* Quick Actions Bar */}
+      <div className="flex gap-2 justify-center">
+        <button
+          onClick={() => setShowHourly(!showHourly)}
+          className="px-3 py-1.5 bg-white rounded-lg shadow-sm border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+        >
+          {showHourly ? '📊 Hide' : '📊 Show'} Hourly
+        </button>
+        <button
+          onClick={fetchWeatherData}
+          className="px-3 py-1.5 bg-white rounded-lg shadow-sm border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+        >
+          🔄 Refresh
+        </button>
+      </div>
+      
+      {/* Hourly Forecast */}
+      {showHourly && todaysForecast?.hourly && (
+        <div className="bg-white rounded-lg p-3 shadow-md border border-slate-200">
+          <h4 className="text-sm font-bold text-slate-700 mb-2">Hourly Forecast</h4>
+          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+            {todaysForecast.hourly.slice(0, 8).map((hour, i) => (
+              <div 
+                key={i} 
+                className={`flex-shrink-0 text-center p-2 rounded-lg min-w-[60px] ${
+                  hour.rain > 0 ? 'bg-blue-50 border border-blue-200' : 'bg-slate-50 border border-slate-200'
+                }`}
+              >
+                <p className="text-xs font-semibold text-slate-600">{hour.time}</p>
+                <span className="text-2xl block my-1">{getWeatherEmoji(hour.description)}</span>
+                <p className="text-base font-bold text-slate-800">{hour.temp}°</p>
+                {hour.rain > 0 && (
+                  <p className="text-xs text-blue-600 font-semibold mt-0.5">💧{hour.rain}mm</p>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       )}
       
-      {/* Family Member Selector */}
-      <div className="bg-white p-3 rounded-lg border border-slate-200">
-        <div className="flex gap-2 flex-wrap">
-          <button
-            onClick={() => setSelectedPerson('all')}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-              selectedPerson === 'all' 
-                ? 'bg-slate-800 text-white' 
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            All Family
-          </button>
-          {familyMembers.map(member => (
-            <button
-              key={member.id}
-              onClick={() => setSelectedPerson(member.id)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                selectedPerson === member.id 
-                  ? member.color
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              {member.name}
-            </button>
-          ))}
-        </div>
-      </div>
-      
-      {/* Sleep Schedules */}
-      <div className="space-y-3">
-        {(selectedPerson === 'all' ? familyMembers : familyMembers.filter(m => m.id === selectedPerson))
-          .map(member => {
-            const schedule = getSleepSchedule(currentDay, member.ageGroup);
-            const actual = getActualSleep(member.id, currentDay);
-            return (
-              <SleepTimeline 
-                key={member.id}
-                schedule={schedule}
-                actual={actual}
-                name={member.name}
-                member={member}
-              />
-            );
-          })}
-      </div>
-      
-      {/* Compliance Summary */}
-      <div className="bg-white rounded-lg p-4 border border-slate-200">
-        <h3 className="font-semibold text-slate-800 mb-3">Sleep Tracking Summary</h3>
-        <div className="grid grid-cols-2 gap-3">
-          {familyMembers.map(member => {
-            const hasData = Array.from({ length: currentDay }, (_, i) => i + 1)
-              .map(day => getActualSleep(member.id, day))
-              .filter(Boolean).length;
-            
-            return (
-              <div key={member.id} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
-                <span className="text-sm font-medium">{member.name}</span>
-                <span className="text-xs text-slate-600">
-                  {hasData}/{currentDay} days tracked
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-      
-hedule */}
-      <div className="bg-white rounded-lg p-4 border border-slate-200">
-        <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
-          <Icons.utensils className="w-5 h-5 text-rose-500" />
-          Meal Timing for Day {currentDay}
-        </h3>
-        <div className="grid grid-cols-3 gap-3">
-          <div className="text-center p-2 bg-amber-50 rounded-lg">
-            <p className="text-xs text-slate-600">Breakfast</p>
-            <p className="font-bold text-lg text-amber-800">{mealSchedule.breakfast}</p>
-          </div>
-          <div className="text-center p-2 bg-orange-50 rounded-lg">
-            <p className="text-xs text-slate-600">Lunch</p>
-            <p className="font-bold text-lg text-orange-800">{mealSchedule.lunch}</p>
-          </div>
-          <div className="text-center p-2 bg-rose-50 rounded-lg">
-            <p className="text-xs text-slate-600">Dinner</p>
-            <p className="font-bold text-lg text-rose-800">{mealSchedule.dinner}</p>
-          </div>
-        </div>
-        <p className="text-xs text-slate-600 mt-2 text-center">{mealSchedule.note}</p>
-      </div>
-      
-      {/* Light Exposure */}
-      <div className="bg-gradient-to-r from-amber-50 to-yellow-50 rounded-lg p-4 border border-amber-200">
-        <h3 className="font-semibold text-amber-800 mb-3 flex items-center gap-2">
-          <Icons.sun className="w-5 h-5" />
-          Light Exposure Plan
-        </h3>
-        <div className="space-y-2">
-          <div className="flex items-start gap-2">
-            <span className="text-lg">🌅</span>
-            <div>
-              <p className="font-medium text-sm text-amber-800">Morning</p>
-              <p className="text-xs text-amber-600">{lightSchedule.morning}</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-2">
-            <span className="text-lg">🌙</span>
-            <div>
-              <p className="font-medium text-sm text-amber-800">Evening</p>
-              <p className="text-xs text-amber-600">{lightSchedule.afternoon}</p>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Last Update */}
+      {lastUpdate && (
+        <p className="text-center text-xs text-slate-400">
+          Updated {lastUpdate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+        </p>
+      )}
     </div>
   );
 };
 
-export default SmartJetLagScheduler;
+export default WeatherWidget;
