@@ -4,14 +4,26 @@ import { Icons } from '../data/staticData';
 const SmartJetLagScheduler = ({ currentDate }) => {
   const [currentDay, setCurrentDay] = useState(1);
   const [selectedPerson, setSelectedPerson] = useState('all');
+  const [editMode, setEditMode] = useState(false);
+  const [actualSleepData, setActualSleepData] = useState(() => {
+    const saved = localStorage.getItem('jetlag_actual_sleep');
+    return saved ? JSON.parse(saved) : {};
+  });
+  const [editingPerson, setEditingPerson] = useState(null);
+  const [tempSleepData, setTempSleepData] = useState({});
   
   // Calculate which day of the trip we're on
   useEffect(() => {
     const tripStart = new Date('2025-08-20');
     const current = currentDate ? new Date(currentDate) : new Date();
     const dayNumber = Math.max(1, Math.ceil((current - tripStart) / (1000 * 60 * 60 * 24)) + 1);
-    setCurrentDay(Math.min(9, dayNumber)); // Max 9 days
+    setCurrentDay(Math.min(9, dayNumber));
   }, [currentDate]);
+  
+  // Save actual sleep data whenever it changes
+  useEffect(() => {
+    localStorage.setItem('jetlag_actual_sleep', JSON.stringify(actualSleepData));
+  }, [actualSleepData]);
   
   // Family members with their specific needs
   const familyMembers = [
@@ -53,6 +65,80 @@ const SmartJetLagScheduler = ({ currentDate }) => {
     return daySchedule;
   };
   
+  // Get actual sleep data for a person on a specific day
+  const getActualSleep = (personId, day) => {
+    const key = `${personId}_day${day}`;
+    return actualSleepData[key] || null;
+  };
+  
+  // Start editing sleep data for a person
+  const startEdit = (member, day) => {
+    const key = `${member.id}_day${day}`;
+    const existing = actualSleepData[key] || {};
+    setEditingPerson(member.id);
+    setTempSleepData({
+      bedtime: existing.bedtime || '',
+      waketime: existing.waketime || '',
+      naptime: existing.naptime || '',
+      nightWakings: existing.nightWakings || 0,
+      notes: existing.notes || ''
+    });
+  };
+  
+  // Save edited sleep data
+  const saveEdit = () => {
+    if (editingPerson) {
+      const key = `${editingPerson}_day${currentDay}`;
+      setActualSleepData(prev => ({
+        ...prev,
+        [key]: {
+          ...tempSleepData,
+          timestamp: new Date().toISOString()
+        }
+      }));
+      setEditingPerson(null);
+      setTempSleepData({});
+    }
+  };
+  
+  // Cancel edit
+  const cancelEdit = () => {
+    setEditingPerson(null);
+    setTempSleepData({});
+  };
+  
+  // Calculate sleep quality score
+  const calculateSleepScore = (planned, actual) => {
+    if (!actual || !actual.bedtime || !actual.waketime) return null;
+    
+    // Convert times to minutes for comparison
+    const timeToMinutes = (time) => {
+      const [hours, minutes] = time.split(':').map(Number);
+      return hours * 60 + minutes;
+    };
+    
+    const plannedBed = timeToMinutes(planned.bedtime);
+    const actualBed = timeToMinutes(actual.bedtime);
+    const plannedWake = timeToMinutes(planned.waketime);
+    const actualWake = timeToMinutes(actual.waketime);
+    
+    // Calculate differences (within 30 mins = good)
+    const bedDiff = Math.abs(plannedBed - actualBed);
+    const wakeDiff = Math.abs(plannedWake - actualWake);
+    
+    let score = 10;
+    if (bedDiff > 60) score -= 3;
+    else if (bedDiff > 30) score -= 1;
+    
+    if (wakeDiff > 60) score -= 3;
+    else if (wakeDiff > 30) score -= 1;
+    
+    if (actual.nightWakings > 3) score -= 2;
+    else if (actual.nightWakings > 1) score -= 1;
+    
+    return Math.max(0, Math.min(10, score));
+  };
+  
   // Get meal timing recommendations
   const getMealSchedule = (day) => {
     const meals = [
@@ -79,40 +165,6 @@ const SmartJetLagScheduler = ({ currentDate }) => {
     return light.find(l => l.day === day) || light[light.length - 1];
   };
   
-  // Get current alerts
-  const getCurrentAlerts = () => {
-    const hour = new Date().getHours();
-    const alerts = [];
-    
-    if (currentDay <= 3) {
-      if (hour >= 14 && hour < 16) {
-        alerts.push({
-          type: 'warning',
-          message: 'Fight the afternoon sleepiness! Stay active.',
-          icon: '⚡'
-        });
-      }
-      
-      if (hour >= 19 && hour < 20) {
-        alerts.push({
-          type: 'bedtime',
-          message: 'Start bedtime routine for kids',
-          icon: '🛁'
-        });
-      }
-      
-      if (hour >= 5 && hour < 7) {
-        alerts.push({
-          type: 'success',
-          message: 'Perfect time for morning light exposure!',
-          icon: '☀️'
-        });
-      }
-    }
-    
-    return alerts;
-  };
-  
   const getQualityColor = (quality) => {
     switch(quality) {
       case 'excellent': return 'bg-green-100 text-green-800';
@@ -125,29 +177,30 @@ const SmartJetLagScheduler = ({ currentDate }) => {
   
   const mealSchedule = getMealSchedule(currentDay);
   const lightSchedule = getLightExposure(currentDay);
-  const alerts = getCurrentAlerts();
   
-  // Visual sleep timeline component
-  const SleepTimeline = ({ schedule, name }) => {
+  // Enhanced Sleep Timeline component with actual vs planned
+  const SleepTimeline = ({ schedule, actual, name, member }) => {
     const hours = Array.from({ length: 24 }, (_, i) => i);
+    const sleepScore = calculateSleepScore(schedule, actual);
     
-    const isInSleepRange = (hour) => {
-      const bedHour = parseInt(schedule.bedtime.split(':')[0]);
-      const wakeHour = parseInt(schedule.waketime.split(':')[0]);
+    const isInSleepRange = (hour, sleepData) => {
+      if (!sleepData.bedtime || !sleepData.waketime) return false;
+      const bedHour = parseInt(sleepData.bedtime.split(':')[0]);
+      const wakeHour = parseInt(sleepData.waketime.split(':')[0]);
       
       if (bedHour > wakeHour) {
-        // Sleep crosses midnight
         return hour >= bedHour || hour < wakeHour;
       }
       return hour >= bedHour && hour < wakeHour;
     };
     
-    const isNapTime = (hour) => {
-      if (!schedule.naptime) return false;
-      const naps = schedule.naptime.split(', ');
+    const isNapTime = (hour, naptime) => {
+      if (!naptime) return false;
+      const naps = naptime.split(', ');
       
       for (const nap of naps) {
         const [start, end] = nap.split('-');
+        if (!start || !end) continue;
         const startHour = parseInt(start.split(':')[0]);
         const endHour = parseInt(end.split(':')[0]);
         
@@ -160,52 +213,90 @@ const SmartJetLagScheduler = ({ currentDate }) => {
       <div className="bg-white p-3 rounded-lg border border-slate-200">
         <div className="flex justify-between items-center mb-2">
           <h5 className="font-medium text-sm">{name}</h5>
-          <span className={`text-xs px-2 py-1 rounded-full ${getQualityColor(schedule.quality)}`}>
-            Sleep Quality: {schedule.quality}
-          </span>
+          <div className="flex items-center gap-2">
+            {sleepScore !== null && (
+              <span className={`text-xs px-2 py-1 rounded-full ${
+                sleepScore >= 8 ? 'bg-green-100 text-green-800' :
+                sleepScore >= 5 ? 'bg-amber-100 text-amber-800' :
+                'bg-red-100 text-red-800'
+              }`}>
+                Score: {sleepScore}/10
+              </span>
+            )}
+            <span className={`text-xs px-2 py-1 rounded-full ${getQualityColor(schedule.quality)}`}>
+              Expected: {schedule.quality}
+            </span>
+            <button
+              onClick={() => startEdit(member, currentDay)}
+              className="text-xs px-2 py-1 bg-sky-100 text-sky-700 rounded-full hover:bg-sky-200"
+            >
+              {actual ? 'Edit' : 'Log'} Sleep
+            </button>
+          </div>
         </div>
         
         {/* Timeline */}
-        <div className="relative h-8 bg-slate-100 rounded-lg overflow-hidden">
-          {hours.map(hour => (
-            <div
-              key={hour}
-              className={`absolute top-0 h-full border-r border-slate-200 ${
-                isInSleepRange(hour) ? 'bg-indigo-400' :
-                isNapTime(hour) ? 'bg-purple-300' :
-                'bg-slate-100'
-              }`}
-              style={{ left: `${(hour / 24) * 100}%`, width: `${100 / 24}%` }}
-            >
-              {(hour % 6 === 0) && (
-                <span className="absolute top-0 text-xs text-slate-600 -ml-2">
-                  {hour}
-                </span>
-              )}
+        <div className="space-y-1">
+          {/* Planned Schedule */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-500 w-12">Plan:</span>
+            <div className="relative h-6 bg-slate-100 rounded-lg overflow-hidden flex-1">
+              {hours.map(hour => (
+                <div
+                  key={hour}
+                  className={`absolute top-0 h-full border-r border-slate-200 ${
+                    isInSleepRange(hour, schedule) ? 'bg-indigo-400' :
+                    isNapTime(hour, schedule.naptime) ? 'bg-purple-300' :
+                    'bg-slate-100'
+                  }`}
+                  style={{ left: `${(hour / 24) * 100}%`, width: `${100 / 24}%` }}
+                />
+              ))}
             </div>
-          ))}
-          
-          {/* Markers */}
-          <div 
-            className="absolute top-0 h-full w-0.5 bg-red-600"
-            style={{ left: `${(parseInt(schedule.bedtime.split(':')[0]) / 24) * 100}%` }}
-          >
-            <span className="absolute -top-5 text-xs bg-red-100 px-1 rounded -ml-4">
-              Bed {schedule.bedtime}
-            </span>
           </div>
           
-          <div 
-            className="absolute top-0 h-full w-0.5 bg-green-600"
-            style={{ left: `${(parseInt(schedule.waketime.split(':')[0]) / 24) * 100}%` }}
-          >
-            <span className="absolute -bottom-5 text-xs bg-green-100 px-1 rounded -ml-4">
-              Wake {schedule.waketime}
-            </span>
-          </div>
+          {/* Actual Schedule (if logged) */}
+          {actual && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-500 w-12">Actual:</span>
+              <div className="relative h-6 bg-slate-100 rounded-lg overflow-hidden flex-1">
+                {hours.map(hour => (
+                  <div
+                    key={hour}
+                    className={`absolute top-0 h-full border-r border-slate-200 ${
+                      isInSleepRange(hour, actual) ? 'bg-green-500' :
+                      isNapTime(hour, actual.naptime) ? 'bg-green-300' :
+                      'bg-slate-100'
+                    }`}
+                    style={{ left: `${(hour / 24) * 100}%`, width: `${100 / 24}%` }}
+                  />
+                ))}
+                {/* Night wakings markers */}
+                {actual.nightWakings > 0 && (
+                  <div className="absolute top-0 left-0 right-0 h-full flex items-center justify-center">
+                    <span className="text-xs bg-red-500 text-white px-1 rounded">
+                      {actual.nightWakings} wake-ups
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+        
+        {/* Time labels */}
+        <div className="flex justify-between text-xs text-slate-400 mt-1">
+          <span>12am</span>
+          <span>6am</span>
+          <span>12pm</span>
+          <span>6pm</span>
+          <span>12am</span>
         </div>
         
         <p className="text-xs text-slate-600 mt-2">{schedule.note}</p>
+        {actual?.notes && (
+          <p className="text-xs text-green-600 mt-1">📝 {actual.notes}</p>
+        )}
       </div>
     );
   };
@@ -221,21 +312,88 @@ const SmartJetLagScheduler = ({ currentDate }) => {
         <p className="text-indigo-100 text-sm">
           Personalized sleep schedules for your family's adjustment to Phuket time (+6 hours)
         </p>
+        <div className="mt-2 flex gap-2">
+          <button
+            onClick={() => setEditMode(!editMode)}
+            className="px-3 py-1 bg-white/20 rounded-lg text-sm hover:bg-white/30"
+          >
+            {editMode ? 'View Mode' : 'Track Actual Sleep'}
+          </button>
+        </div>
       </div>
       
-      {/* Current Alerts */}
-      {alerts.length > 0 && (
-        <div className="space-y-2">
-          {alerts.map((alert, i) => (
-            <div key={i} className={`p-3 rounded-lg flex items-center gap-3 ${
-              alert.type === 'warning' ? 'bg-amber-100 text-amber-800' :
-              alert.type === 'bedtime' ? 'bg-purple-100 text-purple-800' :
-              'bg-green-100 text-green-800'
-            }`}>
-              <span className="text-2xl">{alert.icon}</span>
-              <p className="font-medium text-sm">{alert.message}</p>
+      {/* Edit Dialog */}
+      {editingPerson && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+            <h3 className="font-bold text-lg mb-4">
+              Log Sleep Data - {familyMembers.find(m => m.id === editingPerson)?.name}
+            </h3>
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium text-slate-700">Bedtime</label>
+                <input
+                  type="time"
+                  value={tempSleepData.bedtime}
+                  onChange={(e) => setTempSleepData({ ...tempSleepData, bedtime: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">Wake Time</label>
+                <input
+                  type="time"
+                  value={tempSleepData.waketime}
+                  onChange={(e) => setTempSleepData({ ...tempSleepData, waketime: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">Nap Times (e.g., 13:00-14:00)</label>
+                <input
+                  type="text"
+                  value={tempSleepData.naptime}
+                  onChange={(e) => setTempSleepData({ ...tempSleepData, naptime: e.target.value })}
+                  placeholder="13:00-14:00, 16:00-16:30"
+                  className="w-full px-3 py-2 border rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">Night Wakings</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={tempSleepData.nightWakings}
+                  onChange={(e) => setTempSleepData({ ...tempSleepData, nightWakings: parseInt(e.target.value) || 0 })}
+                  className="w-full px-3 py-2 border rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">Notes</label>
+                <textarea
+                  value={tempSleepData.notes}
+                  onChange={(e) => setTempSleepData({ ...tempSleepData, notes: e.target.value })}
+                  placeholder="How did they sleep? Any issues?"
+                  className="w-full px-3 py-2 border rounded-lg"
+                  rows="2"
+                />
+              </div>
             </div>
-          ))}
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={saveEdit}
+                className="flex-1 px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700"
+              >
+                Save
+              </button>
+              <button
+                onClick={cancelEdit}
+                className="flex-1 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
       
@@ -273,14 +431,38 @@ const SmartJetLagScheduler = ({ currentDate }) => {
         {(selectedPerson === 'all' ? familyMembers : familyMembers.filter(m => m.id === selectedPerson))
           .map(member => {
             const schedule = getSleepSchedule(currentDay, member.ageGroup);
+            const actual = getActualSleep(member.id, currentDay);
             return (
               <SleepTimeline 
                 key={member.id}
                 schedule={schedule}
+                actual={actual}
                 name={member.name}
+                member={member}
               />
             );
           })}
+      </div>
+      
+      {/* Compliance Summary */}
+      <div className="bg-white rounded-lg p-4 border border-slate-200">
+        <h3 className="font-semibold text-slate-800 mb-3">Sleep Tracking Summary</h3>
+        <div className="grid grid-cols-2 gap-3">
+          {familyMembers.map(member => {
+            const hasData = Array.from({ length: currentDay }, (_, i) => i + 1)
+              .map(day => getActualSleep(member.id, day))
+              .filter(Boolean).length;
+            
+            return (
+              <div key={member.id} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
+                <span className="text-sm font-medium">{member.name}</span>
+                <span className="text-xs text-slate-600">
+                  {hasData}/{currentDay} days tracked
+                </span>
+              </div>
+            );
+          })}
+        </div>
       </div>
       
       {/* Meal Schedule */}
@@ -328,56 +510,6 @@ const SmartJetLagScheduler = ({ currentDate }) => {
             </div>
           </div>
         </div>
-      </div>
-      
-      {/* Progress Tracker */}
-      <div className="bg-white rounded-lg p-4 border border-slate-200">
-        <h3 className="font-semibold text-slate-800 mb-3">Adjustment Progress</h3>
-        <div className="flex items-center gap-1">
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(day => (
-            <div
-              key={day}
-              className={`flex-1 h-2 rounded-full ${
-                day <= currentDay ? 'bg-green-500' :
-                day === currentDay + 1 ? 'bg-amber-500' :
-                'bg-slate-200'
-              }`}
-            />
-          ))}
-        </div>
-        <div className="flex justify-between text-xs text-slate-600 mt-2">
-          <span>Day 1</span>
-          <span>Fully Adjusted</span>
-          <span>Day 9</span>
-        </div>
-      </div>
-      
-      {/* Tips for Today */}
-      <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-        <h3 className="font-semibold text-blue-800 mb-2">💡 Tips for Day {currentDay}</h3>
-        <ul className="space-y-1 text-sm text-blue-700">
-          {currentDay <= 2 && (
-            <>
-              <li>• Keep kids awake until their bedtime, even if they're cranky</li>
-              <li>• Avoid long afternoon naps for adults</li>
-              <li>• Stay hydrated - dehydration worsens jet lag</li>
-            </>
-          )}
-          {currentDay === 3 && (
-            <>
-              <li>• You should start feeling more normal today</li>
-              <li>• Maintain consistent meal times</li>
-              <li>• Light exercise helps adjustment</li>
-            </>
-          )}
-          {currentDay >= 4 && (
-            <>
-              <li>• You're mostly adjusted - maintain the routine</li>
-              <li>• Don't sleep in, even if you can</li>
-              <li>• Keep regular bedtimes for the rest of the trip</li>
-            </>
-          )}
-        </ul>
       </div>
     </div>
   );
