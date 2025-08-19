@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, doc, updateDoc, addDoc, query, orderBy, setDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from './firebase/config';
-import { TRIP_DATA, Icons } from './data/staticData';
+import { Icons } from './data/staticData';
 import { useTrip } from './context/TripContext';
 
 // Import all components
@@ -23,9 +23,7 @@ const App = () => {
     activeTab, 
     currentDayIndex, 
     setCurrentDayIndex,
-    isOnline,
-    syncStatus,
-    showNotification
+    isOnline 
   } = useTrip();
   
   const [loading, setLoading] = useState(false);
@@ -33,71 +31,50 @@ const App = () => {
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
   const [weatherAlert, setWeatherAlert] = useState(null);
-  const [firebaseInitialized, setFirebaseInitialized] = useState(false);
   
-  // Initialize Firebase on mount
+  // Firebase sync (only if configured)
   useEffect(() => {
-    const initializeFirebaseData = async () => {
-      if (!isFirebaseConfigured() || firebaseInitialized) return;
-      
-      setLoading(true);
-      try {
-        // Check if data exists in Firebase
-        const q = query(collection(db, 'itinerary'), orderBy('date'));
-        const unsubscribe = onSnapshot(q, 
-          async (snapshot) => {
-            if (snapshot.empty && planData && planData.length > 0) {
-              // Initialize Firebase with current local data
-              console.log('📤 Initializing Firebase with local data...');
-              for (const day of planData) {
-                const docId = `day_${day.date}`;
-                await setDoc(doc(db, 'itinerary', docId), {
-                  ...day,
-                  createdAt: new Date().toISOString(),
-                  lastModified: new Date().toISOString()
-                });
-              }
-              showNotification('☁️ Data synced to cloud', 'success');
-            } else if (!snapshot.empty) {
-              // Firebase has data, use it
-              const firebasePlan = snapshot.docs.map(doc => ({
-                firebaseId: doc.id,
-                ...doc.data()
-              }));
-              
-              // Only update if different from local
-              const localDataStr = JSON.stringify(planData);
-              const firebaseDataStr = JSON.stringify(firebasePlan);
-              
-              if (localDataStr !== firebaseDataStr) {
-                console.log('📥 Loading data from Firebase...');
-                setPlanData(firebasePlan);
-                showNotification('☁️ Data loaded from cloud', 'success');
-              }
-            }
-            setFirebaseInitialized(true);
-            setLoading(false);
-          },
-          (error) => {
-            console.error('Firebase sync error:', error);
-            setFirebaseError('Using offline mode - changes saved locally');
-            setLoading(false);
-          }
-        );
-        
-        // Cleanup
-        return () => unsubscribe();
-      } catch (error) {
-        console.error('Firebase setup error:', error);
-        setFirebaseError('Using offline mode - changes saved locally');
-        setLoading(false);
-      }
-    };
+    if (!isFirebaseConfigured()) {
+      console.log('Firebase not configured, using local storage only');
+      return;
+    }
     
-    initializeFirebaseData();
-  }, [planData, setPlanData, showNotification, firebaseInitialized]);
+    if (!isOnline) {
+      console.log('Offline - using cached data');
+      return;
+    }
+    
+    setLoading(true);
+    
+    try {
+      const q = query(collection(db, 'itinerary'), orderBy('date'));
+      const unsubscribe = onSnapshot(q, 
+        (snapshot) => {
+          if (!snapshot.empty) {
+            const firebasePlan = snapshot.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data()
+            }));
+            setPlanData(firebasePlan);
+          }
+          setLoading(false);
+        },
+        (error) => {
+          console.error('Firebase sync error:', error);
+          setFirebaseError('Using offline mode - changes saved locally');
+          setLoading(false);
+        }
+      );
+      
+      return () => unsubscribe();
+    } catch (error) {
+      console.error('Firebase setup error:', error);
+      setFirebaseError('Using offline mode - changes saved locally');
+      setLoading(false);
+    }
+  }, [isOnline, setPlanData]);
   
-  // Check for weather alerts
+  // Check for weather alerts (only if weatherService exists)
   useEffect(() => {
     const fetchWeatherAlert = async () => {
       try {
@@ -157,7 +134,8 @@ const App = () => {
         if (!planData || planData.length === 0) {
           return (
             <div className="text-center py-12 bg-white rounded-xl shadow-lg">
-              <Icons.calendar className="w-12 h-12 text-slate-300 mx-auto mb-4"/>
+              {/* Use icon as function, not JSX component */}
+              {React.createElement(Icons.calendar, { className: "w-12 h-12 text-slate-300 mx-auto mb-4" })}
               <p className="text-slate-500">Loading itinerary...</p>
             </div>
           );
@@ -188,7 +166,7 @@ const App = () => {
                          transition-colors"
                 aria-label="Previous day"
               >
-                <Icons.chevronLeft className="w-5 h-5"/> 
+                {React.createElement(Icons.chevronLeft, { className: "w-5 h-5" })}
                 <span className="hidden sm:inline">Previous</span>
                 <span className="sm:hidden">Prev</span>
               </button>
@@ -224,11 +202,11 @@ const App = () => {
               >
                 <span className="hidden sm:inline">Next</span>
                 <span className="sm:hidden">Next</span>
-                <Icons.chevronRight className="w-5 h-5"/>
+                {React.createElement(Icons.chevronRight, { className: "w-5 h-5" })}
               </button>
             </div>
             
-            {/* Enhanced Day Card */}
+            {/* Day Card */}
             <DayCard 
               dayData={currentDay} 
               dayIndex={currentDayIndex} 
@@ -244,7 +222,6 @@ const App = () => {
         );
         
       case 'JetLag':
-        // Using SmartJetLagScheduler instead of basic JetLagTab
         const currentDate = planData && planData[currentDayIndex] 
           ? planData[currentDayIndex].date 
           : '2025-08-20';
@@ -276,103 +253,53 @@ const App = () => {
   };
   
   // Loading state
-  if (loading && !firebaseInitialized) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-sky-50 to-blue-100 flex items-center justify-center">
-        <div className="text-center bg-white p-8 rounded-2xl shadow-xl">
-          <Icons.plane className="w-16 h-16 text-sky-600 animate-pulse mx-auto mb-4"/>
-          <p className="text-lg font-semibold text-slate-700">Loading your trip planner...</p>
-          <p className="text-sm text-slate-500 mt-2">Syncing with cloud ☁️</p>
+      <div className="min-h-screen bg-slate-100 flex items-center justify-center">
+        <div className="text-center">
+          {React.createElement(Icons.plane, { className: "w-12 h-12 text-sky-600 animate-pulse mx-auto mb-4" })}
+          <p className="text-slate-600">Loading your trip planner...</p>
         </div>
       </div>
     );
   }
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <div className="min-h-screen bg-slate-100">
       <Header />
       
       {/* Weather Alert Banner */}
       {weatherAlert && (
-        <div className={`px-4 py-2 text-center text-sm font-semibold animate-fade-in
+        <div className={`px-4 py-2 text-center text-sm font-semibold
           ${weatherAlert.type === 'danger' ? 'bg-red-100 text-red-800 border-b-2 border-red-300' :
             weatherAlert.type === 'warning' ? 'bg-amber-100 text-amber-800 border-b-2 border-amber-300' :
             'bg-blue-100 text-blue-800 border-b-2 border-blue-300'}`}>
-          <Icons.alertTriangle className="inline w-4 h-4 mr-2"/>
+          {React.createElement(Icons.alertTriangle, { className: "inline w-4 h-4 mr-2" })}
           {weatherAlert.message}
         </div>
       )}
       
-      {/* Connection Status Banner */}
-      <div className="bg-white border-b border-slate-200">
-        <div className="max-w-5xl mx-auto px-4 py-2 flex items-center justify-between text-xs">
-          <div className="flex items-center gap-4">
-            {/* Online Status */}
-            <span className={`flex items-center gap-1 ${isOnline ? 'text-green-600' : 'text-amber-600'}`}>
-              <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-amber-500'} animate-pulse`} />
-              {isOnline ? 'Online' : 'Offline'}
-            </span>
-            
-            {/* Sync Status */}
-            {isFirebaseConfigured() && (
-              <span className="flex items-center gap-1 text-slate-600">
-                {syncStatus === 'syncing' && (
-                  <>
-                    <Icons.loader className="w-3 h-3 animate-spin" />
-                    Syncing...
-                  </>
-                )}
-                {syncStatus === 'synced' && (
-                  <>
-                    <Icons.cloud className="w-3 h-3 text-green-600" />
-                    Synced to cloud
-                  </>
-                )}
-                {syncStatus === 'error' && (
-                  <>
-                    <Icons.alertTriangle className="w-3 h-3 text-amber-600" />
-                    Local only
-                  </>
-                )}
-              </span>
-            )}
-          </div>
-          
-          {/* Firebase Error */}
-          {firebaseError && (
-            <span className="text-amber-600">
-              {firebaseError}
-            </span>
-          )}
+      {/* Firebase Error Banner */}
+      {firebaseError && (
+        <div className="bg-amber-100 text-amber-800 px-4 py-2 text-center text-sm">
+          {React.createElement(Icons.alertTriangle, { className: "inline w-4 h-4 mr-2" })}
+          {firebaseError}
         </div>
-      </div>
+      )}
       
       {/* Main Content */}
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {renderContent()}
       </main>
       
-      {/* Enhanced Footer */}
-      <footer className="mt-12 bg-white border-t border-slate-200">
-        <div className="max-w-5xl mx-auto px-4 py-8">
-          <div className="text-center">
-            <p className="text-sm font-semibold text-slate-700 mb-2">
-              Phuket Family Trip Planner
-            </p>
-            <p className="text-xs text-slate-500">
-              August 19-29, 2025 • {planData ? planData.length : 0} days planned
-            </p>
-            <div className="flex items-center justify-center gap-4 mt-4 text-xs text-slate-400">
-              <span>v2.0</span>
-              <span>•</span>
-              <span>Built with ❤️ for family adventures</span>
-              <span>•</span>
-              <span className={isOnline ? 'text-green-600' : 'text-amber-600'}>
-                {isOnline ? '🟢 Connected' : '🔴 Offline Mode'}
-              </span>
-            </div>
-          </div>
-        </div>
+      {/* Footer */}
+      <footer className="text-center py-8 text-xs text-slate-400">
+        <p>Phuket Trip Planner v2.0 • Built with ❤️ for family adventures</p>
+        {isFirebaseConfigured() && (
+          <p className="mt-1">
+            {isOnline ? '🟢 Online - Syncing' : '🔴 Offline - Local Only'}
+          </p>
+        )}
       </footer>
     </div>
   );
