@@ -306,7 +306,7 @@ const SmartJetLagScheduler = ({ currentDate }) => {
       {/* Header */}
       <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white p-4 rounded-xl">
         <h2 className="text-xl font-bold mb-2 flex items-center gap-2">
-          <Icons.moon className="w-6 h-6" />
+          {React.createElement(Icons.moon, { className: "w-6 h-6" })}
           Smart Jet Lag Schedule - Day {currentDay}
         </h2>
         <p className="text-indigo-100 text-sm">
@@ -468,7 +468,7 @@ const SmartJetLagScheduler = ({ currentDate }) => {
       {/* Meal Schedule */}
       <div className="bg-white rounded-lg p-4 border border-slate-200">
         <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
-          <Icons.utensils className="w-5 h-5 text-rose-500" />
+          {React.createElement(Icons.utensils, { className: "w-5 h-5 text-rose-500" })}
           Meal Timing for Day {currentDay}
         </h3>
         <div className="grid grid-cols-3 gap-3">
@@ -491,7 +491,7 @@ const SmartJetLagScheduler = ({ currentDate }) => {
       {/* Light Exposure */}
       <div className="bg-gradient-to-r from-amber-50 to-yellow-50 rounded-lg p-4 border border-amber-200">
         <h3 className="font-semibold text-amber-800 mb-3 flex items-center gap-2">
-          <Icons.sun className="w-5 h-5" />
+          {React.createElement(Icons.sun, { className: "w-5 h-5" })}
           Light Exposure Plan
         </h3>
         <div className="space-y-2">
