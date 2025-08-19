@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TRIP_DATA, Icons } from '../data/staticData';
+import { TRIP_DATA } from '../data/staticData';
 import AddActivityForm from './AddActivityForm';
 import WeatherWidget from './WeatherWidget';
 import ExpenseTracker from './ExpenseTracker';
@@ -41,17 +41,17 @@ const ActivityBadge = ({ type }) => {
   );
 };
 
-// Helper functions
-const getTypeIcon = (type, props = { className: "w-5 h-5" }) => {
+// Helper functions - FIXED to use emojis
+const getTypeIcon = (type) => {
   const iconMap = {
-    travel: <Icons.plane {...props} />,
-    eat: <Icons.utensils {...props} />,
-    nap: <Icons.clock {...props} />,
-    indoor: <Icons.bookOpen {...props} />,
-    outdoor: <Icons.sun {...props} />,
-    mixed: <Icons.ferrisWheel {...props} />
+    travel: '✈️',
+    eat: '🍴',
+    nap: '⏰',
+    indoor: '📚',
+    outdoor: '☀️',
+    mixed: '🎡'
   };
-  return iconMap[type] || <Icons.ferrisWheel {...props} />;
+  return <span className="text-lg">{iconMap[type] || '🎯'}</span>;
 };
 
 const getTypeColor = (type) => {
@@ -66,7 +66,7 @@ const getTypeColor = (type) => {
   return colorMap[type] || 'bg-slate-100 text-slate-800';
 };
 
-// Undo notification component
+// Undo notification component - FIXED to use emojis
 const UndoNotification = ({ onUndo, onClose }) => {
   const [timeLeft, setTimeLeft] = useState(5);
   
@@ -87,7 +87,7 @@ const UndoNotification = ({ onUndo, onClose }) => {
   return (
     <div className="fixed bottom-4 right-4 bg-green-500 text-white px-4 py-3 rounded-lg shadow-lg z-50 animate-slide-up flex items-center gap-3">
       <div className="flex items-center gap-2">
-        <Icons.checkCircle className="w-5 h-5" />
+        <span>✅</span>
         <span>Activity added successfully!</span>
       </div>
       <button
@@ -100,7 +100,7 @@ const UndoNotification = ({ onUndo, onClose }) => {
         onClick={onClose}
         className="text-white hover:text-green-100"
       >
-        <Icons.x className="w-4 h-4" />
+        <span>✕</span>
       </button>
     </div>
   );
@@ -203,23 +203,23 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
             <p className="text-sm text-slate-600 mt-1">
               📍 {dayData.location === 'maiKhao' ? 'Mai Khao Area' : 'Phuket Old Town'}
             </p>
-            {/* Sync Status Indicator */}
+            {/* Sync Status Indicator - FIXED to use emojis */}
             <div className="flex items-center gap-2 mt-2">
               {syncStatus === 'syncing' && (
                 <span className="text-xs text-blue-600 flex items-center gap-1">
-                  <Icons.loader className="w-3 h-3 animate-spin" />
+                  <span className="animate-spin">⏳</span>
                   Syncing...
                 </span>
               )}
               {syncStatus === 'synced' && (
                 <span className="text-xs text-green-600 flex items-center gap-1">
-                  <Icons.cloud className="w-3 h-3" />
+                  <span>☁️</span>
                   Synced
                 </span>
               )}
               {syncStatus === 'error' && (
                 <span className="text-xs text-amber-600 flex items-center gap-1">
-                  <Icons.alertTriangle className="w-3 h-3" />
+                  <span>⚠️</span>
                   Local only
                 </span>
               )}
@@ -302,10 +302,11 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
                     </div>
                     <p className="text-xs text-slate-500">{block.time}</p>
                   </div>
-                  <Icons.chevronDown 
-                    className={`w-4 h-4 text-slate-400 transition-transform
-                      ${expandedActivity === block.id ? 'rotate-180' : ''}`}
-                  />
+                  {/* FIXED chevron icon */}
+                  <span className={`text-slate-400 transition-transform
+                    ${expandedActivity === block.id ? 'rotate-180' : ''}`}>
+                    ▼
+                  </span>
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
@@ -314,7 +315,7 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
                     className="opacity-0 group-hover:opacity-100 transition-opacity 
                              text-rose-500 hover:text-rose-700 p-1 ml-2"
                   >
-                    <Icons.trash2 className="w-4 h-4" />
+                    <span>🗑️</span>
                   </button>
                 </div>
                 
@@ -332,7 +333,7 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
             ))}
           </div>
 
-          {/* Add Activity Button/Form */}
+          {/* Add Activity Button/Form - FIXED */}
           {isAdding ? (
             <AddActivityForm 
               onAdd={handleAddItem} 
@@ -345,7 +346,7 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
                        font-semibold text-sky-600 hover:text-sky-800 p-2 
                        rounded-lg hover:bg-sky-50 transition-colors"
             >
-              <Icons.plusCircle className="w-5 h-5" />
+              <span>➕</span>
               Add Activity
             </button>
           )}
@@ -364,9 +365,9 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
               >
                 <div className="flex-shrink-0 mt-1 text-sky-600">
                   {item.type === 'eat' ? (
-                    <Icons.utensils className="w-5 h-5" />
+                    <span className="text-lg">🍴</span>
                   ) : (
-                    <Icons.ferrisWheel className="w-5 h-5" />
+                    <span className="text-lg">🎡</span>
                   )}
                 </div>
                 <div className="flex-1">
@@ -388,7 +389,7 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
                 </div>
                 <div className="flex items-center gap-1 text-xs font-bold 
                               text-amber-600 bg-amber-100 px-2 py-1 rounded-full">
-                  <Icons.star className="w-3 h-3 fill-current" />
+                  <span>⭐</span>
                   <span>{item.rating.toFixed(1)}</span>
                 </div>
               </div>
