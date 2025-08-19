@@ -8,6 +8,7 @@ import SmartSuggestions from './SmartSuggestions';
 import NewsFeed from './NewsFeed';
 import DailyPhrases from './DailyPhrases';
 import { initializeExpenses, getExpenses } from '../services/expenseService';
+import { useTrip } from '../context/TripContext';
 
 // Activity badge component
 const ActivityBadge = ({ type }) => {
@@ -65,7 +66,48 @@ const getTypeColor = (type) => {
   return colorMap[type] || 'bg-slate-100 text-slate-800';
 };
 
+// Undo notification component
+const UndoNotification = ({ onUndo, onClose }) => {
+  const [timeLeft, setTimeLeft] = useState(5);
+  
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          onClose();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    
+    return () => clearInterval(timer);
+  }, [onClose]);
+  
+  return (
+    <div className="fixed bottom-4 right-4 bg-green-500 text-white px-4 py-3 rounded-lg shadow-lg z-50 animate-slide-up flex items-center gap-3">
+      <div className="flex items-center gap-2">
+        <Icons.checkCircle className="w-5 h-5" />
+        <span>Activity added successfully!</span>
+      </div>
+      <button
+        onClick={onUndo}
+        className="px-3 py-1 bg-white text-green-600 rounded-md font-semibold hover:bg-green-50 transition-colors"
+      >
+        Undo ({timeLeft}s)
+      </button>
+      <button
+        onClick={onClose}
+        className="text-white hover:text-green-100"
+      >
+        <Icons.x className="w-4 h-4" />
+      </button>
+    </div>
+  );
+};
+
 const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
+  const { undoLastOperation, showNotification, syncStatus } = useTrip();
   const recommendations = TRIP_DATA.recommendations[dayData.location] || [];
   const fact = TRIP_DATA.phuketFacts[dayIndex % TRIP_DATA.phuketFacts.length];
   const [isAdding, setIsAdding] = useState(false);
@@ -73,6 +115,8 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [expenses, setExpenses] = useState(null);
   const [weatherData, setWeatherData] = useState(null);
+  const [showUndoNotification, setShowUndoNotification] = useState(false);
+  const [lastAddedActivity, setLastAddedActivity] = useState(null);
 
   useEffect(() => {
     // Initialize expenses if needed
@@ -90,15 +134,46 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
   }, [dayData, planData]);
 
   const handleAddItem = (newItem) => {
-    const updatedBlocks = [...dayData.blocks, newItem].sort(
+    // Ensure the item has a unique ID and timestamp
+    const itemWithId = {
+      ...newItem,
+      id: newItem.id || `activity_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      addedAt: new Date().toISOString()
+    };
+    
+    // Sort and update
+    const updatedBlocks = [...dayData.blocks, itemWithId].sort(
       (a, b) => (a.time || "99").localeCompare(b.time || "99")
     );
+    
+    // Update through context (which handles persistence)
     onUpdatePlan(dayIndex, updatedBlocks);
     setIsAdding(false);
+    setLastAddedActivity(itemWithId);
+    setShowUndoNotification(true);
+    
+    // Log for debugging
+    console.log('✨ Activity added:', itemWithId);
+  };
+
+  const handleUndo = () => {
+    const success = undoLastOperation();
+    if (success) {
+      setShowUndoNotification(false);
+      showNotification('↩️ Activity removed', 'info');
+      console.log('↩️ Undo successful');
+    }
   };
 
   const handleRemoveItem = (blockId) => {
-    onUpdatePlan(dayIndex, dayData.blocks.filter(b => b.id !== blockId));
+    // Find the activity being removed
+    const removedActivity = dayData.blocks.find(b => b.id === blockId);
+    
+    if (removedActivity) {
+      onUpdatePlan(dayIndex, dayData.blocks.filter(b => b.id !== blockId));
+      showNotification(`🗑️ Removed: ${removedActivity.title}`, 'info');
+      console.log('🗑️ Activity removed:', removedActivity);
+    }
   };
 
   const toggleActivityExpansion = (blockId) => {
@@ -111,7 +186,7 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
 
   return (
     <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-      {/* Header Section */}
+      {/* Header Section with Sync Status */}
       <div className="p-4 bg-slate-50 border-b">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           {/* Day Info */}
@@ -128,6 +203,27 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
             <p className="text-sm text-slate-600 mt-1">
               📍 {dayData.location === 'maiKhao' ? 'Mai Khao Area' : 'Phuket Old Town'}
             </p>
+            {/* Sync Status Indicator */}
+            <div className="flex items-center gap-2 mt-2">
+              {syncStatus === 'syncing' && (
+                <span className="text-xs text-blue-600 flex items-center gap-1">
+                  <Icons.loader className="w-3 h-3 animate-spin" />
+                  Syncing...
+                </span>
+              )}
+              {syncStatus === 'synced' && (
+                <span className="text-xs text-green-600 flex items-center gap-1">
+                  <Icons.cloud className="w-3 h-3" />
+                  Synced
+                </span>
+              )}
+              {syncStatus === 'error' && (
+                <span className="text-xs text-amber-600 flex items-center gap-1">
+                  <Icons.alertTriangle className="w-3 h-3" />
+                  Local only
+                </span>
+              )}
+            </div>
           </div>
           
           {/* Weather Widget */}
@@ -173,7 +269,13 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
           </div>
 
           {/* Timeline */}
-          <h3 className="font-semibold text-slate-700 mb-3">Timeline</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-slate-700">Timeline</h3>
+            <span className="text-xs text-slate-500">
+              {dayData.blocks.length} activities
+            </span>
+          </div>
+          
           <div className="space-y-2">
             {dayData.blocks.map(block => (
               <div key={block.id}>
@@ -191,6 +293,12 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
                       </p>
                       {/* Activity badge */}
                       <ActivityBadge type={block.type} />
+                      {/* New indicator if recently added */}
+                      {block.addedAt && new Date(block.addedAt) > new Date(Date.now() - 60000) && (
+                        <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full animate-pulse">
+                          NEW
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-slate-500">{block.time}</p>
                   </div>
@@ -306,6 +414,14 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
           </div>
         </div>
       </div>
+      
+      {/* Undo Notification */}
+      {showUndoNotification && (
+        <UndoNotification
+          onUndo={handleUndo}
+          onClose={() => setShowUndoNotification(false)}
+        />
+      )}
     </div>
   );
 };
