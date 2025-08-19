@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, doc, updateDoc, addDoc, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, doc, updateDoc, addDoc, query, orderBy, setDoc } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from './firebase/config';
 import { TRIP_DATA, Icons } from './data/staticData';
 import { useTrip } from './context/TripContext';
@@ -7,8 +7,7 @@ import { useTrip } from './context/TripContext';
 // Import all components
 import Header from './components/Header';
 import DayCard from './components/DayCard';
-// REMOVED: import JetLagTab from './components/JetLagTab';
-import SmartJetLagScheduler from './components/SmartJetLagScheduler'; // NEW IMPORT
+import SmartJetLagScheduler from './components/SmartJetLagScheduler';
 import FoodHelperTab from './components/FoodHelperTab';
 import CurrencyConverter from './components/CurrencyConverter';
 import KidComfortChecklist from './components/KidComfortChecklist';
@@ -24,7 +23,9 @@ const App = () => {
     activeTab, 
     currentDayIndex, 
     setCurrentDayIndex,
-    isOnline 
+    isOnline,
+    syncStatus,
+    showNotification
   } = useTrip();
   
   const [loading, setLoading] = useState(false);
@@ -32,57 +33,74 @@ const App = () => {
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
   const [weatherAlert, setWeatherAlert] = useState(null);
+  const [firebaseInitialized, setFirebaseInitialized] = useState(false);
   
-  // Firebase sync (only if configured)
+  // Initialize Firebase on mount
   useEffect(() => {
-    if (!isFirebaseConfigured()) {
-      console.log('Firebase not configured, using local storage only');
-      return;
-    }
-    
-    if (!isOnline) {
-      console.log('Offline - using cached data');
-      return;
-    }
-    
-    setLoading(true);
-    
-    try {
-      const q = query(collection(db, 'itinerary'), orderBy('date'));
-      const unsubscribe = onSnapshot(q, 
-        (snapshot) => {
-          if (!snapshot.empty) {
-            const firebasePlan = snapshot.docs.map(doc => ({
-              id: doc.id,
-              ...doc.data()
-            }));
-            setPlanData(firebasePlan);
-          } else {
-            // Initialize Firebase with default data if empty
-            initializeFirebase();
-          }
-          setLoading(false);
-        },
-        (error) => {
-          console.error('Firebase sync error:', error);
-          setFirebaseError('Using offline mode - changes saved locally');
-          setLoading(false);
-        }
-      );
+    const initializeFirebaseData = async () => {
+      if (!isFirebaseConfigured() || firebaseInitialized) return;
       
-      return () => unsubscribe();
-    } catch (error) {
-      console.error('Firebase setup error:', error);
-      setFirebaseError('Using offline mode - changes saved locally');
-      setLoading(false);
-    }
-  }, [isOnline, setPlanData]);
+      setLoading(true);
+      try {
+        // Check if data exists in Firebase
+        const q = query(collection(db, 'itinerary'), orderBy('date'));
+        const unsubscribe = onSnapshot(q, 
+          async (snapshot) => {
+            if (snapshot.empty && planData && planData.length > 0) {
+              // Initialize Firebase with current local data
+              console.log('📤 Initializing Firebase with local data...');
+              for (const day of planData) {
+                const docId = `day_${day.date}`;
+                await setDoc(doc(db, 'itinerary', docId), {
+                  ...day,
+                  createdAt: new Date().toISOString(),
+                  lastModified: new Date().toISOString()
+                });
+              }
+              showNotification('☁️ Data synced to cloud', 'success');
+            } else if (!snapshot.empty) {
+              // Firebase has data, use it
+              const firebasePlan = snapshot.docs.map(doc => ({
+                firebaseId: doc.id,
+                ...doc.data()
+              }));
+              
+              // Only update if different from local
+              const localDataStr = JSON.stringify(planData);
+              const firebaseDataStr = JSON.stringify(firebasePlan);
+              
+              if (localDataStr !== firebaseDataStr) {
+                console.log('📥 Loading data from Firebase...');
+                setPlanData(firebasePlan);
+                showNotification('☁️ Data loaded from cloud', 'success');
+              }
+            }
+            setFirebaseInitialized(true);
+            setLoading(false);
+          },
+          (error) => {
+            console.error('Firebase sync error:', error);
+            setFirebaseError('Using offline mode - changes saved locally');
+            setLoading(false);
+          }
+        );
+        
+        // Cleanup
+        return () => unsubscribe();
+      } catch (error) {
+        console.error('Firebase setup error:', error);
+        setFirebaseError('Using offline mode - changes saved locally');
+        setLoading(false);
+      }
+    };
+    
+    initializeFirebaseData();
+  }, [planData, setPlanData, showNotification, firebaseInitialized]);
   
-  // Check for weather alerts (only if weatherService exists)
+  // Check for weather alerts
   useEffect(() => {
     const fetchWeatherAlert = async () => {
       try {
-        // Try to import weatherService - if it doesn't exist, just skip
         const weatherModule = await import('./services/weatherService').catch(() => null);
         if (weatherModule && weatherModule.getWeatherForecast && weatherModule.checkWeatherAlert) {
           const forecast = await weatherModule.getWeatherForecast('maiKhao');
@@ -95,44 +113,9 @@ const App = () => {
     };
     
     fetchWeatherAlert();
-    // Check every hour
     const interval = setInterval(fetchWeatherAlert, 60 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
-  
-  // Initialize Firebase with default data
-  const initializeFirebase = async () => {
-    if (!isFirebaseConfigured()) return;
-    
-    try {
-      for (const day of TRIP_DATA.initialPlan) {
-        await addDoc(collection(db, 'itinerary'), {
-          ...day,
-          createdAt: new Date(),
-          lastModified: new Date()
-        });
-      }
-    } catch (error) {
-      console.error('Error initializing Firebase:', error);
-    }
-  };
-  
-  // Update Firebase when plan changes (if online and configured)
-  const handleUpdatePlan = async (dayIndex, updatedBlocks) => {
-    updateDayPlan(dayIndex, updatedBlocks);
-    
-    if (isFirebaseConfigured() && isOnline && planData[dayIndex]?.id) {
-      try {
-        const docRef = doc(db, 'itinerary', planData[dayIndex].id);
-        await updateDoc(docRef, { 
-          blocks: updatedBlocks,
-          lastModified: new Date()
-        });
-      } catch (error) {
-        console.error('Error updating Firebase:', error);
-      }
-    }
-  };
   
   // Navigation functions
   const goToNextDay = () => {
@@ -245,11 +228,11 @@ const App = () => {
               </button>
             </div>
             
-            {/* Day Card */}
+            {/* Enhanced Day Card */}
             <DayCard 
               dayData={currentDay} 
               dayIndex={currentDayIndex} 
-              onUpdatePlan={handleUpdatePlan}
+              onUpdatePlan={updateDayPlan}
               planData={planData}
             />
             
@@ -261,10 +244,10 @@ const App = () => {
         );
         
       case 'JetLag':
-        // UPDATED: Now using SmartJetLagScheduler with current date
+        // Using SmartJetLagScheduler instead of basic JetLagTab
         const currentDate = planData && planData[currentDayIndex] 
           ? planData[currentDayIndex].date 
-          : '2025-08-20'; // Default to trip start date
+          : '2025-08-20';
         return <SmartJetLagScheduler currentDate={currentDate} />;
         
       case 'FoodHelper':
@@ -293,24 +276,25 @@ const App = () => {
   };
   
   // Loading state
-  if (loading) {
+  if (loading && !firebaseInitialized) {
     return (
-      <div className="min-h-screen bg-slate-100 flex items-center justify-center">
-        <div className="text-center">
-          <Icons.plane className="w-12 h-12 text-sky-600 animate-pulse mx-auto mb-4"/>
-          <p className="text-slate-600">Loading your trip planner...</p>
+      <div className="min-h-screen bg-gradient-to-br from-sky-50 to-blue-100 flex items-center justify-center">
+        <div className="text-center bg-white p-8 rounded-2xl shadow-xl">
+          <Icons.plane className="w-16 h-16 text-sky-600 animate-pulse mx-auto mb-4"/>
+          <p className="text-lg font-semibold text-slate-700">Loading your trip planner...</p>
+          <p className="text-sm text-slate-500 mt-2">Syncing with cloud ☁️</p>
         </div>
       </div>
     );
   }
   
   return (
-    <div className="min-h-screen bg-slate-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       <Header />
       
       {/* Weather Alert Banner */}
       {weatherAlert && (
-        <div className={`px-4 py-2 text-center text-sm font-semibold
+        <div className={`px-4 py-2 text-center text-sm font-semibold animate-fade-in
           ${weatherAlert.type === 'danger' ? 'bg-red-100 text-red-800 border-b-2 border-red-300' :
             weatherAlert.type === 'warning' ? 'bg-amber-100 text-amber-800 border-b-2 border-amber-300' :
             'bg-blue-100 text-blue-800 border-b-2 border-blue-300'}`}>
@@ -319,27 +303,76 @@ const App = () => {
         </div>
       )}
       
-      {/* Firebase Error Banner */}
-      {firebaseError && (
-        <div className="bg-amber-100 text-amber-800 px-4 py-2 text-center text-sm">
-          <Icons.alertTriangle className="inline w-4 h-4 mr-2"/>
-          {firebaseError}
+      {/* Connection Status Banner */}
+      <div className="bg-white border-b border-slate-200">
+        <div className="max-w-5xl mx-auto px-4 py-2 flex items-center justify-between text-xs">
+          <div className="flex items-center gap-4">
+            {/* Online Status */}
+            <span className={`flex items-center gap-1 ${isOnline ? 'text-green-600' : 'text-amber-600'}`}>
+              <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-amber-500'} animate-pulse`} />
+              {isOnline ? 'Online' : 'Offline'}
+            </span>
+            
+            {/* Sync Status */}
+            {isFirebaseConfigured() && (
+              <span className="flex items-center gap-1 text-slate-600">
+                {syncStatus === 'syncing' && (
+                  <>
+                    <Icons.loader className="w-3 h-3 animate-spin" />
+                    Syncing...
+                  </>
+                )}
+                {syncStatus === 'synced' && (
+                  <>
+                    <Icons.cloud className="w-3 h-3 text-green-600" />
+                    Synced to cloud
+                  </>
+                )}
+                {syncStatus === 'error' && (
+                  <>
+                    <Icons.alertTriangle className="w-3 h-3 text-amber-600" />
+                    Local only
+                  </>
+                )}
+              </span>
+            )}
+          </div>
+          
+          {/* Firebase Error */}
+          {firebaseError && (
+            <span className="text-amber-600">
+              {firebaseError}
+            </span>
+          )}
         </div>
-      )}
+      </div>
       
       {/* Main Content */}
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {renderContent()}
       </main>
       
-      {/* Footer */}
-      <footer className="text-center py-8 text-xs text-slate-400">
-        <p>Phuket Trip Planner v2.0 • Built with ❤️ for family adventures</p>
-        {isFirebaseConfigured() && (
-          <p className="mt-1">
-            {isOnline ? '🟢 Online - Syncing' : '🔴 Offline - Local Only'}
-          </p>
-        )}
+      {/* Enhanced Footer */}
+      <footer className="mt-12 bg-white border-t border-slate-200">
+        <div className="max-w-5xl mx-auto px-4 py-8">
+          <div className="text-center">
+            <p className="text-sm font-semibold text-slate-700 mb-2">
+              Phuket Family Trip Planner
+            </p>
+            <p className="text-xs text-slate-500">
+              August 19-29, 2025 • {planData ? planData.length : 0} days planned
+            </p>
+            <div className="flex items-center justify-center gap-4 mt-4 text-xs text-slate-400">
+              <span>v2.0</span>
+              <span>•</span>
+              <span>Built with ❤️ for family adventures</span>
+              <span>•</span>
+              <span className={isOnline ? 'text-green-600' : 'text-amber-600'}>
+                {isOnline ? '🟢 Connected' : '🔴 Offline Mode'}
+              </span>
+            </div>
+          </div>
+        </div>
       </footer>
     </div>
   );
