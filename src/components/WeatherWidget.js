@@ -117,6 +117,13 @@ const WeatherWidget = ({ location, date }) => {
     return 'from-indigo-50 to-purple-100';
   };
   
+  // Prevent event bubbling handler
+  const handleInteraction = (e, callback) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (callback) callback();
+  };
+  
   if (loading) {
     return (
       <div className="animate-pulse">
@@ -137,7 +144,7 @@ const WeatherWidget = ({ location, date }) => {
   const rainPercent = Math.min(100, (todaysForecast?.rainAmount || 0) * 10);
   
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
       {/* Hero Weather Card */}
       <div className={`bg-gradient-to-br ${theme} rounded-xl p-4 shadow-lg border border-white/50`}>
         <div className="flex justify-between items-start">
@@ -234,12 +241,13 @@ const WeatherWidget = ({ location, date }) => {
         </div>
       </div>
       
-      {/* Tab Navigation */}
+      {/* Tab Navigation - FIXED with stopPropagation */}
       <div className="flex gap-1 p-1 bg-white rounded-lg shadow-sm">
         {['overview', 'activities', 'comfort'].map((tab) => (
           <button
             key={tab}
-            onClick={() => setActiveTab(tab)}
+            onClick={(e) => handleInteraction(e, () => setActiveTab(tab))}
+            onTouchEnd={(e) => handleInteraction(e)} 
             className={`flex-1 py-1.5 px-2 rounded-md text-xs font-semibold transition-all ${
               activeTab === tab 
                 ? 'bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-md' 
@@ -254,7 +262,7 @@ const WeatherWidget = ({ location, date }) => {
       </div>
       
       {/* Tab Content */}
-      <div className="space-y-2">
+      <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
         {activeTab === 'overview' && (
           <>
             {/* Smart Timing Bar */}
@@ -405,25 +413,27 @@ const WeatherWidget = ({ location, date }) => {
         )}
       </div>
       
-      {/* Quick Actions Bar */}
+      {/* Quick Actions Bar - FIXED */}
       <div className="flex gap-2 justify-center">
         <button
-          onClick={() => setShowHourly(!showHourly)}
+          onClick={(e) => handleInteraction(e, () => setShowHourly(!showHourly))}
+          onTouchEnd={(e) => handleInteraction(e)}
           className="px-3 py-1.5 bg-white rounded-lg shadow-sm border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
         >
           {showHourly ? '📊 Hide' : '📊 Show'} Hourly
         </button>
         <button
-          onClick={fetchWeatherData}
+          onClick={(e) => handleInteraction(e, fetchWeatherData)}
+          onTouchEnd={(e) => handleInteraction(e)}
           className="px-3 py-1.5 bg-white rounded-lg shadow-sm border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
         >
           🔄 Refresh
         </button>
       </div>
       
-      {/* Hourly Forecast */}
+      {/* Hourly Forecast - FIXED */}
       {showHourly && todaysForecast?.hourly && (
-        <div className="bg-white rounded-lg p-3 shadow-md border border-slate-200">
+        <div className="bg-white rounded-lg p-3 shadow-md border border-slate-200" onClick={(e) => e.stopPropagation()}>
           <h4 className="text-sm font-bold text-slate-700 mb-2">Hourly Forecast</h4>
           <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
             {todaysForecast.hourly.slice(0, 8).map((hour, i) => (
@@ -432,6 +442,7 @@ const WeatherWidget = ({ location, date }) => {
                 className={`flex-shrink-0 text-center p-2 rounded-lg min-w-[60px] ${
                   hour.rain > 0 ? 'bg-blue-50 border border-blue-200' : 'bg-slate-50 border border-slate-200'
                 }`}
+                onClick={(e) => e.stopPropagation()}
               >
                 <p className="text-xs font-semibold text-slate-600">{hour.time}</p>
                 <span className="text-2xl block my-1">{getWeatherEmoji(hour.description)}</span>
