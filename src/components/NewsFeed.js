@@ -4,10 +4,7 @@ const NewsFeed = ({ location, date }) => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
-  const [dismissedAlerts, setDismissedAlerts] = useState(() => {
-    const saved = localStorage.getItem('phuket_dismissed_alerts');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [dismissedAlerts, setDismissedAlerts] = useState([]);
   const [lastUpdate, setLastUpdate] = useState(null);
 
   useEffect(() => {
@@ -18,20 +15,11 @@ const NewsFeed = ({ location, date }) => {
   }, [date, location]);
 
   const fetchAndProcessNews = async () => {
-    // Check cache first
-    const cached = localStorage.getItem('phuket_ai_news_cache');
-    if (cached) {
-      const { data, timestamp } = JSON.parse(cached);
-      if (Date.now() - timestamp < 7200000) { // 2 hour cache
-        setEvents(data.filter(e => !dismissedAlerts.includes(e.id)));
-        setLastUpdate(new Date(timestamp));
-        return;
-      }
-    }
-
     setLoading(true);
+    const allAlerts = [];
+    
     try {
-      // Step 1: Fetch RSS feeds
+      // Step 1: Try to fetch RSS feeds and process with AI
       const rssFeeds = [
         'https://news.google.com/rss/search?q=Phuket+weather+beach+safety&hl=en-US&gl=US&ceid=US:en',
         'https://news.google.com/rss/search?q=Phuket+events+August+2025&hl=en-US&gl=US&ceid=US:en',
@@ -48,79 +36,47 @@ const NewsFeed = ({ location, date }) => {
       const allArticles = feedData.flatMap(f => f.items || []).slice(0, 15);
 
       // Step 2: Process with Groq if we have articles
-      let processedNews = [];
       if (allArticles.length > 0) {
-        processedNews = await processWithGroq(allArticles);
+        const aiNews = await processWithGroq(allArticles);
+        allAlerts.push(...aiNews);
       }
-      
-      // Step 3: Add static alerts
-      const staticAlerts = getStaticAlerts();
-      
-      // Step 4: Combine all events
-      const combinedEvents = [...processedNews, ...staticAlerts];
-      
-      // Step 5: Filter dismissed and save
-      const activeEvents = combinedEvents.filter(e => !dismissedAlerts.includes(e.id));
-      
-      // Cache the results
-      localStorage.setItem('phuket_ai_news_cache', JSON.stringify({
-        data: combinedEvents,
-        timestamp: Date.now()
-      }));
-      
-      setEvents(activeEvents);
-      setLastUpdate(new Date());
-      
     } catch (error) {
-      console.error('News fetch failed:', error);
-      // Fallback to static alerts only
-      const staticAlerts = getStaticAlerts();
-      setEvents(staticAlerts.filter(e => !dismissedAlerts.includes(e.id)));
-    } finally {
-      setLoading(false);
+      console.error('News processing error:', error);
     }
+    
+    // Step 3: Always add static alerts
+    const staticAlerts = getStaticAlerts();
+    allAlerts.push(...staticAlerts);
+    
+    // Step 4: Filter dismissed and update
+    const activeAlerts = allAlerts.filter(a => !dismissedAlerts.includes(a.id));
+    setEvents(activeAlerts);
+    setLastUpdate(new Date());
+    setLoading(false);
   };
 
   const processWithGroq = async (articles) => {
-    // Prepare article summary for AI
-    const articleSummary = articles.map(a => ({
-      title: a.title || '',
-      description: (a.description || '').substring(0, 200),
-      date: a.pubDate || ''
-    }));
+    try {
+      // Prepare concise article summary
+      const articleSummary = articles.slice(0, 10).map(a => 
+        `${a.title || ''} - ${(a.description || '').substring(0, 100)}`
+      ).join('\n');
 
-    const prompt = `Analyze these news items and extract ONLY information relevant to tourists in Phuket from August 19-29, 2025.
+      const prompt = `Analyze these news items and extract ONLY tourist-relevant info for Phuket Aug 19-29, 2025:
 
-News items:
-${JSON.stringify(articleSummary, null, 2)}
+${articleSummary}
 
-Filter for:
-1. Weather warnings or conditions affecting beaches
-2. Jellyfish or marine hazards  
-3. Local events, festivals, or markets happening Aug 19-29
-4. Transportation disruptions
-5. Safety alerts for tourists
-6. Beach conditions
-
-Ignore: politics, crime unless tourist-targeted, business news, COVID, property, sports
-
-Return as JSON array with EXACTLY this format (no markdown, no code blocks, just JSON):
+Return JSON array (no markdown):
 [{
   "type": "warning",
-  "title": "Brief clear title",
-  "description": "One sentence description",
+  "title": "Brief title",
+  "description": "One sentence",
   "priority": "high",
   "icon": "⚠️"
 }]
 
-Use type: "warning" for safety/weather, "event" for activities, "tip" for advice
-Use priority: "high" for urgent safety, "medium" for important info, "low" for general tips
-Use appropriate emoji for icon
+Max 3 items. Empty array if nothing relevant.`;
 
-Return empty array [] if nothing relevant. Maximum 5 items.`;
-
-    try {
-      // Call Netlify function
       const response = await fetch('/.netlify/functions/groq-filter', {
         method: 'POST',
         headers: {
@@ -130,46 +86,45 @@ Return empty array [] if nothing relevant. Maximum 5 items.`;
       });
 
       if (!response.ok) {
-        console.error('Groq function failed:', response.status);
+        console.warn('Groq function returned:', response.status);
         return [];
       }
 
       const data = await response.json();
-      const content = data.choices?.[0]?.message?.content || '[]';
       
-      // Parse AI response
-      let parsedEvents = [];
-      try {
-        // Clean any markdown formatting if present
-        const cleanContent = content
-          .replace(/```json\n?/g, '')
-          .replace(/```\n?/g, '')
-          .trim();
-        parsedEvents = JSON.parse(cleanContent);
+      // Parse the AI response
+      if (data && data.choices && data.choices[0] && data.choices[0].message) {
+        const content = data.choices[0].message.content;
         
-        // Validate it's an array
-        if (!Array.isArray(parsedEvents)) {
-          console.error('AI response not an array');
-          return [];
+        try {
+          // Clean any markdown formatting
+          const cleanContent = content
+            .replace(/```json\n?/g, '')
+            .replace(/```\n?/g, '')
+            .trim();
+          
+          const parsedEvents = JSON.parse(cleanContent);
+          
+          if (Array.isArray(parsedEvents)) {
+            return parsedEvents.slice(0, 3).map((event, idx) => ({
+              ...event,
+              id: `ai_${Date.now()}_${idx}`,
+              isAI: true,
+              dismissible: true,
+              icon: event.icon || '📰',
+              type: event.type || 'tip',
+              priority: event.priority || 'low'
+            }));
+          }
+        } catch (parseError) {
+          console.warn('Failed to parse AI response:', parseError);
         }
-      } catch (e) {
-        console.error('Failed to parse Groq response:', e);
-        return [];
       }
-
-      // Add metadata to AI-generated events
-      return parsedEvents.slice(0, 5).map((event, idx) => ({
-        ...event,
-        id: `ai_${Date.now()}_${idx}`,
-        isAI: true,
-        dismissible: true,
-        icon: event.icon || '📰'
-      }));
-
     } catch (error) {
-      console.error('Groq processing error:', error);
-      return [];
+      console.warn('Groq processing error:', error);
     }
+    
+    return [];
   };
 
   const getStaticAlerts = () => {
@@ -221,10 +176,13 @@ Return empty array [] if nothing relevant. Maximum 5 items.`;
   };
 
   const dismissAlert = (id) => {
-    const newDismissed = [...dismissedAlerts, id];
-    setDismissedAlerts(newDismissed);
-    localStorage.setItem('phuket_dismissed_alerts', JSON.stringify(newDismissed));
+    setDismissedAlerts([...dismissedAlerts, id]);
     setEvents(events.filter(e => e.id !== id));
+  };
+
+  const resetAlerts = () => {
+    setDismissedAlerts([]);
+    fetchAndProcessNews();
   };
 
   const getPriorityColor = (priority) => {
@@ -244,12 +202,9 @@ Return empty array [] if nothing relevant. Maximum 5 items.`;
     }
   };
 
-  // Don't render if no events
-  if (events.length === 0 && !loading) return null;
-
+  // Always render the component
   return (
     <div className="bg-white rounded-lg shadow-sm border">
-      {/* Collapsible Header */}
       <button
         onClick={() => setCollapsed(!collapsed)}
         className="w-full p-4 flex items-center justify-between hover:bg-slate-50 transition-colors"
@@ -269,22 +224,19 @@ Return empty array [] if nothing relevant. Maximum 5 items.`;
         </span>
       </button>
 
-      {/* Content */}
       {!collapsed && (
         <div className="px-4 pb-4 border-t">
           {events.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-sm text-slate-500">
-                {loading ? 'Checking for updates...' : 'No relevant updates for today'}
+              <p className="text-sm text-slate-500 mb-3">
+                {loading ? 'Checking for updates...' : 'All alerts dismissed'}
               </p>
-              {!loading && (
-                <button
-                  onClick={fetchAndProcessNews}
-                  className="mt-2 text-xs text-sky-600 hover:text-sky-800"
-                >
-                  Check for Updates
-                </button>
-              )}
+              <button
+                onClick={resetAlerts}
+                className="text-sm text-sky-600 hover:text-sky-800 font-medium"
+              >
+                {loading ? '⏳ Loading...' : '🔄 Refresh Updates'}
+              </button>
             </div>
           ) : (
             <>
@@ -328,14 +280,13 @@ Return empty array [] if nothing relevant. Maximum 5 items.`;
                 ))}
               </div>
 
-              {/* Footer Actions */}
               <div className="flex items-center justify-between mt-3 pt-3 border-t">
                 <button
                   onClick={fetchAndProcessNews}
                   disabled={loading}
                   className="text-xs text-sky-600 hover:text-sky-800 disabled:opacity-50"
                 >
-                  🔄 Refresh Updates
+                  🔄 Refresh
                 </button>
                 <p className="text-xs text-slate-400">
                   Tourist Police: 1155
