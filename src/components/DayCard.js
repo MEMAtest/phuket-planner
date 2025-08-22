@@ -184,10 +184,16 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
     setExpenses(getExpenses());
   };
 
+  // Prevent event bubbling for interactive elements
+  const handleInteraction = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+  };
+
   return (
     <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-      {/* Header Section with Sync Status */}
-      <div className="p-4 bg-slate-50 border-b">
+      {/* Header Section with Sync Status - NO TOUCH HANDLERS HERE */}
+      <div className="p-4 bg-slate-50 border-b" onClick={handleInteraction}>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           {/* Day Info */}
           <div>
@@ -226,7 +232,7 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
             </div>
           </div>
           
-          {/* Weather Widget */}
+          {/* Weather Widget - Has its own event handling */}
           <div className="flex-1 max-w-sm">
             <WeatherWidget 
               location={dayData.location} 
@@ -237,8 +243,8 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
         </div>
       </div>
 
-      {/* Smart Suggestions */}
-      <div className="p-4 border-b">
+      {/* Smart Suggestions - NO TOUCH HANDLERS */}
+      <div className="p-4 border-b" onClick={handleInteraction}>
         <SmartSuggestions
           currentTime={currentTime}
           dayData={dayData}
@@ -247,8 +253,8 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
         />
       </div>
 
-      {/* News Feed */}
-      <div className="p-4 border-b">
+      {/* News Feed - NO TOUCH HANDLERS */}
+      <div className="p-4 border-b" onClick={handleInteraction}>
         <NewsFeed
           location={dayData.location}
           date={dayData.date}
@@ -257,10 +263,10 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
 
       {/* Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-5">
-        {/* Left Column - Timeline & Expenses */}
+        {/* Left Column - Timeline & Expenses - NO TOUCH HANDLERS ON INTERACTIVE ELEMENTS */}
         <div className="lg:col-span-3 p-4">
           {/* Expense Tracker */}
-          <div className="mb-4">
+          <div className="mb-4" onClick={handleInteraction}>
             <ExpenseTracker
               date={dayData.date}
               activityId={null}
@@ -281,7 +287,10 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
               <div key={block.id}>
                 <div 
                   className="flex items-center group cursor-pointer hover:bg-slate-50 rounded-lg p-2 transition-colors"
-                  onClick={() => toggleActivityExpansion(block.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleActivityExpansion(block.id);
+                  }}
                 >
                   <div className={`p-2 rounded-full ${getTypeColor(block.type)} mr-3`}>
                     {getTypeIcon(block.type)}
@@ -321,7 +330,7 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
                 
                 {/* Expanded Activity Details */}
                 {expandedActivity === block.id && (
-                  <div className="ml-11 mt-2">
+                  <div className="ml-11 mt-2" onClick={handleInteraction}>
                     <ActivityNotes
                       activityId={block.id}
                       activityTitle={block.title}
@@ -333,15 +342,20 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
             ))}
           </div>
 
-          {/* Add Activity Button/Form - FIXED */}
+          {/* Add Activity Button/Form - NO TOUCH HANDLERS */}
           {isAdding ? (
-            <AddActivityForm 
-              onAdd={handleAddItem} 
-              onCancel={() => setIsAdding(false)} 
-            />
+            <div onClick={handleInteraction}>
+              <AddActivityForm 
+                onAdd={handleAddItem} 
+                onCancel={() => setIsAdding(false)} 
+              />
+            </div>
           ) : (
             <button 
-              onClick={() => setIsAdding(true)} 
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsAdding(true);
+              }}
               className="mt-3 w-full text-left flex items-center gap-2 text-sm 
                        font-semibold text-sky-600 hover:text-sky-800 p-2 
                        rounded-lg hover:bg-sky-50 transition-colors"
@@ -352,8 +366,8 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
           )}
         </div>
 
-        {/* Right Column - Recommendations & Facts */}
-        <div className="lg:col-span-2 p-4 bg-slate-50 lg:border-l">
+        {/* Right Column - Recommendations & Facts - NO TOUCH HANDLERS */}
+        <div className="lg:col-span-2 p-4 bg-slate-50 lg:border-l" onClick={handleInteraction}>
           {/* Local Options */}
           <h3 className="font-semibold text-slate-700 mb-3">Local Options</h3>
           <div className="space-y-3 mb-4">
@@ -362,6 +376,7 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
                 key={item.name} 
                 className="bg-white rounded-lg p-3 flex items-start gap-3 
                          border hover:shadow-md transition-shadow"
+                onClick={handleInteraction}
               >
                 <div className="flex-shrink-0 mt-1 text-sky-600">
                   {item.type === 'eat' ? (
@@ -377,6 +392,7 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
                     rel="noopener noreferrer" 
                     className="font-semibold text-sm text-slate-800 
                              hover:text-sky-600 transition-colors"
+                    onClick={handleInteraction}
                   >
                     {item.name}
                   </a>
