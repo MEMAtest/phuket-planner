@@ -18,125 +18,85 @@ const NewsFeed = ({ location, date }) => {
     const allAlerts = [];
     
     try {
-      // Step 1: Fetch REAL news from Google News RSS
+      // Use simpler Google News RSS URL (no ceid parameter)
+      const rssUrl = 'https://news.google.com/rss/search?q=Phuket+Thailand&hl=en';
       const response = await fetch(
-        `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent('https://news.google.com/rss/search?q=Phuket+Thailand&hl=en-US&gl=US&ceid=US:en')}&count=20`
+        `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`
       );
       
       if (response.ok) {
         const data = await response.json();
         
         if (data.status === 'ok' && data.items && data.items.length > 0) {
-          // Step 2: Send the REAL headlines to Groq to pick the best ones
-          const headlines = data.items.map(item => ({
-            title: item.title.split(' - ')[0], // Remove source
-            source: item.title.split(' - ')[1] || 'News',
-            date: item.pubDate
-          }));
-          
-          const groqPrompt = `Here are today's real Phuket news headlines. Pick the TOP 5 most important/interesting for tourists:
-
-${headlines.map((h, i) => `${i+1}. ${h.title}`).join('\n')}
-
-Return as JSON array with your TOP 5 picks:
-[{
-  "type": "news",
-  "title": "Shortened headline (max 8 words)",
-  "description": "Why this matters to tourists (one sentence)",
-  "priority": "high/medium/low",
-  "icon": "📰"
-}]
-
-Use priority high for safety/urgent, medium for important events, low for general news.
-Use icons: ⚠️ for warnings, 🌧️ for weather, 🎉 for events, 📰 for general news, 🚨 for urgent`;
-
-          const groqResponse = await fetch('/.netlify/functions/groq-filter', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ prompt: groqPrompt })
-          });
-
-          if (groqResponse.ok) {
-            const groqData = await groqResponse.json();
+          // Show top 5 news items directly - no Groq needed
+          const newsAlerts = data.items.slice(0, 5).map((item, idx) => {
+            // Clean up the title (remove source)
+            const title = item.title.split(' - ')[0];
+            const source = item.title.split(' - ')[1] || 'News';
             
-            let content = '';
-            if (groqData.choices && groqData.choices[0] && groqData.choices[0].message) {
-              content = groqData.choices[0].message.content;
-            }
-
-            if (content) {
-              // Extract JSON from response
-              const jsonMatch = content.match(/\[[\s\S]*\]/);
-              if (jsonMatch) {
-                try {
-                  const parsed = JSON.parse(jsonMatch[0]);
-                  if (Array.isArray(parsed)) {
-                    const newsAlerts = parsed.map((item, idx) => ({
-                      id: `news_${Date.now()}_${idx}`,
-                      type: item.type || 'news',
-                      title: item.title || 'News Update',
-                      description: item.description || 'Latest from Phuket',
-                      priority: item.priority || 'low',
-                      icon: item.icon || '📰',
-                      isAI: true,
-                      dismissible: true
-                    }));
-                    allAlerts.push(...newsAlerts);
-                  }
-                } catch (e) {
-                  console.log('Parse error, falling back to direct news');
-                  // Fallback: show news directly without AI filtering
-                  const fallbackNews = data.items.slice(0, 3).map((item, idx) => ({
-                    id: `news_${Date.now()}_${idx}`,
-                    type: 'news',
-                    title: item.title.split(' - ')[0].substring(0, 50),
-                    description: 'Latest Phuket news',
-                    priority: 'low',
-                    icon: '📰',
-                    dismissible: true
-                  }));
-                  allAlerts.push(...fallbackNews);
-                }
-              }
+            // Extract clean description
+            let description = '';
+            if (item.description) {
+              // Remove HTML tags
+              description = item.description.replace(/<[^>]*>/g, '');
+              // Limit length
+              description = description.substring(0, 80) + '...';
             } else {
-              // If Groq fails, show raw news anyway
-              const fallbackNews = data.items.slice(0, 3).map((item, idx) => ({
-                id: `news_${Date.now()}_${idx}`,
-                type: 'news',
-                title: item.title.split(' - ')[0].substring(0, 50),
-                description: 'Latest Phuket news',
-                priority: 'low',
-                icon: '📰',
-                dismissible: true
-              }));
-              allAlerts.push(...fallbackNews);
+              description = `Source: ${source}`;
             }
-          } else {
-            // Groq not working, show news directly
-            const directNews = data.items.slice(0, 5).map((item, idx) => ({
+            
+            // Determine type and priority based on keywords
+            let type = 'news';
+            let priority = 'low';
+            let icon = '📰';
+            
+            const lowerTitle = title.toLowerCase();
+            if (lowerTitle.includes('storm') || lowerTitle.includes('warning') || lowerTitle.includes('alert')) {
+              type = 'warning';
+              priority = 'high';
+              icon = '⚠️';
+            } else if (lowerTitle.includes('festival') || lowerTitle.includes('event') || lowerTitle.includes('celebration')) {
+              type = 'event';
+              priority = 'medium';
+              icon = '🎉';
+            } else if (lowerTitle.includes('rain') || lowerTitle.includes('weather')) {
+              icon = '🌧️';
+            } else if (lowerTitle.includes('tourist') || lowerTitle.includes('travel')) {
+              icon = '✈️';
+            }
+            
+            return {
               id: `news_${Date.now()}_${idx}`,
-              type: 'news',
-              title: item.title.split(' - ')[0].substring(0, 50),
-              description: item.description ? 
-                item.description.replace(/<[^>]*>/g, '').substring(0, 80) + '...' : 
-                'Click to learn more',
-              priority: 'low',
-              icon: '📰',
+              type: type,
+              title: title.substring(0, 60),
+              description: description,
+              priority: priority,
+              icon: icon,
               dismissible: true
-            }));
-            allAlerts.push(...directNews);
-          }
+            };
+          });
+          
+          allAlerts.push(...newsAlerts);
         }
       }
     } catch (error) {
-      console.log('News fetch error');
+      console.log('RSS fetch failed, using fallback news');
+      // Fallback: Show generic travel tips if RSS fails
+      allAlerts.push({
+        id: 'tip_weather',
+        type: 'tip',
+        title: 'August Weather',
+        description: 'Expect afternoon showers. Carry a light raincoat.',
+        priority: 'low',
+        icon: '🌧️',
+        dismissible: true
+      });
     }
     
-    // Add static alerts
+    // Always add static alerts
     const currentDate = new Date(date || new Date());
     
+    // Jellyfish warning (Aug 20-28)
     if (currentDate >= new Date('2025-08-20') && currentDate <= new Date('2025-08-28')) {
       allAlerts.push({
         id: 'jellyfish_warning',
@@ -149,6 +109,7 @@ Use icons: ⚠️ for warnings, 🌧️ for weather, 🎉 for events, 📰 for g
       });
     }
     
+    // Sunday Walking Street
     if (currentDate.getDay() === 0) {
       allAlerts.push({
         id: 'sunday_market',
@@ -161,17 +122,28 @@ Use icons: ⚠️ for warnings, 🌧️ for weather, 🎉 for events, 📰 for g
       });
     }
     
+    // Always show useful tips
     allAlerts.push({
       id: 'atm_tip',
       type: 'tip',
       title: 'ATM Tip',
-      description: 'Yellow (Krungsri) and Purple (SCB) ATMs have lowest fees for foreign cards.',
+      description: 'Yellow (Krungsri) and Purple (SCB) ATMs have lowest fees.',
       priority: 'low',
       icon: '💳',
       dismissible: true
     });
     
-    // Filter dismissed and update
+    allAlerts.push({
+      id: 'transport_tip',
+      type: 'tip',
+      title: 'Transport Tip',
+      description: 'Use Grab or Bolt apps for fair taxi prices.',
+      priority: 'low',
+      icon: '🚕',
+      dismissible: true
+    });
+    
+    // Filter out dismissed alerts
     const activeAlerts = allAlerts.filter(a => !dismissedAlerts.includes(a.id));
     setEvents(activeAlerts);
     setLastUpdate(new Date());
@@ -206,6 +178,7 @@ Use icons: ⚠️ for warnings, 🌧️ for weather, 🎉 for events, 📰 for g
     }
   };
 
+  // Always render something
   return (
     <div className="bg-white rounded-lg shadow-sm border">
       <button
@@ -213,12 +186,12 @@ Use icons: ⚠️ for warnings, 🌧️ for weather, 🎉 for events, 📰 for g
         className="w-full p-4 flex items-center justify-between hover:bg-slate-50 transition-colors"
       >
         <h3 className="font-semibold text-slate-800 flex items-center gap-2">
-          <span>🤖</span>
-          Local Updates & AI News
+          <span>📍</span>
+          Local Updates & News
           {loading && <span className="text-xs text-sky-600 animate-pulse ml-2">Updating...</span>}
           {lastUpdate && !loading && (
             <span className="text-xs text-slate-500 ml-2">
-              Updated {lastUpdate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              {lastUpdate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
           )}
         </h3>
@@ -232,13 +205,13 @@ Use icons: ⚠️ for warnings, 🌧️ for weather, 🎉 for events, 📰 for g
           {events.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-sm text-slate-500 mb-3">
-                {loading ? 'Fetching real news...' : 'No news available'}
+                {loading ? 'Loading news...' : 'All updates dismissed'}
               </p>
               <button
                 onClick={resetAlerts}
                 className="text-sm text-sky-600 hover:text-sky-800 font-medium"
               >
-                🔄 Refresh
+                Show All Updates
               </button>
             </div>
           ) : (
@@ -261,11 +234,6 @@ Use icons: ⚠️ for warnings, 🌧️ for weather, 🎉 for events, 📰 for g
                         }`}>
                           {getTypeLabel(event.type)}
                         </span>
-                        {event.isAI && (
-                          <span className="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-full">
-                            AI Filtered
-                          </span>
-                        )}
                       </div>
                       <p className="text-xs mt-1 text-slate-600">
                         {event.description}
