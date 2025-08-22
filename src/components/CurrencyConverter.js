@@ -11,8 +11,10 @@ const CurrencyConverter = () => {
     return saved ? parseFloat(saved) : DEFAULT_RATE;
   });
   
-  const [gbp, setGbp] = useState(100);
-  const [thb, setThb] = useState(100 * rate);
+  const [amount1, setAmount1] = useState(100);
+  const [amount2, setAmount2] = useState(100 * rate);
+  const [currency1, setCurrency1] = useState('GBP');
+  const [currency2, setCurrency2] = useState('THB');
   const [lastUpdated, setLastUpdated] = useState(() => {
     const saved = localStorage.getItem('exchange_rate_updated');
     return saved || new Date().toISOString();
@@ -36,8 +38,12 @@ const CurrencyConverter = () => {
         const newRate = data.rates?.THB || DEFAULT_RATE;
         setRate(newRate);
         setLastUpdated(new Date().toISOString());
-        // Recalculate THB with new rate
-        setThb(gbp * newRate);
+        // Recalculate amount2 with new rate
+        if (currency1 === 'GBP') {
+          setAmount2(parseFloat((amount1 * newRate).toFixed(2)));
+        } else {
+          setAmount2(parseFloat((amount1 / newRate).toFixed(2)));
+        }
       }
     } catch (error) {
       console.log('Could not fetch exchange rate, using default:', DEFAULT_RATE);
@@ -57,22 +63,48 @@ const CurrencyConverter = () => {
     }
   }, []);
 
-  const handleGbpChange = (e) => {
+  const handleAmount1Change = (e) => {
     const val = parseFloat(e.target.value) || 0;
-    setGbp(val);
-    setThb(parseFloat((val * rate).toFixed(2)));
+    setAmount1(val);
+    
+    if (currency1 === 'GBP') {
+      setAmount2(parseFloat((val * rate).toFixed(2)));
+    } else {
+      setAmount2(parseFloat((val / rate).toFixed(2)));
+    }
   };
 
-  const handleThbChange = (e) => {
+  const handleAmount2Change = (e) => {
     const val = parseFloat(e.target.value) || 0;
-    setThb(val);
-    setGbp(parseFloat((val / rate).toFixed(2)));
+    setAmount2(val);
+    
+    if (currency1 === 'GBP') {
+      setAmount1(parseFloat((val / rate).toFixed(2)));
+    } else {
+      setAmount1(parseFloat((val * rate).toFixed(2)));
+    }
+  };
+
+  const handleSwapCurrencies = () => {
+    // Swap currencies
+    setCurrency1(currency2);
+    setCurrency2(currency1);
+    
+    // Swap amounts
+    setAmount1(amount2);
+    setAmount2(amount1);
   };
 
   const handleRateChange = (e) => {
     const val = parseFloat(e.target.value) || DEFAULT_RATE;
     setRate(val);
-    setThb(parseFloat((gbp * val).toFixed(2)));
+    
+    // Recalculate amount2 based on current direction
+    if (currency1 === 'GBP') {
+      setAmount2(parseFloat((amount1 * val).toFixed(2)));
+    } else {
+      setAmount2(parseFloat((amount1 / val).toFixed(2)));
+    }
     setLastUpdated(new Date().toISOString());
   };
 
@@ -85,6 +117,30 @@ const CurrencyConverter = () => {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  // Get currency symbols
+  const getCurrencySymbol = (currency) => {
+    return currency === 'GBP' ? '£' : '฿';
+  };
+
+  // Calculate quick reference amounts based on current direction
+  const getQuickReferences = () => {
+    if (currency1 === 'GBP') {
+      return [
+        { from: '£10', to: `฿${(10 * rate).toFixed(0)}` },
+        { from: '£50', to: `฿${(50 * rate).toFixed(0)}` },
+        { from: '£100', to: `฿${(100 * rate).toFixed(0)}` },
+        { from: '£500', to: `฿${(500 * rate).toFixed(0)}` }
+      ];
+    } else {
+      return [
+        { from: '฿100', to: `£${(100 / rate).toFixed(2)}` },
+        { from: '฿500', to: `£${(500 / rate).toFixed(2)}` },
+        { from: '฿1000', to: `£${(1000 / rate).toFixed(2)}` },
+        { from: '฿5000', to: `£${(5000 / rate).toFixed(2)}` }
+      ];
+    }
   };
 
   return (
@@ -104,28 +160,51 @@ const CurrencyConverter = () => {
         </button>
       </div>
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
-        <div>
+      <div className="flex items-center gap-2">
+        {/* First Currency Input */}
+        <div className="flex-1">
           <label className="block text-sm font-medium text-slate-600 mb-1">
-            GBP (£)
+            {currency1} ({getCurrencySymbol(currency1)})
           </label>
           <input 
             type="number" 
-            value={gbp} 
-            onChange={handleGbpChange} 
+            value={amount1} 
+            onChange={handleAmount1Change} 
             className="block w-full px-3 py-2 rounded-md border border-slate-300 shadow-sm text-lg font-bold focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
             placeholder="0.00"
           />
         </div>
         
-        <div>
+        {/* Swap Button */}
+        <button
+          onClick={handleSwapCurrencies}
+          className="mt-6 p-2 bg-sky-100 text-sky-700 rounded-lg hover:bg-sky-200 transition-all transform hover:scale-110 active:scale-95"
+          title="Swap currencies"
+        >
+          <svg 
+            width="24" 
+            height="24" 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="currentColor" 
+            strokeWidth="2" 
+            strokeLinecap="round" 
+            strokeLinejoin="round"
+            className="w-5 h-5"
+          >
+            <path d="M16 3l4 4-4 4M20 7H4M8 21l-4-4 4-4M4 17h16"/>
+          </svg>
+        </button>
+        
+        {/* Second Currency Input */}
+        <div className="flex-1">
           <label className="block text-sm font-medium text-slate-600 mb-1">
-            THB (฿)
+            {currency2} ({getCurrencySymbol(currency2)})
           </label>
           <input 
             type="number" 
-            value={thb} 
-            onChange={handleThbChange} 
+            value={amount2} 
+            onChange={handleAmount2Change} 
             className="block w-full px-3 py-2 rounded-md border border-slate-300 shadow-sm text-lg font-bold focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
             placeholder="0.00"
           />
@@ -151,20 +230,20 @@ const CurrencyConverter = () => {
         </div>
       </div>
       
-      {/* Quick conversion reference */}
+      {/* Quick conversion reference - Dynamic based on direction */}
       <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-        <div className="bg-slate-50 p-2 rounded">
-          <span className="font-medium">£10</span> = ฿{(10 * rate).toFixed(0)}
-        </div>
-        <div className="bg-slate-50 p-2 rounded">
-          <span className="font-medium">£50</span> = ฿{(50 * rate).toFixed(0)}
-        </div>
-        <div className="bg-slate-50 p-2 rounded">
-          <span className="font-medium">£100</span> = ฿{(100 * rate).toFixed(0)}
-        </div>
-        <div className="bg-slate-50 p-2 rounded">
-          <span className="font-medium">£500</span> = ฿{(500 * rate).toFixed(0)}
-        </div>
+        {getQuickReferences().map((ref, index) => (
+          <div key={index} className="bg-slate-50 p-2 rounded flex justify-between items-center">
+            <span className="font-medium">{ref.from}</span>
+            <span className="text-slate-600">→</span>
+            <span className="font-medium text-slate-700">{ref.to}</span>
+          </div>
+        ))}
+      </div>
+      
+      {/* Direction indicator */}
+      <div className="mt-3 text-center text-xs text-slate-500">
+        Converting {currency1} → {currency2}
       </div>
     </div>
   );
