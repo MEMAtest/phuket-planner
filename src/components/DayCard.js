@@ -117,6 +117,19 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
   const [weatherData, setWeatherData] = useState(null);
   const [showUndoNotification, setShowUndoNotification] = useState(false);
   const [lastAddedActivity, setLastAddedActivity] = useState(null);
+  const [completedActivities, setCompletedActivities] = useState({});
+
+  // Load completed activities from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('phuket_completed_activities');
+      if (saved) {
+        setCompletedActivities(JSON.parse(saved));
+      }
+    } catch (error) {
+      console.error('Error loading completed activities:', error);
+    }
+  }, []);
 
   useEffect(() => {
     // Initialize expenses if needed
@@ -132,6 +145,34 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
 
     return () => clearInterval(interval);
   }, [dayData, planData]);
+
+  // Toggle activity completion
+  const toggleActivityComplete = (activityId) => {
+    const activityKey = `${dayData.date}_${activityId}`;
+    const newCompleted = { ...completedActivities };
+    
+    newCompleted[activityKey] = !newCompleted[activityKey];
+    
+    setCompletedActivities(newCompleted);
+    try {
+      localStorage.setItem('phuket_completed_activities', JSON.stringify(newCompleted));
+    } catch (error) {
+      console.error('Error saving completed activities:', error);
+    }
+  };
+
+  // Check if activity is completed
+  const isActivityCompleted = (activityId) => {
+    const activityKey = `${dayData.date}_${activityId}`;
+    return completedActivities[activityKey] || false;
+  };
+
+  // Get completion stats
+  const getCompletionStats = () => {
+    const total = dayData.blocks.length;
+    const completed = dayData.blocks.filter(block => isActivityCompleted(block.id)).length;
+    return { total, completed };
+  };
 
   const handleAddItem = (newItem) => {
     // Ensure the item has a unique ID and timestamp
@@ -173,6 +214,13 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
       onUpdatePlan(dayIndex, dayData.blocks.filter(b => b.id !== blockId));
       showNotification(`🗑️ Removed: ${removedActivity.title}`, 'info');
       console.log('🗑️ Activity removed:', removedActivity);
+      
+      // Also remove from completed activities
+      const activityKey = `${dayData.date}_${blockId}`;
+      const newCompleted = { ...completedActivities };
+      delete newCompleted[activityKey];
+      setCompletedActivities(newCompleted);
+      localStorage.setItem('phuket_completed_activities', JSON.stringify(newCompleted));
     }
   };
 
@@ -189,6 +237,8 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
     e.stopPropagation();
     e.preventDefault();
   };
+
+  const stats = getCompletionStats();
 
   return (
     <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
@@ -227,6 +277,13 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
                 <span className="text-xs text-amber-600 flex items-center gap-1">
                   <span>⚠️</span>
                   Local only
+                </span>
+              )}
+              {/* Completion Progress */}
+              {stats.total > 0 && (
+                <span className="text-xs font-medium text-slate-600 bg-slate-200 px-2 py-0.5 rounded-full">
+                  {stats.completed}/{stats.total} completed
+                  {stats.completed === stats.total && ' 🎉'}
                 </span>
               )}
             </div>
@@ -283,63 +340,87 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
           </div>
           
           <div className="space-y-2">
-            {dayData.blocks.map(block => (
-              <div key={block.id}>
-                <div 
-                  className="flex items-center group cursor-pointer hover:bg-slate-50 rounded-lg p-2 transition-colors"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleActivityExpansion(block.id);
-                  }}
-                >
-                  <div className={`p-2 rounded-full ${getTypeColor(block.type)} mr-3`}>
-                    {getTypeIcon(block.type)}
-                  </div>
-                  <div className="flex-grow">
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium text-sm text-slate-800">
-                        {block.title}
-                      </p>
-                      {/* Activity badge */}
-                      <ActivityBadge type={block.type} />
-                      {/* New indicator if recently added */}
-                      {block.addedAt && new Date(block.addedAt) > new Date(Date.now() - 60000) && (
-                        <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full animate-pulse">
-                          NEW
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-slate-500">{block.time}</p>
-                  </div>
-                  {/* FIXED chevron icon */}
-                  <span className={`text-slate-400 transition-transform
-                    ${expandedActivity === block.id ? 'rotate-180' : ''}`}>
-                    ▼
-                  </span>
-                  <button 
+            {dayData.blocks.map(block => {
+              const isCompleted = isActivityCompleted(block.id);
+              
+              return (
+                <div key={block.id}>
+                  <div 
+                    className={`flex items-center group cursor-pointer hover:bg-slate-50 rounded-lg p-2 transition-colors
+                              ${isCompleted ? 'opacity-60' : ''}`}
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleRemoveItem(block.id);
+                      toggleActivityExpansion(block.id);
                     }}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity 
-                             text-rose-500 hover:text-rose-700 p-1 ml-2"
                   >
-                    <span>🗑️</span>
-                  </button>
-                </div>
-                
-                {/* Expanded Activity Details */}
-                {expandedActivity === block.id && (
-                  <div className="ml-11 mt-2" onClick={handleInteraction}>
-                    <ActivityNotes
-                      activityId={block.id}
-                      activityTitle={block.title}
-                      date={dayData.date}
-                    />
+                    {/* Checkbox */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleActivityComplete(block.id);
+                      }}
+                      className={`mr-3 w-5 h-5 rounded border-2 flex items-center justify-center
+                                transition-colors cursor-pointer flex-shrink-0
+                                ${isCompleted 
+                                  ? 'bg-green-500 border-green-500' 
+                                  : 'bg-white border-slate-400 hover:border-green-500'}`}
+                      aria-label={isCompleted ? "Mark as incomplete" : "Mark as complete"}
+                    >
+                      {isCompleted && (
+                        <span className="text-white text-xs font-bold">✓</span>
+                      )}
+                    </button>
+                    
+                    <div className={`p-2 rounded-full ${getTypeColor(block.type)} mr-3`}>
+                      {getTypeIcon(block.type)}
+                    </div>
+                    <div className="flex-grow">
+                      <div className="flex items-center gap-2">
+                        <p className={`font-medium text-sm text-slate-800 
+                                    ${isCompleted ? 'line-through' : ''}`}>
+                          {block.title}
+                        </p>
+                        {/* Activity badge */}
+                        <ActivityBadge type={block.type} />
+                        {/* New indicator if recently added */}
+                        {block.addedAt && new Date(block.addedAt) > new Date(Date.now() - 60000) && (
+                          <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full animate-pulse">
+                            NEW
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-500">{block.time}</p>
+                    </div>
+                    {/* FIXED chevron icon */}
+                    <span className={`text-slate-400 transition-transform
+                      ${expandedActivity === block.id ? 'rotate-180' : ''}`}>
+                      ▼
+                    </span>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveItem(block.id);
+                      }}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity 
+                               text-rose-500 hover:text-rose-700 p-1 ml-2"
+                    >
+                      <span>🗑️</span>
+                    </button>
                   </div>
-                )}
-              </div>
-            ))}
+                  
+                  {/* Expanded Activity Details */}
+                  {expandedActivity === block.id && (
+                    <div className="ml-11 mt-2" onClick={handleInteraction}>
+                      <ActivityNotes
+                        activityId={block.id}
+                        activityTitle={block.title}
+                        date={dayData.date}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
           {/* Add Activity Button/Form - NO TOUCH HANDLERS */}
