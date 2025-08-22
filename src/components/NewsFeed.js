@@ -28,21 +28,21 @@ const NewsFeed = ({ location, date }) => {
         const data = await response.json();
         
         if (data.status === 'ok' && data.items && data.items.length > 0) {
-          // Show top 5 news items directly - no Groq needed
+          // Show top 5 news items with full titles and links
           const newsAlerts = data.items.slice(0, 5).map((item, idx) => {
-            // Clean up the title (remove source)
-            const title = item.title.split(' - ')[0];
-            const source = item.title.split(' - ')[1] || 'News';
+            // Split title and source
+            const fullTitle = item.title;
+            const titleParts = fullTitle.split(' - ');
+            const title = titleParts[0];
+            const source = titleParts[titleParts.length - 1] || 'News';
             
-            // Extract clean description
+            // Clean description
             let description = '';
             if (item.description) {
-              // Remove HTML tags
-              description = item.description.replace(/<[^>]*>/g, '');
-              // Limit length
-              description = description.substring(0, 80) + '...';
-            } else {
-              description = `Source: ${source}`;
+              description = item.description.replace(/<[^>]*>/g, '').trim();
+              // Keep it shorter for cleaner look
+              description = description.substring(0, 100);
+              if (description.length === 100) description += '...';
             }
             
             // Determine type and priority based on keywords
@@ -51,7 +51,7 @@ const NewsFeed = ({ location, date }) => {
             let icon = '📰';
             
             const lowerTitle = title.toLowerCase();
-            if (lowerTitle.includes('storm') || lowerTitle.includes('warning') || lowerTitle.includes('alert')) {
+            if (lowerTitle.includes('flood') || lowerTitle.includes('storm') || lowerTitle.includes('warning') || lowerTitle.includes('alert')) {
               type = 'warning';
               priority = 'high';
               icon = '⚠️';
@@ -61,6 +61,7 @@ const NewsFeed = ({ location, date }) => {
               icon = '🎉';
             } else if (lowerTitle.includes('rain') || lowerTitle.includes('weather')) {
               icon = '🌧️';
+              priority = 'medium';
             } else if (lowerTitle.includes('tourist') || lowerTitle.includes('travel')) {
               icon = '✈️';
             }
@@ -68,11 +69,14 @@ const NewsFeed = ({ location, date }) => {
             return {
               id: `news_${Date.now()}_${idx}`,
               type: type,
-              title: title.substring(0, 60),
-              description: description,
+              title: title, // Keep full title
+              description: description || `Source: ${source}`,
+              source: source,
+              link: item.link, // Add the actual article link
               priority: priority,
               icon: icon,
-              dismissible: true
+              dismissible: true,
+              isNews: true
             };
           });
           
@@ -130,16 +134,6 @@ const NewsFeed = ({ location, date }) => {
       description: 'Yellow (Krungsri) and Purple (SCB) ATMs have lowest fees.',
       priority: 'low',
       icon: '💳',
-      dismissible: true
-    });
-    
-    allAlerts.push({
-      id: 'transport_tip',
-      type: 'tip',
-      title: 'Transport Tip',
-      description: 'Use Grab or Bolt apps for fair taxi prices.',
-      priority: 'low',
-      icon: '🚕',
       dismissible: true
     });
     
@@ -216,38 +210,62 @@ const NewsFeed = ({ location, date }) => {
             </div>
           ) : (
             <>
-              <div className="space-y-2 max-h-80 overflow-y-auto mt-3">
+              <div className="space-y-2 max-h-96 overflow-y-auto mt-3">
                 {events.map(event => (
                   <div
                     key={event.id}
-                    className={`p-3 rounded-lg border flex items-start gap-3 ${getPriorityColor(event.priority)}`}
+                    className={`p-3 rounded-lg border flex items-start gap-3 ${getPriorityColor(event.priority)} ${
+                      event.link ? 'hover:shadow-md transition-shadow cursor-pointer' : ''
+                    }`}
+                    onClick={event.link ? () => window.open(event.link, '_blank') : undefined}
                   >
                     <span className="text-lg flex-shrink-0">{event.icon}</span>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h4 className="font-medium text-sm">{event.title}</h4>
-                        <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                          event.type === 'warning' ? 'bg-red-100 text-red-700' :
-                          event.type === 'event' ? 'bg-blue-100 text-blue-700' :
-                          event.type === 'news' ? 'bg-gray-100 text-gray-700' :
-                          'bg-green-100 text-green-700'
-                        }`}>
-                          {getTypeLabel(event.type)}
-                        </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                              event.type === 'warning' ? 'bg-red-100 text-red-700' :
+                              event.type === 'event' ? 'bg-blue-100 text-blue-700' :
+                              event.type === 'news' ? 'bg-gray-100 text-gray-700' :
+                              'bg-green-100 text-green-700'
+                            }`}>
+                              {getTypeLabel(event.type)}
+                            </span>
+                            {event.source && (
+                              <span className="text-xs text-slate-400">
+                                {event.source}
+                              </span>
+                            )}
+                          </div>
+                          <h4 className={`font-medium text-sm leading-tight ${
+                            event.link ? 'text-sky-700 hover:text-sky-900' : 'text-slate-800'
+                          }`}>
+                            {event.title}
+                            {event.link && (
+                              <span className="ml-1 text-xs text-sky-500">↗</span>
+                            )}
+                          </h4>
+                          {event.description && (
+                            <p className="text-xs mt-1 text-slate-600 leading-relaxed">
+                              {event.description}
+                            </p>
+                          )}
+                        </div>
+                        {event.dismissible && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              dismissAlert(event.id);
+                            }}
+                            className="text-slate-400 hover:text-red-600 transition-colors text-lg ml-2 flex-shrink-0"
+                            title="Dismiss"
+                          >
+                            ✕
+                          </button>
+                        )}
                       </div>
-                      <p className="text-xs mt-1 text-slate-600">
-                        {event.description}
-                      </p>
                     </div>
-                    {event.dismissible && (
-                      <button
-                        onClick={() => dismissAlert(event.id)}
-                        className="text-slate-400 hover:text-red-600 transition-colors text-lg"
-                        title="Dismiss"
-                      >
-                        ✕
-                      </button>
-                    )}
                   </div>
                 ))}
               </div>
