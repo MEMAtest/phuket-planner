@@ -1,245 +1,275 @@
+// NewsFeed.js with Groq AI filtering
 import React, { useState, useEffect } from 'react';
-import { Icons } from '../data/staticData';
 
 const NewsFeed = ({ location, date }) => {
   const [events, setEvents] = useState([]);
-  const [filter, setFilter] = useState('all'); // all, events, warnings, tips
-  
-  // Static events data - in production, this could come from an API
-  const allEvents = [
-    {
-      id: 1,
-      type: 'event',
-      date: '2025-08-24',
-      title: 'Phuket Old Town Sunday Walking Street',
-      description: 'Every Sunday 4-10pm. Great for souvenirs and street food.',
-      location: 'oldTown',
-      icon: '🎪',
-      priority: 'info'
-    },
-    {
-      id: 2,
-      type: 'warning',
-      date: '2025-08-20',
-      dateRange: ['2025-08-20', '2025-08-28'],
-      title: 'Jellyfish Season Advisory',
-      description: 'Box jellyfish possible at beaches. Swim in designated areas only.',
-      location: 'maiKhao',
-      icon: '⚠️',
-      priority: 'warning'
-    },
-    {
-      id: 3,
-      type: 'tip',
-      date: null, // Always show
-      title: 'Vegetarian Festival',
-      description: 'Oct 2-11 (not during your visit). Restaurants may have limited meat options.',
-      location: 'all',
-      icon: '💡',
-      priority: 'info'
-    },
-    {
-      id: 4,
-      type: 'event',
-      date: '2025-08-22',
-      title: 'Beach Cleanup Day',
-      description: 'Join locals for beach cleanup 7-9am. Free breakfast provided.',
-      location: 'maiKhao',
-      icon: '🏖️',
-      priority: 'success'
-    },
-    {
-      id: 5,
-      type: 'warning',
-      date: null,
-      dateRange: ['2025-08-24', '2025-08-27'],
-      title: 'Expected Heavy Rain',
-      description: 'Monsoon weather expected. Indoor activities recommended.',
-      location: 'all',
-      icon: '🌧️',
-      priority: 'warning'
-    },
-    {
-      id: 6,
-      type: 'tip',
-      date: null,
-      title: 'ATM Tip',
-      description: 'Yellow (Krungsri) and Purple (SCB) ATMs have lowest fees for foreign cards.',
-      location: 'all',
-      icon: '💳',
-      priority: 'info'
-    },
-    {
-      id: 7,
-      type: 'event',
-      date: '2025-08-26',
-      title: 'Night Market Special',
-      description: 'Chillva Market has live music Tuesday nights from 7pm.',
-      location: 'oldTown',
-      icon: '🎵',
-      priority: 'info'
-    },
-    {
-      id: 8,
-      type: 'warning',
-      date: null,
-      title: 'Tourist Police Alert',
-      description: 'Beware tuk-tuk scams. Always agree on price before riding.',
-      location: 'all',
-      icon: '🚨',
-      priority: 'danger'
-    },
-    {
-      id: 9,
-      type: 'tip',
-      date: null,
-      title: '7-Eleven Hack',
-      description: 'Buy mosquito repellent and after-sun at 7-Eleven for 1/3 hotel prices.',
-      location: 'all',
-      icon: '🏪',
-      priority: 'success'
-    },
-    {
-      id: 10,
-      type: 'event',
-      date: '2025-08-23',
-      title: 'Saturday Night Bazaar',
-      description: 'Naka Weekend Market open Sat-Sun. Best prices for souvenirs.',
-      location: 'oldTown',
-      icon: '🛍️',
-      priority: 'info'
-    }
-  ];
-  
+  const [loading, setLoading] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const [dismissedAlerts, setDismissedAlerts] = useState(() => {
+    const saved = localStorage.getItem('phuket_dismissed_alerts');
+    return saved ? JSON.parse(saved) : [];
+  });
+
   useEffect(() => {
-    // Filter events based on date and location
-    const currentDate = date ? new Date(date) : new Date();
-    
-    const relevantEvents = allEvents.filter(event => {
-      // Check location relevance
-      if (event.location !== 'all' && location && event.location !== location) {
-        return false;
+    fetchAndProcessNews();
+    // Refresh every 4 hours
+    const interval = setInterval(fetchAndProcessNews, 4 * 60 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [date]);
+
+  const fetchAndProcessNews = async () => {
+    // Check cache first
+    const cached = localStorage.getItem('phuket_ai_news_cache');
+    if (cached) {
+      const { data, timestamp } = JSON.parse(cached);
+      if (Date.now() - timestamp < 7200000) { // 2 hour cache
+        setEvents(data.filter(e => !dismissedAlerts.includes(e.id)));
+        return;
       }
-      
-      // Check date relevance
-      if (event.date) {
-        const eventDate = new Date(event.date);
-        // Show events within 3 days
-        const daysDiff = Math.abs((eventDate - currentDate) / (1000 * 60 * 60 * 24));
-        return daysDiff <= 3;
+    }
+
+    setLoading(true);
+    try {
+      // Step 1: Fetch RSS feeds
+      const rssFeeds = [
+        'https://news.google.com/rss/search?q=Phuket+weather+beach+safety&hl=en-US&gl=US&ceid=US:en',
+        'https://news.google.com/rss/search?q=Phuket+events+August+2025&hl=en-US&gl=US&ceid=US:en'
+      ];
+
+      const feedPromises = rssFeeds.map(url => 
+        fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}`)
+          .then(res => res.json())
+          .catch(err => ({ items: [] }))
+      );
+
+      const feedData = await Promise.all(feedPromises);
+      const allArticles = feedData.flatMap(f => f.items || []).slice(0, 15);
+
+      if (allArticles.length === 0) {
+        setEvents(getStaticAlerts());
+        return;
       }
+
+      // Step 2: Process with Groq
+      const processedNews = await processWithGroq(allArticles);
       
-      // Check date range
-      if (event.dateRange) {
-        const startDate = new Date(event.dateRange[0]);
-        const endDate = new Date(event.dateRange[1]);
-        return currentDate >= startDate && currentDate <= endDate;
+      // Step 3: Combine with static alerts
+      const combinedEvents = [...processedNews, ...getStaticAlerts()];
+      
+      // Step 4: Filter dismissed and cache
+      const activeEvents = combinedEvents.filter(e => !dismissedAlerts.includes(e.id));
+      
+      localStorage.setItem('phuket_ai_news_cache', JSON.stringify({
+        data: combinedEvents,
+        timestamp: Date.now()
+      }));
+      
+      setEvents(activeEvents);
+      
+    } catch (error) {
+      console.error('News fetch failed:', error);
+      setEvents(getStaticAlerts().filter(e => !dismissedAlerts.includes(e.id)));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const processWithGroq = async (articles) => {
+    // Prepare article summary
+    const articleSummary = articles.map(a => ({
+      title: a.title,
+      description: a.description?.substring(0, 200),
+      date: a.pubDate
+    }));
+
+    const prompt = `Analyze these news items and extract ONLY information relevant to tourists in Phuket from August 19-29, 2025.
+
+News items:
+${JSON.stringify(articleSummary, null, 2)}
+
+Filter for:
+1. Weather warnings or conditions affecting beaches
+2. Jellyfish or marine hazards
+3. Local events, festivals, or markets happening Aug 19-29
+4. Transportation disruptions
+5. Safety alerts for tourists
+
+Ignore: politics, crime unless tourist-targeted, business news, COVID, property
+
+Return as JSON array with EXACTLY this format (no markdown, just JSON):
+[{
+  "type": "warning" or "event" or "tip",
+  "title": "Brief clear title",
+  "description": "One sentence description",
+  "priority": "high" or "medium" or "low",
+  "icon": "appropriate emoji"
+}]
+
+Return empty array [] if nothing relevant. Maximum 5 items.`;
+
+    try {
+      // Groq API call
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.REACT_APP_GROQ_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'llama3-8b-8192', // or 'mixtral-8x7b-32768' for better quality
+          messages: [{
+            role: 'user',
+            content: prompt
+          }],
+          temperature: 0.2,
+          max_tokens: 500
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Groq API failed');
       }
+
+      const data = await response.json();
+      const content = data.choices[0]?.message?.content || '[]';
       
-      // Always show if no date specified
-      return true;
+      // Parse response
+      let parsedEvents = [];
+      try {
+        // Remove any markdown formatting if present
+        const cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        parsedEvents = JSON.parse(cleanContent);
+      } catch (e) {
+        console.error('Failed to parse Groq response:', content);
+        return [];
+      }
+
+      // Add metadata
+      return parsedEvents.map((event, idx) => ({
+        ...event,
+        id: `ai_${Date.now()}_${idx}`,
+        isAI: true,
+        dismissible: true
+      }));
+
+    } catch (error) {
+      console.error('Groq processing failed:', error);
+      return [];
+    }
+  };
+
+  const getStaticAlerts = () => {
+    return [
+      {
+        id: 'jellyfish_static',
+        type: 'warning',
+        title: 'Jellyfish Season Advisory',
+        description: 'Box jellyfish possible at beaches. Swim in designated areas only.',
+        priority: 'high',
+        icon: '⚠️',
+        dismissible: true
+      }
+    ].filter(e => {
+      // Only show if date relevant
+      const currentDate = new Date(date);
+      return currentDate >= new Date('2025-08-20') && currentDate <= new Date('2025-08-28');
     });
-    
-    setEvents(relevantEvents);
-  }, [location, date]);
-  
-  const filteredEvents = filter === 'all' 
-    ? events 
-    : events.filter(e => e.type === filter);
-  
+  };
+
+  const dismissAlert = (id) => {
+    const newDismissed = [...dismissedAlerts, id];
+    setDismissedAlerts(newDismissed);
+    localStorage.setItem('phuket_dismissed_alerts', JSON.stringify(newDismissed));
+    setEvents(events.filter(e => e.id !== id));
+  };
+
   const getPriorityColor = (priority) => {
     switch(priority) {
-      case 'danger': return 'bg-red-100 text-red-800 border-red-200';
-      case 'warning': return 'bg-amber-100 text-amber-800 border-amber-200';
-      case 'success': return 'bg-green-100 text-green-800 border-green-200';
-      default: return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'high': return 'bg-red-50 border-red-200';
+      case 'medium': return 'bg-amber-50 border-amber-200';
+      default: return 'bg-blue-50 border-blue-200';
     }
   };
-  
-  const getTypeLabel = (type) => {
-    switch(type) {
-      case 'event': return 'Event';
-      case 'warning': return 'Alert';
-      case 'tip': return 'Tip';
-      default: return type;
-    }
-  };
-  
-  if (events.length === 0) return null;
-  
+
   return (
-    <div className="bg-white rounded-lg p-4 shadow-sm border">
-      <div className="flex items-center justify-between mb-3">
+    <div className="bg-white rounded-lg shadow-sm border">
+      <button
+        onClick={() => setCollapsed(!collapsed)}
+        className="w-full p-4 flex items-center justify-between hover:bg-slate-50 transition-colors"
+      >
         <h3 className="font-semibold text-slate-800 flex items-center gap-2">
-          <Icons.alertTriangle className="w-5 h-5 text-amber-500" />
-          Local Updates & Tips
+          <span>🤖</span>
+          AI-Filtered Local Updates
+          {loading && <span className="text-xs text-sky-600 animate-pulse">Updating...</span>}
         </h3>
-        
-        {/* Filter Buttons */}
-        <div className="flex gap-1">
-          {['all', 'events', 'warnings', 'tips'].map(f => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-2 py-1 text-xs rounded-md transition-colors ${
-                filter === f 
-                  ? 'bg-slate-800 text-white' 
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              {f.charAt(0).toUpperCase() + f.slice(1)}
-            </button>
-          ))}
-        </div>
-      </div>
-      
-      <div className="space-y-2 max-h-64 overflow-y-auto">
-        {filteredEvents.length === 0 ? (
-          <p className="text-sm text-slate-500 text-center py-4">
-            No {filter} for this date/location
-          </p>
-        ) : (
-          filteredEvents.map(event => (
-            <div
-              key={event.id}
-              className={`p-3 rounded-lg border ${getPriorityColor(event.priority)} 
-                       flex items-start gap-3`}
-            >
-              <span className="text-lg flex-shrink-0">{event.icon}</span>
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <h4 className="font-medium text-sm">{event.title}</h4>
-                  <span className={`text-xs px-1.5 py-0.5 rounded-full 
-                                  ${event.type === 'warning' ? 'bg-red-200 text-red-700' :
-                                    event.type === 'event' ? 'bg-blue-200 text-blue-700' :
-                                    'bg-green-200 text-green-700'}`}>
-                    {getTypeLabel(event.type)}
-                  </span>
-                </div>
-                <p className="text-xs mt-0.5 opacity-90">
-                  {event.description}
-                </p>
-                {event.date && (
-                  <p className="text-xs mt-1 opacity-75">
-                    📅 {new Date(event.date).toLocaleDateString('en-US', { 
-                      month: 'short', 
-                      day: 'numeric' 
-                    })}
-                  </p>
-                )}
-              </div>
+        <span className={`transition-transform ${collapsed ? '' : 'rotate-180'}`}>
+          ▼
+        </span>
+      </button>
+
+      {!collapsed && (
+        <div className="px-4 pb-4">
+          {events.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-sm text-slate-500">No relevant updates for today</p>
+              <button
+                onClick={fetchAndProcessNews}
+                className="mt-2 text-xs text-sky-600 hover:text-sky-800"
+              >
+                Check for Updates
+              </button>
             </div>
-          ))
-        )}
-      </div>
-      
-      {/* Quick Safety Reminders */}
-      <div className="mt-3 pt-3 border-t border-slate-200">
-        <p className="text-xs text-slate-600">
-          <strong>Quick Reminders:</strong> Tourist Police: 1155 • 
-          Hospital: +66 76 254 425 • Always negotiate taxi prices first
-        </p>
-      </div>
+          ) : (
+            <>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {events.map(event => (
+                  <div
+                    key={event.id}
+                    className={`p-3 rounded-lg border flex items-start gap-3 ${getPriorityColor(event.priority)}`}
+                  >
+                    <span className="text-lg flex-shrink-0">{event.icon}</span>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-medium text-sm">{event.title}</h4>
+                        {event.isAI && (
+                          <span className="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-full">
+                            AI
+                          </span>
+                        )}
+                        {event.type === 'warning' && (
+                          <span className="text-xs px-1.5 py-0.5 bg-red-100 text-red-700 rounded-full">
+                            Alert
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs mt-0.5 text-slate-600">
+                        {event.description}
+                      </p>
+                    </div>
+                    {event.dismissible && (
+                      <button
+                        onClick={() => dismissAlert(event.id)}
+                        className="text-slate-400 hover:text-red-600 transition-colors"
+                        title="Dismiss"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={fetchAndProcessNews}
+                disabled={loading}
+                className="mt-3 text-xs text-sky-600 hover:text-sky-800 disabled:opacity-50"
+              >
+                🔄 Refresh Updates
+              </button>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 };
