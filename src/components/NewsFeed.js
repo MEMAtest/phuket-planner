@@ -21,9 +21,9 @@ const NewsFeed = ({ location, date }) => {
     try {
       // Step 1: Try to fetch RSS feeds and process with AI
       const rssFeeds = [
-        'https://news.google.com/rss/search?q=Phuket+weather+beach+safety&hl=en-US&gl=US&ceid=US:en',
-        'https://news.google.com/rss/search?q=Phuket+events+August+2025&hl=en-US&gl=US&ceid=US:en',
-        'https://news.google.com/rss/search?q=Thailand+travel+advisory&hl=en-US&gl=US&ceid=US:en'
+        'https://news.google.com/rss/search?q=Phuket+news+today&hl=en-US&gl=US&ceid=US:en',
+        'https://news.google.com/rss/search?q=Phuket+weather&hl=en-US&gl=US&ceid=US:en',
+        'https://news.google.com/rss/search?q=Thailand+travel+tourism&hl=en-US&gl=US&ceid=US:en'
       ];
 
       const feedPromises = rssFeeds.map(url => 
@@ -57,25 +57,29 @@ const NewsFeed = ({ location, date }) => {
 
   const processWithGroq = async (articles) => {
     try {
-      // Prepare concise article summary
+      // Prepare article summary - include more details
       const articleSummary = articles.slice(0, 10).map(a => 
-        `${a.title || ''} - ${(a.description || '').substring(0, 100)}`
+        `${a.title || ''}`
       ).join('\n');
 
-      const prompt = `Analyze these news items and extract ONLY tourist-relevant info for Phuket Aug 19-29, 2025:
+      // MUCH LESS RESTRICTIVE PROMPT
+      const prompt = `From these Phuket/Thailand news headlines, pick the 5 most interesting ones for someone visiting Phuket:
 
 ${articleSummary}
 
-Return JSON array (no markdown):
+Format each as JSON:
 [{
-  "type": "warning",
-  "title": "Brief title",
-  "description": "One sentence",
-  "priority": "high",
-  "icon": "⚠️"
+  "type": "news",
+  "title": "Shorten to 5-7 words max",
+  "description": "One sentence summary",
+  "priority": "low",
+  "icon": "📰"
 }]
 
-Max 3 items. Empty array if nothing relevant.`;
+Types: "warning" for safety/weather, "event" for activities, "news" for general news
+Priority: "high" for urgent safety, "medium" for important, "low" for general
+Use relevant emoji for icon
+Return 5 items.`;
 
       const response = await fetch('/.netlify/functions/groq-filter', {
         method: 'POST',
@@ -106,13 +110,13 @@ Max 3 items. Empty array if nothing relevant.`;
           const parsedEvents = JSON.parse(cleanContent);
           
           if (Array.isArray(parsedEvents)) {
-            return parsedEvents.slice(0, 3).map((event, idx) => ({
+            return parsedEvents.slice(0, 5).map((event, idx) => ({
               ...event,
               id: `ai_${Date.now()}_${idx}`,
               isAI: true,
               dismissible: true,
               icon: event.icon || '📰',
-              type: event.type || 'tip',
+              type: event.type || 'news',
               priority: event.priority || 'low'
             }));
           }
@@ -198,7 +202,8 @@ Max 3 items. Empty array if nothing relevant.`;
       case 'event': return 'Event';
       case 'warning': return 'Alert';
       case 'tip': return 'Tip';
-      default: return 'News';
+      case 'news': return 'News';
+      default: return 'Info';
     }
   };
 
@@ -240,7 +245,7 @@ Max 3 items. Empty array if nothing relevant.`;
             </div>
           ) : (
             <>
-              <div className="space-y-2 max-h-64 overflow-y-auto mt-3">
+              <div className="space-y-2 max-h-80 overflow-y-auto mt-3">
                 {events.map(event => (
                   <div
                     key={event.id}
@@ -253,6 +258,7 @@ Max 3 items. Empty array if nothing relevant.`;
                         <span className={`text-xs px-1.5 py-0.5 rounded-full ${
                           event.type === 'warning' ? 'bg-red-100 text-red-700' :
                           event.type === 'event' ? 'bg-blue-100 text-blue-700' :
+                          event.type === 'news' ? 'bg-gray-100 text-gray-700' :
                           'bg-green-100 text-green-700'
                         }`}>
                           {getTypeLabel(event.type)}
