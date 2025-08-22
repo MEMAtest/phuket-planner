@@ -13,6 +13,7 @@ import CurrencyConverter from './components/CurrencyConverter';
 import KidComfortChecklist from './components/KidComfortChecklist';
 import TravelDocuments from './components/TravelDocuments';
 import PriceGuide from './components/PriceGuide';
+import FloatingThaiPhrases from './components/FloatingThaiPhrases';
 
 const App = () => {
   const { 
@@ -30,6 +31,7 @@ const App = () => {
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
   const [weatherAlert, setWeatherAlert] = useState(null);
+  const [dismissedWeatherAlert, setDismissedWeatherAlert] = useState(false);
   
   // Calculate today's index based on current date
   const getTodayIndex = () => {
@@ -68,6 +70,21 @@ const App = () => {
       setCurrentDayIndex(todayIdx);
     }
   }, [planData, activeTab]); // Run when planData loads or tab changes
+  
+  // Load dismissed weather alert state
+  useEffect(() => {
+    const dismissed = localStorage.getItem('phuket_dismissed_weather_alert');
+    if (dismissed) {
+      const dismissedDate = new Date(dismissed);
+      const today = new Date();
+      // Only keep dismissed if it's from today
+      if (dismissedDate.toDateString() === today.toDateString()) {
+        setDismissedWeatherAlert(true);
+      } else {
+        localStorage.removeItem('phuket_dismissed_weather_alert');
+      }
+    }
+  }, []);
   
   // Firebase sync (only if configured)
   useEffect(() => {
@@ -130,6 +147,12 @@ const App = () => {
     const interval = setInterval(fetchWeatherAlert, 60 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
+  
+  // Function to dismiss weather alert
+  const dismissWeatherAlert = () => {
+    setDismissedWeatherAlert(true);
+    localStorage.setItem('phuket_dismissed_weather_alert', new Date().toISOString());
+  };
   
   // Navigation functions
   const goToNextDay = () => {
@@ -365,14 +388,21 @@ const App = () => {
     <div className="min-h-screen bg-slate-100">
       <Header />
       
-      {/* Weather Alert Banner */}
-      {weatherAlert && (
-        <div className={`px-4 py-2 text-center text-sm font-semibold
+      {/* Weather Alert Banner with Dismiss Button */}
+      {weatherAlert && !dismissedWeatherAlert && (
+        <div className={`px-4 py-2 text-center text-sm font-semibold relative
           ${weatherAlert.type === 'danger' ? 'bg-red-100 text-red-800 border-b-2 border-red-300' :
             weatherAlert.type === 'warning' ? 'bg-amber-100 text-amber-800 border-b-2 border-amber-300' :
             'bg-blue-100 text-blue-800 border-b-2 border-blue-300'}`}>
           {React.createElement(Icons.alertTriangle, { className: "inline w-4 h-4 mr-2" })}
           {weatherAlert.message}
+          <button
+            onClick={dismissWeatherAlert}
+            className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-black/10 rounded transition-colors"
+            title="Dismiss for today"
+          >
+            {React.createElement(Icons.x, { className: "w-4 h-4" })}
+          </button>
         </div>
       )}
       
@@ -388,6 +418,9 @@ const App = () => {
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {renderContent()}
       </main>
+      
+      {/* Global Floating Thai Phrases Button */}
+      <FloatingThaiPhrases />
       
       {/* Footer */}
       <footer className="text-center py-8 text-xs text-slate-400">
