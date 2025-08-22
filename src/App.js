@@ -151,13 +151,14 @@ const App = () => {
         }
         
         return (
-          <div 
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-          >
-            {/* Day Navigation */}
-            <div className="flex items-center justify-between mb-4">
+          <div>
+            {/* Day Navigation - ONLY THIS PART HAS TOUCH HANDLERS */}
+            <div 
+              className="flex items-center justify-between mb-4"
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
               <button 
                 onClick={goToPrevDay} 
                 disabled={currentDayIndex === 0} 
@@ -206,7 +207,7 @@ const App = () => {
               </button>
             </div>
             
-            {/* Day Card */}
+            {/* Day Card - NO TOUCH HANDLERS HERE */}
             <DayCard 
               dayData={currentDay} 
               dayIndex={currentDayIndex} 
