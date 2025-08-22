@@ -9,7 +9,6 @@ const NewsFeed = ({ location, date }) => {
 
   useEffect(() => {
     fetchAndProcessNews();
-    // Refresh every 4 hours
     const interval = setInterval(fetchAndProcessNews, 4 * 60 * 60 * 1000);
     return () => clearInterval(interval);
   }, [date, location]);
@@ -19,154 +18,150 @@ const NewsFeed = ({ location, date }) => {
     const allAlerts = [];
     
     try {
-      // Step 1: Try to fetch RSS feeds and process with AI
-      const rssFeeds = [
-        'https://news.google.com/rss/search?q=Phuket+news+today&hl=en-US&gl=US&ceid=US:en',
-        'https://news.google.com/rss/search?q=Phuket+weather&hl=en-US&gl=US&ceid=US:en',
-        'https://news.google.com/rss/search?q=Thailand+travel+tourism&hl=en-US&gl=US&ceid=US:en'
-      ];
-
-      const feedPromises = rssFeeds.map(url => 
-        fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}`)
-          .then(res => res.json())
-          .catch(err => ({ items: [] }))
+      // Step 1: Fetch REAL news from Google News RSS
+      const response = await fetch(
+        `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent('https://news.google.com/rss/search?q=Phuket+Thailand&hl=en-US&gl=US&ceid=US:en')}&count=20`
       );
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        if (data.status === 'ok' && data.items && data.items.length > 0) {
+          // Step 2: Send the REAL headlines to Groq to pick the best ones
+          const headlines = data.items.map(item => ({
+            title: item.title.split(' - ')[0], // Remove source
+            source: item.title.split(' - ')[1] || 'News',
+            date: item.pubDate
+          }));
+          
+          const groqPrompt = `Here are today's real Phuket news headlines. Pick the TOP 5 most important/interesting for tourists:
 
-      const feedData = await Promise.all(feedPromises);
-      const allArticles = feedData.flatMap(f => f.items || []).slice(0, 15);
+${headlines.map((h, i) => `${i+1}. ${h.title}`).join('\n')}
 
-      // Step 2: Process with Groq if we have articles
-      if (allArticles.length > 0) {
-        const aiNews = await processWithGroq(allArticles);
-        allAlerts.push(...aiNews);
-      }
-    } catch (error) {
-      console.error('News processing error:', error);
-    }
-    
-    // Step 3: Always add static alerts
-    const staticAlerts = getStaticAlerts();
-    allAlerts.push(...staticAlerts);
-    
-    // Step 4: Filter dismissed and update
-    const activeAlerts = allAlerts.filter(a => !dismissedAlerts.includes(a.id));
-    setEvents(activeAlerts);
-    setLastUpdate(new Date());
-    setLoading(false);
-  };
-
-  const processWithGroq = async (articles) => {
-    try {
-      // Prepare article summary - include more details
-      const articleSummary = articles.slice(0, 10).map(a => 
-        `${a.title || ''}`
-      ).join('\n');
-
-      // MUCH LESS RESTRICTIVE PROMPT
-      const prompt = `From these Phuket/Thailand news headlines, pick the 5 most interesting ones for someone visiting Phuket:
-
-${articleSummary}
-
-Format each as JSON:
+Return as JSON array with your TOP 5 picks:
 [{
   "type": "news",
-  "title": "Shorten to 5-7 words max",
-  "description": "One sentence summary",
-  "priority": "low",
+  "title": "Shortened headline (max 8 words)",
+  "description": "Why this matters to tourists (one sentence)",
+  "priority": "high/medium/low",
   "icon": "📰"
 }]
 
-Types: "warning" for safety/weather, "event" for activities, "news" for general news
-Priority: "high" for urgent safety, "medium" for important, "low" for general
-Use relevant emoji for icon
-Return 5 items.`;
+Use priority high for safety/urgent, medium for important events, low for general news.
+Use icons: ⚠️ for warnings, 🌧️ for weather, 🎉 for events, 📰 for general news, 🚨 for urgent`;
 
-      const response = await fetch('/.netlify/functions/groq-filter', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ prompt })
-      });
+          const groqResponse = await fetch('/.netlify/functions/groq-filter', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ prompt: groqPrompt })
+          });
 
-      if (!response.ok) {
-        console.warn('Groq function returned:', response.status);
-        return [];
-      }
+          if (groqResponse.ok) {
+            const groqData = await groqResponse.json();
+            
+            let content = '';
+            if (groqData.choices && groqData.choices[0] && groqData.choices[0].message) {
+              content = groqData.choices[0].message.content;
+            }
 
-      const data = await response.json();
-      
-      // Parse the AI response
-      if (data && data.choices && data.choices[0] && data.choices[0].message) {
-        const content = data.choices[0].message.content;
-        
-        try {
-          // Clean any markdown formatting
-          const cleanContent = content
-            .replace(/```json\n?/g, '')
-            .replace(/```\n?/g, '')
-            .trim();
-          
-          const parsedEvents = JSON.parse(cleanContent);
-          
-          if (Array.isArray(parsedEvents)) {
-            return parsedEvents.slice(0, 5).map((event, idx) => ({
-              ...event,
-              id: `ai_${Date.now()}_${idx}`,
-              isAI: true,
-              dismissible: true,
-              icon: event.icon || '📰',
-              type: event.type || 'news',
-              priority: event.priority || 'low'
+            if (content) {
+              // Extract JSON from response
+              const jsonMatch = content.match(/\[[\s\S]*\]/);
+              if (jsonMatch) {
+                try {
+                  const parsed = JSON.parse(jsonMatch[0]);
+                  if (Array.isArray(parsed)) {
+                    const newsAlerts = parsed.map((item, idx) => ({
+                      id: `news_${Date.now()}_${idx}`,
+                      type: item.type || 'news',
+                      title: item.title || 'News Update',
+                      description: item.description || 'Latest from Phuket',
+                      priority: item.priority || 'low',
+                      icon: item.icon || '📰',
+                      isAI: true,
+                      dismissible: true
+                    }));
+                    allAlerts.push(...newsAlerts);
+                  }
+                } catch (e) {
+                  console.log('Parse error, falling back to direct news');
+                  // Fallback: show news directly without AI filtering
+                  const fallbackNews = data.items.slice(0, 3).map((item, idx) => ({
+                    id: `news_${Date.now()}_${idx}`,
+                    type: 'news',
+                    title: item.title.split(' - ')[0].substring(0, 50),
+                    description: 'Latest Phuket news',
+                    priority: 'low',
+                    icon: '📰',
+                    dismissible: true
+                  }));
+                  allAlerts.push(...fallbackNews);
+                }
+              }
+            } else {
+              // If Groq fails, show raw news anyway
+              const fallbackNews = data.items.slice(0, 3).map((item, idx) => ({
+                id: `news_${Date.now()}_${idx}`,
+                type: 'news',
+                title: item.title.split(' - ')[0].substring(0, 50),
+                description: 'Latest Phuket news',
+                priority: 'low',
+                icon: '📰',
+                dismissible: true
+              }));
+              allAlerts.push(...fallbackNews);
+            }
+          } else {
+            // Groq not working, show news directly
+            const directNews = data.items.slice(0, 5).map((item, idx) => ({
+              id: `news_${Date.now()}_${idx}`,
+              type: 'news',
+              title: item.title.split(' - ')[0].substring(0, 50),
+              description: item.description ? 
+                item.description.replace(/<[^>]*>/g, '').substring(0, 80) + '...' : 
+                'Click to learn more',
+              priority: 'low',
+              icon: '📰',
+              dismissible: true
             }));
+            allAlerts.push(...directNews);
           }
-        } catch (parseError) {
-          console.warn('Failed to parse AI response:', parseError);
         }
       }
     } catch (error) {
-      console.warn('Groq processing error:', error);
+      console.log('News fetch error');
     }
     
-    return [];
-  };
-
-  const getStaticAlerts = () => {
+    // Add static alerts
     const currentDate = new Date(date || new Date());
-    const alerts = [];
     
-    // Jellyfish warning (Aug 20-28)
     if (currentDate >= new Date('2025-08-20') && currentDate <= new Date('2025-08-28')) {
-      if (location === 'maiKhao' || location === 'all') {
-        alerts.push({
-          id: 'jellyfish_warning',
-          type: 'warning',
-          title: 'Jellyfish Season Advisory',
-          description: 'Box jellyfish possible at beaches. Swim in designated areas only.',
-          priority: 'high',
-          icon: '⚠️',
-          dismissible: true
-        });
-      }
+      allAlerts.push({
+        id: 'jellyfish_warning',
+        type: 'warning',
+        title: 'Jellyfish Season Advisory',
+        description: 'Box jellyfish possible at beaches. Swim in designated areas only.',
+        priority: 'high',
+        icon: '⚠️',
+        dismissible: true
+      });
     }
     
-    // Sunday Walking Street (Sundays only)
     if (currentDate.getDay() === 0) {
-      if (location === 'oldTown' || location === 'all') {
-        alerts.push({
-          id: 'sunday_market',
-          type: 'event',
-          title: 'Old Town Sunday Walking Street',
-          description: 'Every Sunday 4-10pm. Great for souvenirs and street food.',
-          priority: 'low',
-          icon: '🎪',
-          dismissible: true
-        });
-      }
+      allAlerts.push({
+        id: 'sunday_market',
+        type: 'event',
+        title: 'Old Town Sunday Walking Street',
+        description: 'Every Sunday 4-10pm. Great for souvenirs and street food.',
+        priority: 'low',
+        icon: '🎪',
+        dismissible: true
+      });
     }
     
-    // General tip (always show)
-    alerts.push({
+    allAlerts.push({
       id: 'atm_tip',
       type: 'tip',
       title: 'ATM Tip',
@@ -176,7 +171,11 @@ Return 5 items.`;
       dismissible: true
     });
     
-    return alerts;
+    // Filter dismissed and update
+    const activeAlerts = allAlerts.filter(a => !dismissedAlerts.includes(a.id));
+    setEvents(activeAlerts);
+    setLastUpdate(new Date());
+    setLoading(false);
   };
 
   const dismissAlert = (id) => {
@@ -207,7 +206,6 @@ Return 5 items.`;
     }
   };
 
-  // Always render the component
   return (
     <div className="bg-white rounded-lg shadow-sm border">
       <button
@@ -234,13 +232,13 @@ Return 5 items.`;
           {events.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-sm text-slate-500 mb-3">
-                {loading ? 'Checking for updates...' : 'All alerts dismissed'}
+                {loading ? 'Fetching real news...' : 'No news available'}
               </p>
               <button
                 onClick={resetAlerts}
                 className="text-sm text-sky-600 hover:text-sky-800 font-medium"
               >
-                {loading ? '⏳ Loading...' : '🔄 Refresh Updates'}
+                🔄 Refresh
               </button>
             </div>
           ) : (
@@ -265,7 +263,7 @@ Return 5 items.`;
                         </span>
                         {event.isAI && (
                           <span className="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-full">
-                            AI
+                            AI Filtered
                           </span>
                         )}
                       </div>
