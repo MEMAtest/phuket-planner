@@ -4,8 +4,30 @@ import { useTrip } from '../context/TripContext';
 import { generateICS } from '../utils/calendar';
 
 const Header = () => {
-  const { activeTab, setActiveTab, planData } = useTrip();
+  const { activeTab, setActiveTab, planData, setCurrentDayIndex } = useTrip();
   const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Calculate today's index
+  const getTodayIndex = () => {
+    if (!planData || planData.length === 0) return 0;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const todayIndex = planData.findIndex(day => {
+      const dayDate = new Date(day.date);
+      dayDate.setHours(0, 0, 0, 0);
+      return dayDate.getTime() === today.getTime();
+    });
+    
+    if (todayIndex >= 0) return todayIndex;
+    
+    const firstDay = new Date(planData[0].date);
+    firstDay.setHours(0, 0, 0, 0);
+    
+    if (today < firstDay) return 0;
+    return planData.length - 1;
+  };
 
   // Update time every minute
   useEffect(() => {
@@ -25,6 +47,18 @@ const Header = () => {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+    }
+  };
+
+  // Handle tab click - navigate to today if clicking Itinerary
+  const handleTabClick = (tabName) => {
+    const cleanTabName = tabName.replace(/\s+/g, '');
+    setActiveTab(cleanTabName);
+    
+    // If clicking on Itinerary tab, also navigate to today
+    if (cleanTabName === 'Itinerary') {
+      const todayIdx = getTodayIndex();
+      setCurrentDayIndex(todayIdx);
     }
   };
 
@@ -75,7 +109,7 @@ const Header = () => {
                 {tabs.map(tab => (
                   <button 
                     key={tab} 
-                    onClick={() => setActiveTab(tab.replace(/\s+/g, ''))} 
+                    onClick={() => handleTabClick(tab)} 
                     className={`whitespace-nowrap px-3 py-1.5 text-sm font-semibold rounded-md transition-colors 
                       ${activeTab === tab.replace(/\s+/g, '') 
                         ? 'bg-white text-slate-800 shadow' 
@@ -140,7 +174,7 @@ const Header = () => {
                   return (
                     <button 
                       key={tab} 
-                      onClick={() => setActiveTab(tab.replace(/\s+/g, ''))} 
+                      onClick={() => handleTabClick(tab)} 
                       className={`whitespace-nowrap px-3 py-1.5 text-xs font-semibold rounded-md transition-colors 
                         ${activeTab === tab.replace(/\s+/g, '') 
                           ? 'bg-white text-slate-800 shadow' 
