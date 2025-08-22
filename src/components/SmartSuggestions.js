@@ -4,6 +4,7 @@ import { Icons } from '../data/staticData';
 const SmartSuggestions = ({ currentTime, dayData, weatherData, expenses }) => {
   const [suggestions, setSuggestions] = useState([]);
   const [dismissedSuggestions, setDismissedSuggestions] = useState([]);
+  const [expandedCategory, setExpandedCategory] = useState(null);
 
   // Load dismissed suggestions from localStorage
   useEffect(() => {
@@ -44,7 +45,8 @@ const SmartSuggestions = ({ currentTime, dayData, weatherData, expenses }) => {
         icon: '🍽️',
         title: 'Lunch Time Soon',
         message: 'Consider heading to lunch in 30 minutes to avoid crowds',
-        action: 'View nearby restaurants'
+        action: 'View nearby restaurants',
+        actionType: 'food'
       });
     }
 
@@ -56,7 +58,8 @@ const SmartSuggestions = ({ currentTime, dayData, weatherData, expenses }) => {
         icon: '😴',
         title: 'Nap Time',
         message: 'Kids usually nap better after lunch. Head back soon?',
-        action: 'Set nap reminder'
+        action: 'Set nap reminder',
+        actionType: 'reminder'
       });
     }
 
@@ -68,7 +71,8 @@ const SmartSuggestions = ({ currentTime, dayData, weatherData, expenses }) => {
         icon: '🍎',
         title: 'Snack Break',
         message: 'Good time for a light snack and drinks',
-        action: 'Find nearby cafes'
+        action: 'Find nearby cafes',
+        actionType: 'food'
       });
     }
 
@@ -81,7 +85,8 @@ const SmartSuggestions = ({ currentTime, dayData, weatherData, expenses }) => {
         icon: '☀️',
         title: 'High UV Alert',
         message: `UV Index: ${weatherData.uvi} - Reapply sunscreen NOW! Seek shade for kids.`,
-        action: 'Set 2-hour reminder'
+        action: 'Set 2-hour reminder',
+        actionType: 'reminder'
       });
     } else if (hour === 10 && minute >= 30 && hour < 15) {
       newSuggestions.push({
@@ -91,7 +96,8 @@ const SmartSuggestions = ({ currentTime, dayData, weatherData, expenses }) => {
         icon: '🧴',
         title: 'Sun Protection',
         message: 'Peak UV hours (11am-3pm). Reapply sunscreen!',
-        action: 'Set reminder for 2 hours'
+        action: 'Set reminder',
+        actionType: 'reminder'
       });
     }
 
@@ -106,7 +112,8 @@ const SmartSuggestions = ({ currentTime, dayData, weatherData, expenses }) => {
           icon: '🌧️',
           title: 'Rain Alert',
           message: `${weatherData.rain}mm expected. Consider indoor activities or grab umbrellas`,
-          action: 'View indoor options'
+          action: 'View indoor options',
+          actionType: 'indoor'
         });
 
         // Suggest indoor alternatives for outdoor activities
@@ -121,7 +128,8 @@ const SmartSuggestions = ({ currentTime, dayData, weatherData, expenses }) => {
             icon: '🏠',
             title: 'Activity Alternative',
             message: `${outdoorActivity.title} may be affected by rain. Consider indoor backup`,
-            action: 'Find alternatives'
+            action: 'Find alternatives',
+            actionType: 'indoor'
           });
         }
       }
@@ -135,7 +143,8 @@ const SmartSuggestions = ({ currentTime, dayData, weatherData, expenses }) => {
           icon: '💧',
           title: 'High Humidity Alert',
           message: `${weatherData.humidity}% humidity - clothes will take longer to dry`,
-          action: 'Pack extra clothes'
+          action: 'Pack extra clothes',
+          actionType: 'info'
         });
       }
 
@@ -148,7 +157,8 @@ const SmartSuggestions = ({ currentTime, dayData, weatherData, expenses }) => {
           icon: '🥵',
           title: 'Heat Warning',
           message: `${weatherData.temp}°C - Avoid prolonged outdoor exposure 12-3pm`,
-          action: 'Find AC venues'
+          action: 'Find AC venues',
+          actionType: 'indoor'
         });
       }
 
@@ -161,7 +171,8 @@ const SmartSuggestions = ({ currentTime, dayData, weatherData, expenses }) => {
           icon: '💨',
           title: 'Windy Beach Conditions',
           message: 'Strong winds at beach - secure belongings, watch for sand',
-          action: 'Check beach flags'
+          action: 'Check beach flags',
+          actionType: 'info'
         });
       }
     }
@@ -185,7 +196,8 @@ const SmartSuggestions = ({ currentTime, dayData, weatherData, expenses }) => {
           icon: '🚕',
           title: 'Departure Reminder',
           message: `${currentActivity.title} - Allow extra time for traffic`,
-          action: 'Book Grab taxi'
+          action: 'Book Grab taxi',
+          actionType: 'transport'
         });
       }
 
@@ -198,7 +210,8 @@ const SmartSuggestions = ({ currentTime, dayData, weatherData, expenses }) => {
           icon: '📍',
           title: 'Restaurant Navigation',
           message: `Heading to ${currentActivity.title}?`,
-          action: 'Get directions'
+          action: 'Get directions',
+          actionType: 'directions'
         });
       }
 
@@ -212,7 +225,8 @@ const SmartSuggestions = ({ currentTime, dayData, weatherData, expenses }) => {
             icon: '🌡️',
             title: 'Hot Weather Activity',
             message: `${weatherData.temp}°C for ${currentActivity.title} - Bring water & hats`,
-            action: 'Pack cooling items'
+            action: 'Pack cooling items',
+            actionType: 'info'
           });
         }
       }
@@ -232,7 +246,8 @@ const SmartSuggestions = ({ currentTime, dayData, weatherData, expenses }) => {
         icon: '🐘',
         title: 'Elephant Sanctuary Visit',
         message: 'Wear closed shoes, bring change of clothes (may get muddy/wet)',
-        action: 'Packing checklist'
+        action: 'Packing checklist',
+        actionType: 'info'
       });
 
       if (weatherData?.isRaining) {
@@ -243,7 +258,8 @@ const SmartSuggestions = ({ currentTime, dayData, weatherData, expenses }) => {
           icon: '🌧️🐘',
           title: 'Sanctuary Rain Advisory',
           message: 'Elephants active in rain but paths muddy. Bring raincoats!',
-          action: 'Check tour status'
+          action: 'Check tour status',
+          actionType: 'info'
         });
       }
     }
@@ -263,7 +279,8 @@ const SmartSuggestions = ({ currentTime, dayData, weatherData, expenses }) => {
           icon: '🏊',
           title: 'Cool Day for Water Park',
           message: `${weatherData.temp}°C - Pack towels & warm clothes for after`,
-          action: 'Check opening hours'
+          action: 'Check opening hours',
+          actionType: 'info'
         });
       }
     }
@@ -277,7 +294,8 @@ const SmartSuggestions = ({ currentTime, dayData, weatherData, expenses }) => {
         icon: '💰',
         title: 'Budget Alert',
         message: `${Math.round((expenses.todayTotal / expenses.dailyBudget) * 100)}% of daily budget spent`,
-        action: 'View spending'
+        action: 'View spending',
+        actionType: 'expenses'
       });
     }
 
@@ -291,7 +309,8 @@ const SmartSuggestions = ({ currentTime, dayData, weatherData, expenses }) => {
         icon: '🍪',
         title: 'Kids Might Be Hungry',
         message: "It's been 3+ hours since last meal/snack",
-        action: 'Find food options'
+        action: 'Find food options',
+        actionType: 'food'
       });
     }
 
@@ -304,7 +323,8 @@ const SmartSuggestions = ({ currentTime, dayData, weatherData, expenses }) => {
         icon: '🍝',
         title: 'Dinner Planning',
         message: 'Consider making dinner reservations or heading out soon',
-        action: 'View restaurants'
+        action: 'View restaurants',
+        actionType: 'food'
       });
     }
 
@@ -316,7 +336,8 @@ const SmartSuggestions = ({ currentTime, dayData, weatherData, expenses }) => {
         icon: '🛁',
         title: 'Bedtime Routine',
         message: 'Start winding down for kids\' bedtime',
-        action: 'Set bedtime reminder'
+        action: 'Set bedtime reminder',
+        actionType: 'reminder'
       });
     }
 
@@ -331,7 +352,8 @@ const SmartSuggestions = ({ currentTime, dayData, weatherData, expenses }) => {
         title: 'Beach Conditions',
         message: isMorning ? 'Low tide morning - great for walking & shells' : 
                             'High tide afternoon - better for swimming',
-        action: 'Check tide times'
+        action: 'Check tide times',
+        actionType: 'info'
       });
     }
 
@@ -388,6 +410,54 @@ const SmartSuggestions = ({ currentTime, dayData, weatherData, expenses }) => {
     localStorage.setItem(`dismissed_suggestions_${today}`, JSON.stringify(newDismissed));
   };
 
+  const handleAction = (suggestion) => {
+    // Handle different action types
+    switch(suggestion.actionType) {
+      case 'food':
+        // Filter to show only food-related suggestions
+        setExpandedCategory('food');
+        alert('Food recommendations: Check the "Local Options" section for restaurant suggestions');
+        break;
+      
+      case 'indoor':
+        // Show indoor activities
+        setExpandedCategory('indoor');
+        alert('Indoor options: Aquarium, Kids Club, Shopping Mall - check your itinerary for details');
+        break;
+      
+      case 'reminder':
+        // Set a reminder (for now just show alert)
+        alert(`Reminder set! We'll notify you in 2 hours.`);
+        dismissSuggestion(suggestion.id);
+        break;
+      
+      case 'transport':
+        // Open Grab in new tab
+        window.open('https://www.grab.com/th/en/', '_blank');
+        break;
+      
+      case 'directions':
+        // Show directions info
+        alert('For directions: Use Google Maps or ask hotel concierge for assistance');
+        break;
+      
+      case 'expenses':
+        // Scroll to expense tracker
+        const expenseElement = document.querySelector('.expense-tracker');
+        if (expenseElement) {
+          expenseElement.scrollIntoView({ behavior: 'smooth' });
+        }
+        break;
+      
+      case 'info':
+      default:
+        // Just dismiss the suggestion as acknowledged
+        alert(suggestion.message);
+        dismissSuggestion(suggestion.id);
+        break;
+    }
+  };
+
   const getPriorityColor = (priority) => {
     switch(priority) {
       case 'high': return 'bg-red-100 text-red-800 border-red-200';
@@ -422,9 +492,12 @@ const SmartSuggestions = ({ currentTime, dayData, weatherData, expenses }) => {
             <div className="flex-1">
               <h4 className="font-medium text-sm">{suggestion.title}</h4>
               <p className="text-xs mt-0.5 opacity-90">{suggestion.message}</p>
-              <button className="text-xs font-medium mt-1 underline opacity-75 
-                             hover:opacity-100">
-                {suggestion.action}
+              <button 
+                onClick={() => handleAction(suggestion)}
+                className="text-xs font-medium mt-1 text-blue-600 hover:text-blue-800 
+                         transition-colors cursor-pointer"
+              >
+                {suggestion.action} →
               </button>
             </div>
             <button
