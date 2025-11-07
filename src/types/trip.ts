@@ -3,12 +3,60 @@
 // Supports complex itineraries spanning multiple countries
 // ──────────────────────────────────────────────────────────────────────────────
 
+export type Expense = {
+  id: string;
+  tripId: string;
+  segmentId?: string;       // Optional link to trip segment
+  itineraryItemId?: string; // Optional link to itinerary item
+  date: string;             // ISO date
+  category: 'accommodation' | 'food' | 'transport' | 'activities' | 'shopping' | 'other';
+  description: string;
+  amount: number;
+  currency: string;
+  paymentMethod?: 'cash' | 'card' | 'digital';
+  notes?: string;
+  receipt?: string;         // URL or reference
+  tags?: string[];
+};
+
+export type ExpenseSummary = {
+  totalByCategory: Record<string, { amount: number; currency: string }[]>;
+  totalByCountry: Record<string, { amount: number; currency: string }[]>;
+  totalByCurrency: Record<string, number>;
+  grandTotal: {
+    homeCurrency: string;
+    amount: number;         // Converted to home currency
+  };
+};
+
+export type ItineraryItem = {
+  id: string;
+  date: string;             // ISO date
+  time?: string;            // HH:MM format
+  type: 'activity' | 'meal' | 'transport' | 'accommodation' | 'other';
+  title: string;
+  description?: string;
+  location?: {
+    name: string;
+    address?: string;
+    lat?: number;
+    lng?: number;
+  };
+  cost?: {
+    amount: number;
+    currency: string;
+  };
+  bookingReference?: string;
+  notes?: string;
+};
+
 export type TripSegment = {
   id: string;
   countryIso2: string;
   startDate: string;        // ISO date
   endDate: string;          // ISO date
   cities: string[];
+  itinerary?: ItineraryItem[];
   accommodation?: {
     name: string;
     address: string;
