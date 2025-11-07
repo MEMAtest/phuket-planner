@@ -3,15 +3,15 @@ import { Icons } from '../data/staticData';
 
 const IconLegend = () => {
   const iconItems = [
-    { icon: <Icons.plane className="w-5 h-5 text-sky-600"/>, label: 'Travel', description: 'Flights, transfers, transportation' },
-    { icon: <Icons.utensils className="w-5 h-5 text-rose-600"/>, label: 'Meal', description: 'Restaurants, food experiences' },
-    { icon: <Icons.ferrisWheel className="w-5 h-5 text-indigo-600"/>, label: 'Activity', description: 'Attractions, tours, experiences' },
-    { icon: <Icons.clock className="w-5 h-5 text-amber-600"/>, label: 'Nap / Rest', description: 'Scheduled rest time for kids' },
-    { icon: <Icons.sun className="w-5 h-5 text-emerald-600"/>, label: 'Outdoor', description: 'Beach, parks, outdoor activities' },
-    { icon: <Icons.moon className="w-5 h-5 text-purple-600"/>, label: 'Indoor', description: 'Museums, malls, indoor venues' },
-    { icon: <Icons.star className="w-5 h-5 text-amber-500"/>, label: 'Rating', description: 'Venue or activity rating' },
-    { icon: <Icons.wallet className="w-5 h-5 text-green-600"/>, label: 'Budget', description: 'Cost and expense tracking' },
-    { icon: <Icons.alertTriangle className="w-5 h-5 text-red-500"/>, label: 'Important', description: 'Weather alerts, safety notes' },
+    { icon: <Icons.Plane className="w-5 h-5 text-sky-600"/>, label: 'Travel', description: 'Flights, transfers, transportation' },
+    { icon: <Icons.Utensils className="w-5 h-5 text-rose-600"/>, label: 'Meal', description: 'Restaurants, food experiences' },
+    { icon: <Icons.FerrisWheel className="w-5 h-5 text-indigo-600"/>, label: 'Activity', description: 'Attractions, tours, experiences' },
+    { icon: <Icons.Clock className="w-5 h-5 text-amber-600"/>, label: 'Nap / Rest', description: 'Scheduled rest time for kids' },
+    { icon: <Icons.Sun className="w-5 h-5 text-emerald-600"/>, label: 'Outdoor', description: 'Beach, parks, outdoor activities' },
+    { icon: <Icons.Moon className="w-5 h-5 text-purple-600"/>, label: 'Indoor', description: 'Museums, malls, indoor venues' },
+    { icon: <Icons.Star className="w-5 h-5 text-amber-500"/>, label: 'Rating', description: 'Venue or activity rating' },
+    { icon: <Icons.Wallet className="w-5 h-5 text-green-600"/>, label: 'Budget', description: 'Cost and expense tracking' },
+    { icon: <Icons.AlertTriangle className="w-5 h-5 text-red-500"/>, label: 'Important', description: 'Weather alerts, safety notes' },
   ];
   
   const emergencyInfo = [
@@ -23,9 +23,9 @@ const IconLegend = () => {
   ];
   
   const weatherLegend = [
-    { icon: <Icons.sun className="w-5 h-5 text-amber-500"/>, label: 'Sunny', temp: '30-35°C' },
-    { icon: <Icons.cloud className="w-5 h-5 text-slate-500"/>, label: 'Cloudy', temp: '28-32°C' },
-    { icon: <Icons.cloudRain className="w-5 h-5 text-blue-500"/>, label: 'Rainy', temp: '25-30°C' },
+    { icon: <Icons.Sun className="w-5 h-5 text-amber-500"/>, label: 'Sunny', temp: '30-35°C' },
+    { icon: <Icons.Cloud className="w-5 h-5 text-slate-500"/>, label: 'Cloudy', temp: '28-32°C' },
+    { icon: <Icons.CloudRain className="w-5 h-5 text-blue-500"/>, label: 'Rainy', temp: '25-30°C' },
   ];
   
   return (
@@ -63,7 +63,7 @@ const IconLegend = () => {
       {/* Emergency Contacts */}
       <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 sm:p-6">
         <h3 className="font-bold text-lg text-red-800 mb-4 flex items-center gap-2">
-          <Icons.alertTriangle className="w-6 h-6"/>
+          <Icons.AlertTriangle className="w-6 h-6"/>
           Emergency Contacts
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

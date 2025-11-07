@@ -37,7 +37,7 @@ const PriceGuide = () => {
       {/* Header */}
       <div className="bg-gradient-to-r from-emerald-500 to-teal-600 p-4">
         <h3 className="font-bold text-xl text-white mb-2 flex items-center gap-2">
-          <Icons.wallet className="w-6 h-6" />
+          <Icons.Wallet className="w-6 h-6" />
           Phuket Price Guide
         </h3>
         <p className="text-emerald-100 text-sm">
@@ -108,7 +108,7 @@ const PriceGuide = () => {
         {selectedCategory === 'shopping' && (
           <div className="mt-6 p-4 bg-amber-50 rounded-lg border border-amber-200">
             <h4 className="font-semibold text-sm text-amber-800 mb-3 flex items-center gap-2">
-              <Icons.lightbulb className="w-5 h-5" />
+              <Icons.Lightbulb className="w-5 h-5" />
               Money Saving Tips
             </h4>
             <ul className="space-y-2">

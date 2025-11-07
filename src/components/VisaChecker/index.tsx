@@ -34,6 +34,18 @@ export const VisaChecker: React.FC<VisaCheckerProps> = ({
     return 'bg-red-50 border-red-200 text-red-800';
   };
 
+  const getCostSummary = () => {
+    const totals: Record<string, number> = {};
+    requirements
+      .filter(r => r.cost)
+      .forEach(req => {
+        if (req.cost) {
+          totals[req.cost.currency] = (totals[req.cost.currency] || 0) + req.cost.amount;
+        }
+      });
+    return totals;
+  };
+
   const getStatusIcon = (req: VisaRequirement) => {
     if (!req.required) return '✓';
     if (req.type === 'eVisa' || req.type === 'eta') return '⚠';
@@ -214,17 +226,21 @@ export const VisaChecker: React.FC<VisaCheckerProps> = ({
             {requirements.filter(r => !r.required).length} visa-free destinations,{' '}
             {requirements.filter(r => r.required).length} requiring visas
           </p>
-          {requirements.some(r => r.required) && (
-            <p className="mt-1 font-medium">
-              Total estimated visa costs: {' '}
-              {formatCost({
-                amount: requirements
-                  .filter(r => r.cost)
-                  .reduce((sum, r) => sum + (r.cost?.amount || 0), 0),
-                currency: requirements.find(r => r.cost)?.cost?.currency || 'GBP'
-              })}
-            </p>
-          )}
+          {(() => {
+            const totals = getCostSummary();
+            const currencies = Object.keys(totals);
+            if (currencies.length === 0) {
+              return null;
+            }
+            return (
+              <p className="mt-1 font-medium">
+                Estimated visa costs:{' '}
+                {currencies
+                  .map(currency => formatCost({ amount: totals[currency], currency }))
+                  .join(' + ')}
+              </p>
+            );
+          })()}
         </div>
       </div>
     </div>

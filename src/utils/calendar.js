@@ -70,7 +70,6 @@ END:VEVENT
   // Add the full trip as an all-day event
   if (planData.length > 0) {
     const firstDay = planData[0].date.replace(/-/g, '');
-    const lastDay = planData[planData.length - 1].date.replace(/-/g, '');
     const nextDay = new Date(planData[planData.length - 1].date);
     nextDay.setDate(nextDay.getDate() + 1);
     const lastDayPlus1 = nextDay.toISOString().split('T')[0].replace(/-/g, '');

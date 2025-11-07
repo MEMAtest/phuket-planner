@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Icons } from '../data/staticData';
 
 const CurrencyConverter = () => {
@@ -28,7 +28,7 @@ const CurrencyConverter = () => {
   }, [rate, lastUpdated]);
 
   // Fetch latest exchange rate
-  const fetchExchangeRate = async () => {
+  const fetchExchangeRate = useCallback(async () => {
     setLoading(true);
     try {
       // Using exchangerate-api.com free tier
@@ -50,7 +50,7 @@ const CurrencyConverter = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [amount1, currency1]);
 
   // Check if rate is older than 12 hours
   useEffect(() => {
@@ -59,9 +59,9 @@ const CurrencyConverter = () => {
     const hoursSinceUpdate = (now - lastUpdate) / (1000 * 60 * 60);
     
     if (hoursSinceUpdate > 12) {
-      fetchExchangeRate();
+      void fetchExchangeRate();
     }
-  }, []);
+  }, [lastUpdated, fetchExchangeRate]);
 
   const handleAmount1Change = (e) => {
     const val = parseFloat(e.target.value) || 0;
@@ -147,7 +147,7 @@ const CurrencyConverter = () => {
     <div className="bg-white p-4 sm:p-6 rounded-xl shadow-lg">
       <div className="flex justify-between items-start mb-4">
         <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
-          {Icons.repeat ? <Icons.repeat className="w-6 h-6 text-sky-600"/> : <span>💱</span>}
+          {Icons.Repeat ? <Icons.Repeat className="w-6 h-6 text-sky-600"/> : <span>💱</span>}
           Currency Converter
         </h3>
         <button

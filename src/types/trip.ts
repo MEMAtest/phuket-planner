@@ -122,7 +122,12 @@ export function getTripDuration(trip: MultiCountryTrip): number {
   const start = new Date(firstSegment.startDate);
   const end = new Date(lastSegment.endDate);
 
-  return Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  const diff = end.getTime() - start.getTime();
+  if (diff < 0) {
+    return 0;
+  }
+
+  return Math.floor(diff / (1000 * 60 * 60 * 24)) + 1;
 }
 
 // Get all unique countries in trip

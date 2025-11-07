@@ -3,7 +3,11 @@
 // Uses libphonenumber-js for validation and formatting
 // ──────────────────────────────────────────────────────────────────────────────
 
-import { parsePhoneNumberFromString, CountryCode } from 'libphonenumber-js';
+import {
+  parsePhoneNumberFromString,
+  CountryCode,
+  getCountryCallingCode as lookupCountryCallingCode
+} from 'libphonenumber-js';
 
 /**
  * Convert phone number to E.164 format (e.g., +85223456789)
@@ -72,8 +76,7 @@ export function isValidPhoneNumber(input: string, defaultCountry: string): boole
  */
 export function getCountryCallingCode(countryCode: string): string | undefined {
   try {
-    const phoneNumber = parsePhoneNumberFromString('+1', countryCode as CountryCode);
-    return phoneNumber?.countryCallingCode;
+    return lookupCountryCallingCode(countryCode as CountryCode);
   } catch (error) {
     return undefined;
   }

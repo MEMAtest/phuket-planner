@@ -34,7 +34,7 @@ const DailyPhrases = ({ dayData, dayIndex }) => {
       {/* Header */}
       <div className="bg-gradient-to-r from-purple-500 to-pink-500 p-4">
         <h3 className="font-bold text-xl text-white mb-2 flex items-center gap-2">
-          <Icons.bookOpen className="w-6 h-6" />
+          <Icons.BookOpen className="w-6 h-6" />
           Thai Phrases
         </h3>
         <p className="text-purple-100 text-sm">
@@ -109,7 +109,7 @@ const DailyPhrases = ({ dayData, dayIndex }) => {
                     ({THAI_PHRASES[category.key].length} phrases)
                   </span>
                 </div>
-                <Icons.chevronDown 
+                <Icons.ChevronDown 
                   className={`w-4 h-4 text-slate-400 transition-transform ${
                     expandedCategory === category.key ? 'rotate-180' : ''
                   }`}

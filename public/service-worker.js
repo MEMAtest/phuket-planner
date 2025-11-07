@@ -9,19 +9,11 @@ const DYNAMIC_CACHE = `dynamic-${CACHE_VERSION}`;
 const COUNTRY_CACHE = `country-packs-${CACHE_VERSION}`;
 
 // Static assets to cache immediately
-const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/static/css/main.css',
-  '/static/js/main.js',
-  '/manifest.json',
-  '/favicon.ico'
-];
+const STATIC_ASSETS = ['/', '/index.html', '/manifest.json', '/favicon.ico'];
 
 // Country pack resources
 const COUNTRY_PACK_PATTERNS = {
-  config: /\/countries\/[A-Z]{2}\/config\.ts$/,
-  translations: /\/i18n\/locales\/[a-z-]+\/common\.json$/,
+  config: /\/country-packs\/[A-Z]{2}\.json$/,
   fx: /\/api\/fx\?/
 };
 
@@ -223,11 +215,14 @@ function isCountryPackResource(pathname) {
 // Message handler for downloading country packs
 self.addEventListener('message', event => {
   if (event.data.type === 'DOWNLOAD_COUNTRY_PACK') {
-    const { countryIso2 } = event.data;
+    const { countryIso2, currency, homeCurrency = 'USD' } = event.data;
     console.log('Service Worker: Downloading country pack:', countryIso2);
 
     event.waitUntil(
-      downloadCountryPack(countryIso2)
+      downloadCountryPack(countryIso2, {
+        currency,
+        homeCurrency
+      })
         .then(() => {
           event.ports[0].postMessage({ success: true, countryIso2 });
         })
@@ -239,11 +234,11 @@ self.addEventListener('message', event => {
   }
 
   if (event.data.type === 'DELETE_COUNTRY_PACK') {
-    const { countryIso2 } = event.data;
+    const { countryIso2, currency, homeCurrency = 'USD' } = event.data;
     console.log('Service Worker: Deleting country pack:', countryIso2);
 
     event.waitUntil(
-      deleteCountryPack(countryIso2)
+      deleteCountryPack(countryIso2, { currency, homeCurrency })
         .then(() => {
           event.ports[0].postMessage({ success: true, countryIso2 });
         })
@@ -265,15 +260,21 @@ self.addEventListener('message', event => {
 });
 
 // Download all resources for a country pack
-async function downloadCountryPack(countryIso2) {
+async function downloadCountryPack(countryIso2, { currency, homeCurrency }) {
   const cache = await caches.open(COUNTRY_CACHE);
 
-  const resources = [
-    `/countries/${countryIso2}/config.ts`,
-    `/api/fx?base=${countryIso2}&quote=GBP`,
-    `/api/fx?base=${countryIso2}&quote=USD`,
-    `/api/fx?base=${countryIso2}&quote=EUR`
-  ];
+  const resources = [`/country-packs/${countryIso2}.json`];
+  const fxPairs = [];
+
+  if (currency) {
+    fxPairs.push({ base: currency, quote: homeCurrency });
+    if (homeCurrency !== 'USD') {
+      fxPairs.push({ base: currency, quote: 'USD' });
+      fxPairs.push({ base: 'USD', quote: homeCurrency });
+    } else {
+      fxPairs.push({ base: currency, quote: 'EUR' });
+    }
+  }
 
   const promises = resources.map(async url => {
     try {
@@ -281,8 +282,10 @@ async function downloadCountryPack(countryIso2) {
       if (response.ok) {
         const headers = new Headers(response.headers);
         headers.set('sw-cache-date', new Date().toISOString());
+        headers.set('sw-country-iso', countryIso2);
 
-        const newResponse = new Response(response.body, {
+        const buffer = await response.clone().arrayBuffer();
+        const newResponse = new Response(buffer, {
           status: response.status,
           statusText: response.statusText,
           headers
@@ -296,21 +299,46 @@ async function downloadCountryPack(countryIso2) {
   });
 
   await Promise.all(promises);
+
+  // Prefetch FX pairs
+  const fxPromises = fxPairs.map(async pair => {
+    const url = `/api/fx?base=${encodeURIComponent(pair.base)}&quote=${encodeURIComponent(pair.quote)}`;
+    try {
+      const response = await fetch(url);
+      if (response.ok) {
+        const headers = new Headers(response.headers);
+        headers.set('sw-cache-date', new Date().toISOString());
+        headers.set('sw-country-iso', countryIso2);
+        const buffer = await response.clone().arrayBuffer();
+        const newResponse = new Response(buffer, {
+          status: response.status,
+          statusText: response.statusText,
+          headers
+        });
+        await cache.put(url, newResponse);
+      }
+    } catch (error) {
+      console.error(`Failed to cache FX pair ${pair.base}-${pair.quote}:`, error);
+    }
+  });
+
+  await Promise.all(fxPromises);
 }
 
 // Delete all resources for a country pack
-async function deleteCountryPack(countryIso2) {
+async function deleteCountryPack(countryIso2, { currency, homeCurrency }) {
   const cache = await caches.open(COUNTRY_CACHE);
   const keys = await cache.keys();
 
-  const deletePromises = keys
-    .filter(request => {
-      const url = new URL(request.url);
-      return url.pathname.includes(`/${countryIso2}/`) ||
-             url.searchParams.get('base') === countryIso2 ||
-             url.searchParams.get('quote') === countryIso2;
-    })
-    .map(request => cache.delete(request));
+  const deletePromises = keys.map(async request => {
+    const response = await cache.match(request);
+    if (!response) return;
+
+    const taggedIso = response.headers.get('sw-country-iso');
+    if (taggedIso === countryIso2) {
+      await cache.delete(request);
+    }
+  });
 
   await Promise.all(deletePromises);
 }

@@ -4,12 +4,6 @@
 const API_KEY = process.env.REACT_APP_OPENWEATHER_API_KEY || '4221eacbcab49fe83e6b6381d3255eb4';
 const BASE_URL = 'https://api.openweathermap.org/data/2.5';
 
-// Phuket coordinates
-const PHUKET_COORDS = {
-  lat: 7.8804,
-  lon: 98.3923
-};
-
 // Mai Khao Beach coordinates (near hotel)
 const MAI_KHAO_COORDS = {
   lat: 8.1707,

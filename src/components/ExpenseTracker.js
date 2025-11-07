@@ -5,7 +5,6 @@ import {
   getExpenses,
   fetchExchangeRate,
   updateExchangeRate,
-  getSpendingByCategory,
   checkBudgetAlert,
   QUICK_AMOUNTS
 } from '../services/expenseService';
@@ -176,21 +175,11 @@ const ExpenseTracker = ({ date, activityId, onExpenseAdded }) => {
     setShowAddForm(true);
   };
 
-  const startEditExpense = (expense) => {
-    setEditingExpense({
-      amount: expense.amount.toString(),
-      currency: expense.currency,
-      category: expense.category,
-      description: expense.description || ''
-    });
-  };
-
   const cancelEdit = () => {
     setEditingExpense(null);
   };
 
   const todayExpenses = expenses?.days[date];
-  const categoryBreakdown = getSpendingByCategory();
   const displayLimit = showAllExpenses ? 999 : 3;
 
   return (
@@ -199,7 +188,7 @@ const ExpenseTracker = ({ date, activityId, onExpenseAdded }) => {
       <div className="flex justify-between items-start mb-4">
         <div>
           <h3 className="font-semibold text-slate-800 flex items-center gap-2">
-            <Icons.wallet className="w-5 h-5 text-green-600" />
+            <Icons.Wallet className="w-5 h-5 text-green-600" />
             Today's Spending
           </h3>
           <p className="text-xs text-slate-500 mt-1">
@@ -209,7 +198,7 @@ const ExpenseTracker = ({ date, activityId, onExpenseAdded }) => {
               className="ml-2 text-sky-600 hover:text-sky-700"
               title="Update rate"
             >
-              <Icons.repeat className="w-3 h-3 inline" />
+              <Icons.Repeat className="w-3 h-3 inline" />
             </button>
           </p>
         </div>
@@ -228,7 +217,7 @@ const ExpenseTracker = ({ date, activityId, onExpenseAdded }) => {
         <div className={`p-2 rounded-lg mb-3 text-sm font-medium
           ${budgetAlert.type === 'danger' ? 'bg-red-100 text-red-800' : 
             'bg-amber-100 text-amber-800'}`}>
-          <Icons.alertTriangle className="w-4 h-4 inline mr-1" />
+          <Icons.AlertTriangle className="w-4 h-4 inline mr-1" />
           {budgetAlert.message}
         </div>
       )}
@@ -250,7 +239,7 @@ const ExpenseTracker = ({ date, activityId, onExpenseAdded }) => {
           className="px-3 py-1 text-sm font-medium bg-sky-100 
                    text-sky-700 hover:bg-sky-200 rounded-lg transition-colors"
         >
-          <Icons.plusCircle className="w-4 h-4 inline mr-1" />
+          <Icons.PlusCircle className="w-4 h-4 inline mr-1" />
           Custom
         </button>
       </div>

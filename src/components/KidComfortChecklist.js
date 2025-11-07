@@ -106,7 +106,7 @@ const KidComfortChecklist = () => {
   return (
     <div className="bg-white p-4 sm:p-6 rounded-xl shadow-lg">
       <h3 className="font-bold text-lg text-slate-800 mb-3 flex items-center gap-2">
-        <Icons.checkSquare className="w-6 h-6 text-sky-600"/>
+        <Icons.CheckSquare className="w-6 h-6 text-sky-600"/>
         Kid-Comfort Packing Checklist
       </h3>
       
@@ -169,7 +169,7 @@ const KidComfortChecklist = () => {
                 onClick={() => removeItem(item.id)}
                 className="text-red-500 hover:text-red-700"
               >
-                <Icons.trash2 className="w-4 h-4"/>
+                <Icons.Trash2 className="w-4 h-4"/>
               </button>
             )}
           </div>

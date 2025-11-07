@@ -4,24 +4,24 @@ import { Icons } from '../data/staticData';
 export const getWeatherIcon = (summary) => {
   const s = summary.toLowerCase();
   if (s.includes("storm") || s.includes("rain")) {
-    return <Icons.cloudRain className="w-6 h-6 text-blue-500" />;
+    return <Icons.CloudRain className="w-6 h-6 text-blue-500" />;
   } else if (s.includes("cloud")) {
-    return <Icons.cloud className="w-6 h-6 text-slate-500" />;
+    return <Icons.Cloud className="w-6 h-6 text-slate-500" />;
   }
-  return <Icons.sun className="w-6 h-6 text-amber-500" />;
+  return <Icons.Sun className="w-6 h-6 text-amber-500" />;
 };
 
 // Activity Type Icon Helper
 export const getTypeIcon = (type, props = { className: "w-5 h-5" }) => {
   const iconMap = {
-    travel: <Icons.plane {...props} />,
-    eat: <Icons.utensils {...props} />,
-    nap: <Icons.clock {...props} />,
-    indoor: <Icons.ferrisWheel {...props} />,
-    outdoor: <Icons.sun {...props} />,
-    mixed: <Icons.ferrisWheel {...props} />
+    travel: <Icons.Plane {...props} />,
+    eat: <Icons.Utensils {...props} />,
+    nap: <Icons.Clock {...props} />,
+    indoor: <Icons.FerrisWheel {...props} />,
+    outdoor: <Icons.Sun {...props} />,
+    mixed: <Icons.FerrisWheel {...props} />
   };
-  return iconMap[type] || <Icons.ferrisWheel {...props} />;
+  return iconMap[type] || <Icons.FerrisWheel {...props} />;
 };
 
 // Activity Type Color Helper
@@ -119,7 +119,7 @@ export const getWeatherRecommendations = (summary) => {
   
   if (isRainy) {
     return {
-      icon: <Icons.alertTriangle className="w-4 h-4 text-amber-500"/>,
+      icon: <Icons.AlertTriangle className="w-4 h-4 text-amber-500"/>,
       message: "Indoor activities recommended today",
       suggestions: [
         "Visit Phuket Aquarium",
@@ -131,7 +131,7 @@ export const getWeatherRecommendations = (summary) => {
     };
   }
   return {
-    icon: <Icons.sun className="w-4 h-4 text-green-500"/>,
+    icon: <Icons.Sun className="w-4 h-4 text-green-500"/>,
     message: "Great day for outdoor activities!",
     suggestions: [
       "Beach time",

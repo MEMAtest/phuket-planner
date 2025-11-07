@@ -116,7 +116,6 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
   const [expenses, setExpenses] = useState(null);
   const [weatherData, setWeatherData] = useState(null);
   const [showUndoNotification, setShowUndoNotification] = useState(false);
-  const [lastAddedActivity, setLastAddedActivity] = useState(null);
   const [completedActivities, setCompletedActivities] = useState({});
 
   // Load completed activities from localStorage
@@ -190,7 +189,6 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
     // Update through context (which handles persistence)
     onUpdatePlan(dayIndex, updatedBlocks);
     setIsAdding(false);
-    setLastAddedActivity(itemWithId);
     setShowUndoNotification(true);
     
     // Log for debugging

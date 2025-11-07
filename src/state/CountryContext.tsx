@@ -3,7 +3,7 @@
 // Persists to localStorage; reads browser hints as defaults
 // ──────────────────────────────────────────────────────────────────────────────
 
-import React, { createContext, useContext, useMemo, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useMemo, useState, useEffect, ReactNode, useCallback } from 'react';
 import { COUNTRIES, CountryConfig, CountryIso2 } from '../countries';
 
 export type CountryState = {
@@ -54,7 +54,7 @@ export const CountryProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   }, [country, language]);
 
-  const setCountry = (iso2: CountryIso2) => {
+  const setCountry = useCallback((iso2: CountryIso2) => {
     const cfg = COUNTRIES[iso2];
     setCountryState(cfg);
     localStorage.setItem('global_country', iso2);
@@ -64,17 +64,17 @@ export const CountryProvider: React.FC<{ children: ReactNode }> = ({ children })
       setLanguageState(cfg.defaultLocale);
       localStorage.setItem('global_language', cfg.defaultLocale);
     }
-  };
+  }, [language]);
 
-  const setLanguage = (locale: string) => {
+  const setLanguage = useCallback((locale: string) => {
     setLanguageState(locale);
     localStorage.setItem('global_language', locale);
-  };
+  }, []);
 
-  const setHomeCurrency = (code: string) => {
+  const setHomeCurrency = useCallback((code: string) => {
     setHomeCurrencyState(code);
     localStorage.setItem('global_homeCurrency', code);
-  };
+  }, []);
 
   const value = useMemo(
     () => ({
@@ -85,7 +85,7 @@ export const CountryProvider: React.FC<{ children: ReactNode }> = ({ children })
       setLanguage,
       setHomeCurrency
     }),
-    [country, language, homeCurrency]
+    [country, language, homeCurrency, setCountry, setLanguage, setHomeCurrency]
   );
 
   return <CountryContext.Provider value={value}>{children}</CountryContext.Provider>;

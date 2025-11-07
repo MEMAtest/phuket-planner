@@ -199,7 +199,7 @@ const FoodHelperTab = () => {
 
   const FoodCard = ({ item }) => {
     const spiceLevel = Array.from({ length: 3 }, (_, i) => (
-      <Icons.flame key={i} className={`w-4 h-4 ${i < item.spice ? 'text-red-500 fill-current' : 'text-slate-300'}`}/>
+      <Icons.Flame key={i} className={`w-4 h-4 ${i < item.spice ? 'text-red-500 fill-current' : 'text-slate-300'}`}/>
     ));
     return (
       <div className="bg-white rounded-lg p-4 border">
@@ -219,7 +219,7 @@ const FoodHelperTab = () => {
   const RestaurantCard = ({ restaurant, mealType }) => {
     const isExpanded = expandedRestaurant === restaurant.name;
     const kidStars = Array.from({ length: 5 }, (_, i) => (
-      <Icons.star key={i} className={`w-3 h-3 ${i < restaurant.kidFriendly ? 'text-blue-500 fill-current' : 'text-slate-300'}`}/>
+      <Icons.Star key={i} className={`w-3 h-3 ${i < restaurant.kidFriendly ? 'text-blue-500 fill-current' : 'text-slate-300'}`}/>
     ));
 
     return (
@@ -234,7 +234,7 @@ const FoodHelperTab = () => {
               <p className="text-sm text-slate-600">📍 {restaurant.location} • {restaurant.priceRange}</p>
               <div className="flex items-center gap-3 mt-1">
                 <div className="flex items-center gap-1">
-                  <Icons.star className="w-4 h-4 text-amber-500 fill-current"/>
+                  <Icons.Star className="w-4 h-4 text-amber-500 fill-current"/>
                   <span className="text-sm font-medium">{restaurant.rating}</span>
                 </div>
                 <div className="flex items-center gap-1">
@@ -243,7 +243,7 @@ const FoodHelperTab = () => {
                 </div>
               </div>
             </div>
-            <Icons.chevronDown className={`w-5 h-5 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}/>
+            <Icons.ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}/>
           </div>
         </div>
         
@@ -300,7 +300,7 @@ const FoodHelperTab = () => {
             <div className="space-y-6">
               <div>
                 <h3 className="font-bold text-lg text-slate-800 mb-3 flex items-center gap-2">
-                  <Icons.sun className="w-5 h-5 text-amber-500"/>
+                  <Icons.Sun className="w-5 h-5 text-amber-500"/>
                   Breakfast (6:30-11:00)
                 </h3>
                 <div className="space-y-3">
@@ -312,7 +312,7 @@ const FoodHelperTab = () => {
 
               <div>
                 <h3 className="font-bold text-lg text-slate-800 mb-3 flex items-center gap-2">
-                  <Icons.sun className="w-5 h-5 text-orange-500"/>
+                  <Icons.Sun className="w-5 h-5 text-orange-500"/>
                   Lunch (11:00-15:00)
                 </h3>
                 <div className="space-y-3">
@@ -324,7 +324,7 @@ const FoodHelperTab = () => {
 
               <div>
                 <h3 className="font-bold text-lg text-slate-800 mb-3 flex items-center gap-2">
-                  <Icons.moon className="w-5 h-5 text-indigo-600"/>
+                  <Icons.Moon className="w-5 h-5 text-indigo-600"/>
                   Dinner (18:00-22:00)
                 </h3>
                 <div className="space-y-3">
@@ -408,7 +408,7 @@ const FoodHelperTab = () => {
         {/* Today's Special */}
         <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-4 rounded-xl border border-amber-200">
           <h3 className="font-bold text-slate-800 mb-2 flex items-center gap-2">
-            <Icons.star className="w-5 h-5 text-amber-500 fill-current"/>
+            <Icons.Star className="w-5 h-5 text-amber-500 fill-current"/>
             Today's Pick
           </h3>
           <p className="text-sm font-medium text-slate-700 mb-1">{todaySpecial.special}</p>
@@ -418,7 +418,7 @@ const FoodHelperTab = () => {
         {/* Quick Tips */}
         <div className="bg-sky-50 p-4 rounded-xl border border-sky-200">
           <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
-            <Icons.lightbulb className="w-5 h-5 text-sky-600"/>
+            <Icons.Lightbulb className="w-5 h-5 text-sky-600"/>
             Quick Tips
           </h3>
           <ul className="space-y-2 text-sm text-slate-700">
@@ -434,7 +434,7 @@ const FoodHelperTab = () => {
         {/* Try This Today */}
         <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200">
           <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
-            <Icons.ferrisWheel className="w-5 h-5 text-green-600"/>
+            <Icons.FerrisWheel className="w-5 h-5 text-green-600"/>
             Try This Today!
           </h3>
           <div className="space-y-3">
@@ -460,7 +460,7 @@ const FoodHelperTab = () => {
         {/* Emergency Eats */}
         <div className="bg-rose-50 p-4 rounded-xl border border-rose-200">
           <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
-            <Icons.alertTriangle className="w-5 h-5 text-rose-600"/>
+            <Icons.AlertTriangle className="w-5 h-5 text-rose-600"/>
             Emergency Eats
           </h3>
           <p className="text-xs text-slate-700 mb-2">When kids are melting down:</p>
@@ -478,28 +478,28 @@ const FoodHelperTab = () => {
           <h3 className="font-bold text-slate-800 mb-3">🌶️ Spice Decoder</h3>
           <div className="space-y-2 text-sm">
             <div className="flex items-center gap-2">
-              <Icons.flame className="w-4 h-4 text-slate-300"/>
+              <Icons.Flame className="w-4 h-4 text-slate-300"/>
               <span className="text-slate-600">Safe for toddlers</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="flex">
-                <Icons.flame className="w-4 h-4 text-red-500 fill-current"/>
-                <Icons.flame className="w-4 h-4 text-slate-300"/>
+                <Icons.Flame className="w-4 h-4 text-red-500 fill-current"/>
+                <Icons.Flame className="w-4 h-4 text-slate-300"/>
               </div>
               <span className="text-slate-600">Mild tingle</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="flex">
-                <Icons.flame className="w-4 h-4 text-red-500 fill-current"/>
-                <Icons.flame className="w-4 h-4 text-red-500 fill-current"/>
+                <Icons.Flame className="w-4 h-4 text-red-500 fill-current"/>
+                <Icons.Flame className="w-4 h-4 text-red-500 fill-current"/>
               </div>
               <span className="text-slate-600">Proper spicy</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="flex">
-                <Icons.flame className="w-4 h-4 text-red-500 fill-current"/>
-                <Icons.flame className="w-4 h-4 text-red-500 fill-current"/>
-                <Icons.flame className="w-4 h-4 text-red-500 fill-current"/>
+                <Icons.Flame className="w-4 h-4 text-red-500 fill-current"/>
+                <Icons.Flame className="w-4 h-4 text-red-500 fill-current"/>
+                <Icons.Flame className="w-4 h-4 text-red-500 fill-current"/>
               </div>
               <span className="text-slate-600">🔥 Local level!</span>
             </div>

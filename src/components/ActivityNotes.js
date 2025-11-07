@@ -48,7 +48,7 @@ const ActivityNotes = ({ activityId, activityTitle, date }) => {
               onClick={() => handleRating(star)}
               className="transition-colors"
             >
-              <Icons.star 
+              <Icons.Star 
                 className={`w-4 h-4 ${
                   star <= rating 
                     ? 'text-amber-500 fill-amber-500' 
@@ -107,7 +107,7 @@ const ActivityNotes = ({ activityId, activityTitle, date }) => {
               className="text-sm text-slate-700 bg-white p-2 rounded cursor-pointer 
                        hover:bg-slate-50 transition-colors"
             >
-              <Icons.bookOpen className="w-3 h-3 inline mr-1 text-slate-400" />
+              <Icons.BookOpen className="w-3 h-3 inline mr-1 text-slate-400" />
               {savedNote}
               <span className="text-xs text-sky-600 ml-2">(click to edit)</span>
             </div>
@@ -117,7 +117,7 @@ const ActivityNotes = ({ activityId, activityTitle, date }) => {
               className="text-sm text-slate-500 hover:text-slate-700 
                        flex items-center gap-1"
             >
-              <Icons.plusCircle className="w-4 h-4" />
+              <Icons.PlusCircle className="w-4 h-4" />
               Add a note
             </button>
           )}

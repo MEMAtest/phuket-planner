@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 const NewsFeed = ({ location, date }) => {
   const [events, setEvents] = useState([]);
@@ -7,13 +7,7 @@ const NewsFeed = ({ location, date }) => {
   const [dismissedAlerts, setDismissedAlerts] = useState([]);
   const [lastUpdate, setLastUpdate] = useState(null);
 
-  useEffect(() => {
-    fetchAndProcessNews();
-    const interval = setInterval(fetchAndProcessNews, 4 * 60 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [date, location]);
-
-  const fetchAndProcessNews = async () => {
+  const fetchAndProcessNews = useCallback(async () => {
     setLoading(true);
     const allAlerts = [];
     
@@ -142,7 +136,13 @@ const NewsFeed = ({ location, date }) => {
     setEvents(activeAlerts);
     setLastUpdate(new Date());
     setLoading(false);
-  };
+  }, [date, dismissedAlerts]);
+
+  useEffect(() => {
+    void fetchAndProcessNews();
+    const interval = setInterval(fetchAndProcessNews, 4 * 60 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [fetchAndProcessNews]);
 
   const dismissAlert = (id) => {
     setDismissedAlerts([...dismissedAlerts, id]);

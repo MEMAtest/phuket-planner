@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Icons } from '../data/staticData';
 
 const SmartSuggestions = ({ currentTime, dayData, weatherData, expenses }) => {
   const [suggestions, setSuggestions] = useState([]);
   const [dismissedSuggestions, setDismissedSuggestions] = useState([]);
-  const [expandedCategory, setExpandedCategory] = useState(null);
 
   // Load dismissed suggestions from localStorage
   useEffect(() => {
@@ -23,15 +22,8 @@ const SmartSuggestions = ({ currentTime, dayData, weatherData, expenses }) => {
     });
   }, []);
 
-  useEffect(() => {
-    generateSuggestions();
-    // Update suggestions every minute
-    const interval = setInterval(generateSuggestions, 60000);
-    return () => clearInterval(interval);
-  }, [currentTime, dayData, weatherData, expenses, dismissedSuggestions]);
-
-  const generateSuggestions = () => {
-    const now = new Date();
+  const generateSuggestions = useCallback(() => {
+    const now = currentTime ? new Date(currentTime) : new Date();
     const hour = now.getHours();
     const minute = now.getMinutes();
     const newSuggestions = [];
@@ -369,7 +361,14 @@ const SmartSuggestions = ({ currentTime, dayData, weatherData, expenses }) => {
     });
 
     setSuggestions(activeSuggestions);
-  };
+  }, [currentTime, dayData, weatherData, expenses, dismissedSuggestions]);
+
+  useEffect(() => {
+    generateSuggestions();
+    // Update suggestions every minute
+    const interval = setInterval(generateSuggestions, 60000);
+    return () => clearInterval(interval);
+  }, [generateSuggestions, currentTime]);
 
   const isActivityPassed = (activityTime, currentHour, currentMinute) => {
     if (!activityTime || !activityTime.includes(':')) return false;
@@ -415,13 +414,11 @@ const SmartSuggestions = ({ currentTime, dayData, weatherData, expenses }) => {
     switch(suggestion.actionType) {
       case 'food':
         // Filter to show only food-related suggestions
-        setExpandedCategory('food');
         alert('Food recommendations: Check the "Local Options" section for restaurant suggestions');
         break;
       
       case 'indoor':
         // Show indoor activities
-        setExpandedCategory('indoor');
         alert('Indoor options: Aquarium, Kids Club, Shopping Mall - check your itinerary for details');
         break;
       
@@ -472,7 +469,7 @@ const SmartSuggestions = ({ currentTime, dayData, weatherData, expenses }) => {
   return (
     <div className="bg-gradient-to-r from-sky-50 to-blue-50 rounded-lg p-4 border border-sky-200">
       <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
-        <Icons.lightbulb className="w-5 h-5 text-amber-500" />
+        <Icons.Lightbulb className="w-5 h-5 text-amber-500" />
         Smart Suggestions
         {suggestions.length > 0 && (
           <span className="text-xs bg-sky-600 text-white px-2 py-0.5 rounded-full">
@@ -505,7 +502,7 @@ const SmartSuggestions = ({ currentTime, dayData, weatherData, expenses }) => {
               className="text-slate-400 hover:text-slate-600 transition-colors"
               title="Dismiss for today"
             >
-              <Icons.x className="w-4 h-4" />
+              <Icons.X className="w-4 h-4" />
             </button>
           </div>
         ))}

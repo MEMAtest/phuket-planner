@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { getCurrentWeather, getWeatherForecast } from '../services/weatherService';
 
 const WeatherWidget = ({ location, date }) => {
@@ -9,13 +9,7 @@ const WeatherWidget = ({ location, date }) => {
   const [lastUpdate, setLastUpdate] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
   
-  useEffect(() => {
-    fetchWeatherData();
-    const interval = setInterval(fetchWeatherData, 30 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [location, date]);
-  
-  const fetchWeatherData = async () => {
+  const fetchWeatherData = useCallback(async () => {
     setLoading(true);
     try {
       const current = await getCurrentWeather(location);
@@ -28,7 +22,13 @@ const WeatherWidget = ({ location, date }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [location]);
+  
+  useEffect(() => {
+    fetchWeatherData();
+    const interval = setInterval(fetchWeatherData, 30 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [fetchWeatherData, date]);
   
   const getWeatherEmoji = (condition) => {
     if (!condition) return '☀️';

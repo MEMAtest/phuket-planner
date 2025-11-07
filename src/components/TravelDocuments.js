@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Icons } from '../data/staticData';
 
 const TravelDocuments = () => {
   // Demo Mode Control - SET THIS TO true FOR DEMOS
@@ -12,11 +11,7 @@ const TravelDocuments = () => {
   const [showPassports, setShowPassports] = useState(false);
   const [copiedField, setCopiedField] = useState(null);
   const [selectedSection, setSelectedSection] = useState(null);
-  const [checklistItems, setChecklistItems] = useState({});
-  const [editMode, setEditMode] = useState(false);
-  const [editingTraveler, setEditingTraveler] = useState(null);
   const [showPolicy, setShowPolicy] = useState(false);
-  const [copiedInsurance, setCopiedInsurance] = useState(null);
 
   // Function to unlock full access
   const unlockFullAccess = () => {
@@ -209,7 +204,7 @@ const TravelDocuments = () => {
     }
   ];
 
-  const [travelers, setTravelers] = useState(() => {
+  const [travelers] = useState(() => {
     const saved = localStorage.getItem('phuket_travelers');
     return saved ? JSON.parse(saved) : defaultTravelers;
   });
@@ -247,13 +242,6 @@ const TravelDocuments = () => {
     }
   }, [travelers, isDemoMode]);
 
-  useEffect(() => {
-    const saved = localStorage.getItem('phuket_checklist');
-    if (saved) {
-      setChecklistItems(JSON.parse(saved));
-    }
-  }, []);
-
   const copyToClipboard = (text, fieldId) => {
     if (isDemoMode) {
       alert("Copy function disabled in demo mode");
@@ -262,16 +250,6 @@ const TravelDocuments = () => {
     navigator.clipboard.writeText(text);
     setCopiedField(fieldId);
     setTimeout(() => setCopiedField(null), 2000);
-  };
-
-  const copyInsuranceInfo = (text, field) => {
-    if (isDemoMode) {
-      alert("Copy function disabled in demo mode");
-      return;
-    }
-    navigator.clipboard.writeText(text);
-    setCopiedInsurance(field);
-    setTimeout(() => setCopiedInsurance(null), 2000);
   };
 
   const getExpiryWarning = (expiryDate) => {

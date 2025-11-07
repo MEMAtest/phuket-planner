@@ -2,7 +2,7 @@
 // MoneyInput Component - Currency input with validation
 // ──────────────────────────────────────────────────────────────────────────────
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useCountry } from '../../state/CountryContext';
 
 export type MoneyInputProps = {
@@ -27,6 +27,10 @@ export const MoneyInput: React.FC<MoneyInputProps> = ({
   const { country } = useCountry();
   const effectiveCurrency = currency || country.currency;
   const [inputValue, setInputValue] = useState(value.toString());
+
+  useEffect(() => {
+    setInputValue(value.toString());
+  }, [value]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value;

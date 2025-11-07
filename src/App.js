@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from './firebase/config';
 import { Icons } from './data/staticData';
@@ -34,7 +34,7 @@ const App = () => {
   const [dismissedWeatherAlert, setDismissedWeatherAlert] = useState(false);
   
   // Calculate today's index based on current date
-  const getTodayIndex = () => {
+  const getTodayIndex = useCallback(() => {
     if (!planData || planData.length === 0) return 0;
     
     const today = new Date();
@@ -61,7 +61,7 @@ const App = () => {
     }
     
     return planData.length - 1; // Trip has ended, show last day
-  };
+  }, [planData]);
   
   // Auto-navigate to today on mount and when planData loads
   useEffect(() => {
@@ -69,7 +69,7 @@ const App = () => {
       const todayIdx = getTodayIndex();
       setCurrentDayIndex(todayIdx);
     }
-  }, [planData, activeTab]); // Run when planData loads or tab changes
+  }, [planData, activeTab, getTodayIndex, setCurrentDayIndex]); // Run when planData loads or tab changes
   
   // Load dismissed weather alert state
   useEffect(() => {
@@ -200,7 +200,7 @@ const App = () => {
         if (!planData || planData.length === 0) {
           return (
             <div className="text-center py-12 bg-white rounded-xl shadow-lg">
-              {React.createElement(Icons.calendar, { className: "w-12 h-12 text-slate-300 mx-auto mb-4" })}
+              {React.createElement(Icons.Calendar, { className: "w-12 h-12 text-slate-300 mx-auto mb-4" })}
               <p className="text-slate-500">Loading itinerary...</p>
             </div>
           );
@@ -235,7 +235,7 @@ const App = () => {
                          transition-colors"
                 aria-label="Previous day"
               >
-                {React.createElement(Icons.chevronLeft, { className: "w-5 h-5" })}
+                {React.createElement(Icons.ChevronLeft, { className: "w-5 h-5" })}
                 <span className="hidden sm:inline">Previous</span>
                 <span className="sm:hidden">Prev</span>
               </button>
@@ -288,7 +288,7 @@ const App = () => {
               >
                 <span className="hidden sm:inline">Next</span>
                 <span className="sm:hidden">Next</span>
-                {React.createElement(Icons.chevronRight, { className: "w-5 h-5" })}
+                {React.createElement(Icons.ChevronRight, { className: "w-5 h-5" })}
               </button>
             </div>
             
@@ -377,7 +377,7 @@ const App = () => {
     return (
       <div className="min-h-screen bg-slate-100 flex items-center justify-center">
         <div className="text-center">
-          {React.createElement(Icons.plane, { className: "w-12 h-12 text-sky-600 animate-pulse mx-auto mb-4" })}
+          {React.createElement(Icons.Plane, { className: "w-12 h-12 text-sky-600 animate-pulse mx-auto mb-4" })}
           <p className="text-slate-600">Loading your trip planner...</p>
         </div>
       </div>
@@ -394,14 +394,14 @@ const App = () => {
           ${weatherAlert.type === 'danger' ? 'bg-red-100 text-red-800 border-b-2 border-red-300' :
             weatherAlert.type === 'warning' ? 'bg-amber-100 text-amber-800 border-b-2 border-amber-300' :
             'bg-blue-100 text-blue-800 border-b-2 border-blue-300'}`}>
-          {React.createElement(Icons.alertTriangle, { className: "inline w-4 h-4 mr-2" })}
+          {React.createElement(Icons.AlertTriangle, { className: "inline w-4 h-4 mr-2" })}
           {weatherAlert.message}
           <button
             onClick={dismissWeatherAlert}
             className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-black/10 rounded transition-colors"
             title="Dismiss for today"
           >
-            {React.createElement(Icons.x, { className: "w-4 h-4" })}
+            {React.createElement(Icons.X, { className: "w-4 h-4" })}
           </button>
         </div>
       )}
@@ -409,7 +409,7 @@ const App = () => {
       {/* Firebase Error Banner */}
       {firebaseError && (
         <div className="bg-amber-100 text-amber-800 px-4 py-2 text-center text-sm">
-          {React.createElement(Icons.alertTriangle, { className: "inline w-4 h-4 mr-2" })}
+          {React.createElement(Icons.AlertTriangle, { className: "inline w-4 h-4 mr-2" })}
           {firebaseError}
         </div>
       )}

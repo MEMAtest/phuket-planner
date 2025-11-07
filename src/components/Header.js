@@ -87,7 +87,7 @@ const Header = () => {
             {/* Logo and Title */}
             <div className="flex items-center gap-4">
               <div className="bg-sky-600 p-2.5 rounded-xl text-white shadow-md">
-                <Icons.plane className="w-8 h-8" />
+                <Icons.Plane className="w-8 h-8" />
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-slate-800">Trip Planner</h1>
@@ -129,7 +129,7 @@ const Header = () => {
                 title="Export to Calendar"
                 className="p-2.5 bg-white rounded-lg shadow-sm border hover:bg-slate-100 transition-colors"
               >
-                <Icons.calendar className="w-5 h-5 text-slate-600"/>
+                <Icons.Calendar className="w-5 h-5 text-slate-600"/>
               </button>
             </div>
           </div>
@@ -140,7 +140,7 @@ const Header = () => {
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
                 <div className="bg-sky-600 p-2 rounded-lg text-white shadow-md">
-                  <Icons.plane className="w-6 h-6" />
+                  <Icons.Plane className="w-6 h-6" />
                 </div>
                 <div>
                   <h1 className="text-lg font-bold text-slate-800">Phuket Trip</h1>
@@ -159,7 +159,7 @@ const Header = () => {
                 title="Export to Calendar" 
                 className="p-2 bg-white rounded-lg shadow-sm border hover:bg-slate-100 transition-colors"
               >
-                <Icons.calendar className="w-4 h-4 text-slate-600"/>
+                <Icons.Calendar className="w-4 h-4 text-slate-600"/>
               </button>
             </div>
             

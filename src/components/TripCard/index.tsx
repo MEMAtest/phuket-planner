@@ -73,11 +73,24 @@ const TripCard: React.FC<TripCardProps> = ({ trip, onClick, compact = false }) =
 
   const visaSummary = getVisaSummary();
 
+  if (trip.segments.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <p className="text-sm text-gray-600">
+          Add at least one trip segment to see the trip summary.
+        </p>
+      </div>
+    );
+  }
+
   // Get visa alerts (if any visas are required)
   const hasVisaRequirements = visaSummary.required > 0 || visaSummary.eVisa > 0;
 
   const firstSegment = trip.segments[0];
   const lastSegment = trip.segments[trip.segments.length - 1];
+
+  const getPercent = (value: number) =>
+    visaSummary.totalChecks ? Math.round((value / visaSummary.totalChecks) * 100) : 0;
 
   return (
     <div
@@ -160,9 +173,7 @@ const TripCard: React.FC<TripCardProps> = ({ trip, onClick, compact = false }) =
               <span className="text-xs font-medium text-green-900">Visa-Free</span>
             </div>
             <div className="text-2xl font-bold text-green-700">{visaSummary.visaFree}</div>
-            <div className="text-xs text-green-600">
-              {Math.round((visaSummary.visaFree / visaSummary.totalChecks) * 100)}%
-            </div>
+            <div className="text-xs text-green-600">{getPercent(visaSummary.visaFree)}%</div>
           </div>
 
           {/* eVisa/ETA */}
@@ -172,9 +183,7 @@ const TripCard: React.FC<TripCardProps> = ({ trip, onClick, compact = false }) =
               <span className="text-xs font-medium text-yellow-900">eVisa/ETA</span>
             </div>
             <div className="text-2xl font-bold text-yellow-700">{visaSummary.eVisa}</div>
-            <div className="text-xs text-yellow-600">
-              {Math.round((visaSummary.eVisa / visaSummary.totalChecks) * 100)}%
-            </div>
+            <div className="text-xs text-yellow-600">{getPercent(visaSummary.eVisa)}%</div>
           </div>
 
           {/* Visa Required */}
@@ -184,9 +193,7 @@ const TripCard: React.FC<TripCardProps> = ({ trip, onClick, compact = false }) =
               <span className="text-xs font-medium text-red-900">Required</span>
             </div>
             <div className="text-2xl font-bold text-red-700">{visaSummary.required}</div>
-            <div className="text-xs text-red-600">
-              {Math.round((visaSummary.required / visaSummary.totalChecks) * 100)}%
-            </div>
+            <div className="text-xs text-red-600">{getPercent(visaSummary.required)}%</div>
           </div>
         </div>
 

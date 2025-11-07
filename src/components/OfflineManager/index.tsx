@@ -5,14 +5,21 @@
 
 import React, { useState, useEffect } from 'react';
 import { getAllCountries } from '../../countries';
+import { useCountry } from '../../state/CountryContext';
 
 export const OfflineManager: React.FC = () => {
   const [downloadedPacks, setDownloadedPacks] = useState<Set<string>>(new Set());
   const [downloading, setDownloading] = useState<Set<string>>(new Set());
   const [storageUsage, setStorageUsage] = useState<number>(0);
   const [storageQuota, setStorageQuota] = useState<number>(0);
+  const { homeCurrency } = useCountry();
 
   const allCountries = getAllCountries();
+
+  const getCountryCurrency = (iso2: string): string | undefined => {
+    const country = allCountries.find(c => c.iso2 === iso2);
+    return country?.currency;
+  };
 
   // Check which packs are downloaded
   useEffect(() => {
@@ -29,7 +36,7 @@ export const OfflineManager: React.FC = () => {
 
       const downloaded = new Set<string>();
       keys.forEach(request => {
-        const match = request.url.match(/\/countries\/([A-Z]{2})\//);
+        const match = request.url.match(/\/country-packs\/([A-Z]{2})\.json/);
         if (match) {
           downloaded.add(match[1]);
         }
@@ -71,7 +78,12 @@ export const OfflineManager: React.FC = () => {
         };
 
         controller.postMessage(
-          { type: 'DOWNLOAD_COUNTRY_PACK', countryIso2 },
+          {
+            type: 'DOWNLOAD_COUNTRY_PACK',
+            countryIso2,
+            currency: getCountryCurrency(countryIso2) || homeCurrency,
+            homeCurrency
+          },
           [messageChannel.port2]
         );
       });
@@ -109,7 +121,12 @@ export const OfflineManager: React.FC = () => {
         };
 
         controller.postMessage(
-          { type: 'DELETE_COUNTRY_PACK', countryIso2 },
+          {
+            type: 'DELETE_COUNTRY_PACK',
+            countryIso2,
+            currency: getCountryCurrency(countryIso2) || homeCurrency,
+            homeCurrency
+          },
           [messageChannel.port2]
         );
       });

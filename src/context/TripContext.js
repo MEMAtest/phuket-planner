@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { TRIP_DATA } from '../data/staticData';
 import { db, isFirebaseConfigured } from '../firebase/config';
 import { collection, doc, setDoc, onSnapshot, query, orderBy } from 'firebase/firestore';
@@ -40,6 +40,27 @@ export const TripProvider = ({ children }) => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [syncStatus, setSyncStatus] = useState('idle'); // 'idle', 'syncing', 'synced', 'error'
   const [undoStack, setUndoStack] = useState([]);
+  const planDataRef = useRef(planData);
+
+  useEffect(() => {
+    planDataRef.current = planData;
+  }, [planData]);
+
+  const showNotification = useCallback((message, type = 'info') => {
+    const notification = document.createElement('div');
+    const bgColor = type === 'success' ? 'bg-green-500' : 
+                    type === 'warning' ? 'bg-amber-500' : 
+                    type === 'error' ? 'bg-red-500' : 'bg-slate-500';
+    
+    notification.className = `${bgColor} text-white px-4 py-2 rounded-lg shadow-lg fixed bottom-4 right-4 z-50 animate-slide-up`;
+    notification.textContent = message;
+    
+    document.body.appendChild(notification);
+    setTimeout(() => {
+      notification.classList.add('animate-slide-down');
+      setTimeout(() => notification.remove(), 300);
+    }, 2000);
+  }, []);
   
   // Save to localStorage whenever data changes
   useEffect(() => {
@@ -55,6 +76,74 @@ export const TripProvider = ({ children }) => {
     localStorage.setItem('phuket_current_day', currentDayIndex.toString());
   }, [currentDayIndex]);
   
+  const syncWithFirebase = useCallback(async () => {
+    if (!isFirebaseConfigured() || !isOnline) return;
+
+    const dataToSync = planDataRef.current;
+    if (!dataToSync) return;
+    
+    setSyncStatus('syncing');
+    try {
+      for (const day of dataToSync) {
+        const docId = `day_${day.date}`;
+        await setDoc(doc(db, 'itinerary', docId), {
+          ...day,
+          lastModified: new Date().toISOString(),
+          syncedAt: new Date().toISOString()
+        });
+      }
+      console.log('✅ Synced to Firebase successfully');
+      setSyncStatus('synced');
+      
+      // Show success notification
+      showNotification('☁️ Synced to cloud', 'success');
+    } catch (error) {
+      console.error('Error syncing to Firebase:', error);
+      setSyncStatus('error');
+      showNotification('⚠️ Sync failed - data saved locally', 'warning');
+    }
+  }, [isOnline, showNotification]);
+
+  // Setup Firebase listener for real-time updates
+  const setupFirebaseListener = useCallback(() => {
+    if (!isFirebaseConfigured()) return undefined;
+    
+    try {
+      const q = query(collection(db, 'itinerary'), orderBy('date'));
+      const unsubscribe = onSnapshot(q, 
+        (snapshot) => {
+          if (!snapshot.empty && snapshot.metadata.fromCache === false) {
+            const firebasePlan = snapshot.docs.map(doc => ({
+              firebaseId: doc.id,
+              ...doc.data()
+            }));
+            
+            const firebaseDataStr = JSON.stringify(firebasePlan);
+            setPlanData(prev => {
+              const localDataStr = JSON.stringify(prev);
+              if (localDataStr !== firebaseDataStr) {
+                console.log('🔄 Received updates from Firebase');
+                setSyncStatus('synced');
+                return firebasePlan;
+              }
+              return prev;
+            });
+          }
+        },
+        (error) => {
+          console.error('Firebase listener error:', error);
+          setSyncStatus('error');
+        }
+      );
+      
+      return unsubscribe;
+    } catch (error) {
+      console.error('Error setting up Firebase listener:', error);
+      setSyncStatus('error');
+      return undefined;
+    }
+  }, []);
+
   // Monitor online/offline status
   useEffect(() => {
     const handleOnline = () => {
@@ -74,79 +163,23 @@ export const TripProvider = ({ children }) => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, []);
+  }, [syncWithFirebase]);
   
   // Firebase sync on mount and when online
   useEffect(() => {
-    if (isFirebaseConfigured() && isOnline) {
-      setupFirebaseListener();
-      syncWithFirebase();
+    if (!isFirebaseConfigured() || !isOnline) {
+      return;
     }
-  }, [isOnline]);
-  
-  // Setup Firebase listener for real-time updates
-  const setupFirebaseListener = () => {
-    if (!isFirebaseConfigured()) return;
-    
-    try {
-      const q = query(collection(db, 'itinerary'), orderBy('date'));
-      const unsubscribe = onSnapshot(q, 
-        (snapshot) => {
-          if (!snapshot.empty && snapshot.metadata.fromCache === false) {
-            const firebasePlan = snapshot.docs.map(doc => ({
-              firebaseId: doc.id,
-              ...doc.data()
-            }));
-            
-            // Only update if data is different
-            const localDataStr = JSON.stringify(planData);
-            const firebaseDataStr = JSON.stringify(firebasePlan);
-            
-            if (localDataStr !== firebaseDataStr) {
-              console.log('🔄 Received updates from Firebase');
-              setPlanData(firebasePlan);
-              setSyncStatus('synced');
-            }
-          }
-        },
-        (error) => {
-          console.error('Firebase listener error:', error);
-          setSyncStatus('error');
-        }
-      );
-      
-      return unsubscribe;
-    } catch (error) {
-      console.error('Error setting up Firebase listener:', error);
-      setSyncStatus('error');
-    }
-  };
-  
-  // Sync local data to Firebase
-  const syncWithFirebase = async () => {
-    if (!isFirebaseConfigured() || !isOnline) return;
-    
-    setSyncStatus('syncing');
-    try {
-      for (const day of planData) {
-        const docId = `day_${day.date}`;
-        await setDoc(doc(db, 'itinerary', docId), {
-          ...day,
-          lastModified: new Date().toISOString(),
-          syncedAt: new Date().toISOString()
-        });
+
+    const unsubscribe = setupFirebaseListener();
+    syncWithFirebase();
+
+    return () => {
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
       }
-      console.log('✅ Synced to Firebase successfully');
-      setSyncStatus('synced');
-      
-      // Show success notification
-      showNotification('☁️ Synced to cloud', 'success');
-    } catch (error) {
-      console.error('Error syncing to Firebase:', error);
-      setSyncStatus('error');
-      showNotification('⚠️ Sync failed - data saved locally', 'warning');
-    }
-  };
+    };
+  }, [isOnline, setupFirebaseListener, syncWithFirebase]);
   
   // Update a specific day's plan with better persistence
   const updateDayPlan = async (dayIndex, updatedBlocks) => {
@@ -211,23 +244,6 @@ export const TripProvider = ({ children }) => {
     }
     
     return true;
-  };
-  
-  // Helper function to show notifications
-  const showNotification = (message, type = 'info') => {
-    const notification = document.createElement('div');
-    const bgColor = type === 'success' ? 'bg-green-500' : 
-                    type === 'warning' ? 'bg-amber-500' : 
-                    type === 'error' ? 'bg-red-500' : 'bg-blue-500';
-    
-    notification.className = `fixed top-20 right-4 ${bgColor} text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-fade-in flex items-center gap-2`;
-    notification.innerHTML = `<span>${message}</span>`;
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-      notification.classList.add('animate-fade-out');
-      setTimeout(() => notification.remove(), 300);
-    }, 3000);
   };
   
   // Add a new activity to a day
