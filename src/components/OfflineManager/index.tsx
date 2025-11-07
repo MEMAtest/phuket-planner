@@ -63,13 +63,14 @@ export const OfflineManager: React.FC = () => {
 
     try {
       const messageChannel = new MessageChannel();
+      const controller = navigator.serviceWorker.controller;
 
       const response = await new Promise<{ success: boolean; error?: string }>((resolve) => {
         messageChannel.port1.onmessage = (event) => {
           resolve(event.data);
         };
 
-        navigator.serviceWorker.controller.postMessage(
+        controller.postMessage(
           { type: 'DOWNLOAD_COUNTRY_PACK', countryIso2 },
           [messageChannel.port2]
         );
@@ -100,13 +101,14 @@ export const OfflineManager: React.FC = () => {
 
     try {
       const messageChannel = new MessageChannel();
+      const controller = navigator.serviceWorker.controller;
 
       const response = await new Promise<{ success: boolean }>((resolve) => {
         messageChannel.port1.onmessage = (event) => {
           resolve(event.data);
         };
 
-        navigator.serviceWorker.controller.postMessage(
+        controller.postMessage(
           { type: 'DELETE_COUNTRY_PACK', countryIso2 },
           [messageChannel.port2]
         );

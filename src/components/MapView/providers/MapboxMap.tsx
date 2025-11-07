@@ -31,7 +31,7 @@ export default function MapboxMap({
       return;
     }
 
-    const token = import.meta.env.VITE_MAPS_MAPBOX_TOKEN || process.env.REACT_APP_MAPS_MAPBOX_TOKEN;
+    const token = process.env.REACT_APP_MAPS_MAPBOX_TOKEN;
 
     if (!token) {
       console.error('Mapbox token not found');

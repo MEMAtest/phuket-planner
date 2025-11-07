@@ -32,7 +32,7 @@ export default function BaiduMap({
       return;
     }
 
-    const apiKey = import.meta.env.VITE_MAPS_BAIDU_AK || process.env.REACT_APP_MAPS_BAIDU_AK;
+    const apiKey = process.env.REACT_APP_MAPS_BAIDU_AK;
 
     if (!apiKey) {
       console.error('Baidu Maps API key not found');

@@ -32,7 +32,7 @@ export default function GoogleMap({
       return;
     }
 
-    const apiKey = import.meta.env.VITE_MAPS_GOOGLE_KEY || process.env.REACT_APP_MAPS_GOOGLE_KEY;
+    const apiKey = process.env.REACT_APP_MAPS_GOOGLE_KEY;
 
     if (!apiKey) {
       console.error('Google Maps API key not found');

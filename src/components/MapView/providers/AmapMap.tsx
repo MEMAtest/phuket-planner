@@ -32,7 +32,7 @@ export default function AmapMap({
       return;
     }
 
-    const apiKey = import.meta.env.VITE_MAPS_AMAP_KEY || process.env.REACT_APP_MAPS_AMAP_KEY;
+    const apiKey = process.env.REACT_APP_MAPS_AMAP_KEY;
 
     if (!apiKey) {
       console.error('AMap API key not found');
