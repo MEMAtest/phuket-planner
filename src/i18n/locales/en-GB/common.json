@@ -1,0 +1,46 @@
+{
+  "app": {
+    "title": "Trip Planner",
+    "subtitle": "Plan your perfect journey"
+  },
+  "navigation": {
+    "itinerary": "Itinerary",
+    "expenses": "Expenses",
+    "weather": "Weather",
+    "travel_docs": "Travel Docs",
+    "settings": "Settings"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "delete": "Delete",
+    "add": "Add",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success"
+  },
+  "country": {
+    "select": "Select Country",
+    "change": "Change Country"
+  },
+  "language": {
+    "select": "Select Language"
+  },
+  "currency": {
+    "local": "Local Currency",
+    "home": "Home Currency",
+    "exchange_rate": "Exchange Rate",
+    "last_updated": "Last Updated"
+  },
+  "forms": {
+    "address": {
+      "title": "Address",
+      "required": "Required field"
+    },
+    "phone": {
+      "title": "Phone Number",
+      "invalid": "Invalid phone number"
+    }
+  }
+}

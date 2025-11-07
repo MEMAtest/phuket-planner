@@ -1,0 +1,51 @@
+iso2,name,defaultLocale,locales,currency,timeZone,mapProvider
+TH,Thailand,th-TH,th-TH;en-GB,THB,Asia/Bangkok,google
+HK,Hong Kong,zh-HK,zh-HK;en-GB;zh-CN,HKD,Asia/Hong_Kong,google
+CN,China (Mainland),zh-CN,zh-CN;en-GB,CNY,Asia/Shanghai,amap
+JP,Japan,ja-JP,ja-JP;en-GB,JPY,Asia/Tokyo,google
+KR,South Korea,ko-KR,ko-KR;en-GB,KRW,Asia/Seoul,google
+SG,Singapore,en-SG,en-SG;zh-CN;ms-MY;ta-IN,SGD,Asia/Singapore,google
+MY,Malaysia,ms-MY,ms-MY;en-GB;zh-CN,MYR,Asia/Kuala_Lumpur,google
+ID,Indonesia,id-ID,id-ID;en-GB,IDR,Asia/Jakarta,google
+VN,Vietnam,vi-VN,vi-VN;en-GB,VND,Asia/Ho_Chi_Minh,google
+PH,Philippines,en-PH,en-PH;tl-PH,PHP,Asia/Manila,google
+TW,Taiwan,zh-TW,zh-TW;en-GB,TWD,Asia/Taipei,google
+IN,India,hi-IN,hi-IN;en-GB;ta-IN;te-IN,INR,Asia/Kolkata,google
+AU,Australia,en-AU,en-AU,AUD,Australia/Sydney,google
+NZ,New Zealand,en-NZ,en-NZ,NZD,Pacific/Auckland,google
+GB,United Kingdom,en-GB,en-GB,GBP,Europe/London,google
+IE,Ireland,en-IE,en-IE,EUR,Europe/Dublin,google
+FR,France,fr-FR,fr-FR;en-GB,EUR,Europe/Paris,google
+DE,Germany,de-DE,de-DE;en-GB,EUR,Europe/Berlin,google
+ES,Spain,es-ES,es-ES;en-GB;ca-ES,EUR,Europe/Madrid,google
+IT,Italy,it-IT,it-IT;en-GB,EUR,Europe/Rome,google
+PT,Portugal,pt-PT,pt-PT;en-GB,EUR,Europe/Lisbon,google
+NL,Netherlands,nl-NL,nl-NL;en-GB,EUR,Europe/Amsterdam,google
+BE,Belgium,nl-BE,nl-BE;fr-BE;en-GB,EUR,Europe/Brussels,google
+CH,Switzerland,de-CH,de-CH;fr-CH;it-CH;en-GB,CHF,Europe/Zurich,google
+AT,Austria,de-AT,de-AT;en-GB,EUR,Europe/Vienna,google
+SE,Sweden,sv-SE,sv-SE;en-GB,SEK,Europe/Stockholm,google
+NO,Norway,nb-NO,nb-NO;en-GB,NOK,Europe/Oslo,google
+DK,Denmark,da-DK,da-DK;en-GB,DKK,Europe/Copenhagen,google
+FI,Finland,fi-FI,fi-FI;sv-FI;en-GB,EUR,Europe/Helsinki,google
+PL,Poland,pl-PL,pl-PL;en-GB,PLN,Europe/Warsaw,google
+CZ,Czech Republic,cs-CZ,cs-CZ;en-GB,CZK,Europe/Prague,google
+GR,Greece,el-GR,el-GR;en-GB,EUR,Europe/Athens,google
+TR,Turkey,tr-TR,tr-TR;en-GB,TRY,Europe/Istanbul,google
+RU,Russia,ru-RU,ru-RU;en-GB,RUB,Europe/Moscow,google
+AE,United Arab Emirates,ar-AE,ar-AE;en-GB,AED,Asia/Dubai,google
+SA,Saudi Arabia,ar-SA,ar-SA;en-GB,SAR,Asia/Riyadh,google
+IL,Israel,he-IL,he-IL;en-GB;ar-IL,ILS,Asia/Jerusalem,google
+EG,Egypt,ar-EG,ar-EG;en-GB,EGP,Africa/Cairo,google
+ZA,South Africa,en-ZA,en-ZA;af-ZA,ZAR,Africa/Johannesburg,google
+KE,Kenya,sw-KE,sw-KE;en-GB,KES,Africa/Nairobi,google
+US,United States,en-US,en-US;es-US,USD,America/New_York,google
+CA,Canada,en-CA,en-CA;fr-CA,CAD,America/Toronto,google
+MX,Mexico,es-MX,es-MX;en-GB,MXN,America/Mexico_City,google
+BR,Brazil,pt-BR,pt-BR;en-GB,BRL,America/Sao_Paulo,google
+AR,Argentina,es-AR,es-AR;en-GB,ARS,America/Argentina/Buenos_Aires,google
+CL,Chile,es-CL,es-CL;en-GB,CLP,America/Santiago,google
+CO,Colombia,es-CO,es-CO;en-GB,COP,America/Bogota,google
+PE,Peru,es-PE,es-PE;en-GB,PEN,America/Lima,google
+CR,Costa Rica,es-CR,es-CR;en-GB,CRC,America/Costa_Rica,google
+IS,Iceland,is-IS,is-IS;en-GB,ISK,Atlantic/Reykjavik,google

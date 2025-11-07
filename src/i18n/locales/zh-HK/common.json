@@ -1,0 +1,46 @@
+{
+  "app": {
+    "title": "旅程規劃器",
+    "subtitle": "計劃您的完美旅程"
+  },
+  "navigation": {
+    "itinerary": "行程",
+    "expenses": "開支",
+    "weather": "天氣",
+    "travel_docs": "旅遊文件",
+    "settings": "設定"
+  },
+  "common": {
+    "save": "儲存",
+    "cancel": "取消",
+    "edit": "編輯",
+    "delete": "刪除",
+    "add": "新增",
+    "loading": "載入中...",
+    "error": "錯誤",
+    "success": "成功"
+  },
+  "country": {
+    "select": "選擇國家",
+    "change": "更改國家"
+  },
+  "language": {
+    "select": "選擇語言"
+  },
+  "currency": {
+    "local": "本地貨幣",
+    "home": "家鄉貨幣",
+    "exchange_rate": "匯率",
+    "last_updated": "最後更新"
+  },
+  "forms": {
+    "address": {
+      "title": "地址",
+      "required": "必填欄位"
+    },
+    "phone": {
+      "title": "電話號碼",
+      "invalid": "無效的電話號碼"
+    }
+  }
+}

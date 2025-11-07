@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Icons } from '../data/staticData';
 import { useTrip } from '../context/TripContext';
 import { generateICS } from '../utils/calendar';
+import CountrySwitcher from './CountrySwitcher';
 
 const Header = () => {
   const { activeTab, setActiveTab, planData, setCurrentDayIndex } = useTrip();
@@ -89,7 +90,7 @@ const Header = () => {
                 <Icons.plane className="w-8 h-8" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-slate-800">Phuket Family Itinerary</h1>
+                <h1 className="text-2xl font-bold text-slate-800">Trip Planner</h1>
                 <p className="text-sm text-slate-500">August 19–29, 2025</p>
                 {/* Dual Time Display */}
                 <div className="flex gap-3 mt-1 text-xs">
@@ -105,25 +106,27 @@ const Header = () => {
             
             {/* Navigation Tabs and Export Button */}
             <div className="flex items-center gap-2">
+              <CountrySwitcher />
+
               <div className="p-1 bg-slate-200 rounded-lg flex gap-1">
                 {tabs.map(tab => (
-                  <button 
-                    key={tab} 
-                    onClick={() => handleTabClick(tab)} 
-                    className={`whitespace-nowrap px-3 py-1.5 text-sm font-semibold rounded-md transition-colors 
-                      ${activeTab === tab.replace(/\s+/g, '') 
-                        ? 'bg-white text-slate-800 shadow' 
+                  <button
+                    key={tab}
+                    onClick={() => handleTabClick(tab)}
+                    className={`whitespace-nowrap px-3 py-1.5 text-sm font-semibold rounded-md transition-colors
+                      ${activeTab === tab.replace(/\s+/g, '')
+                        ? 'bg-white text-slate-800 shadow'
                         : 'text-slate-600 hover:bg-slate-100'}`}
                   >
                     {tab}
                   </button>
                 ))}
               </div>
-              
+
               {/* Export Button */}
-              <button 
-                onClick={handleExport} 
-                title="Export to Calendar" 
+              <button
+                onClick={handleExport}
+                title="Export to Calendar"
                 className="p-2.5 bg-white rounded-lg shadow-sm border hover:bg-slate-100 transition-colors"
               >
                 <Icons.calendar className="w-5 h-5 text-slate-600"/>
