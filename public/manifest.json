@@ -1,7 +1,7 @@
 {
-  "short_name": "Phuket Planner",
-  "name": "Phuket Family Trip Planner",
-  "description": "Collaborative family trip planner for Phuket vacation",
+  "short_name": "Trip Planner",
+  "name": "Global Travel Trip Planner",
+  "description": "Plan your multi-country trips with offline support, visa checks, and currency conversion",
   "icons": [
     {
       "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>✈️</text></svg>",
