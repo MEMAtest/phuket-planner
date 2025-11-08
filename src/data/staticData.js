@@ -494,6 +494,140 @@ export const THAI_PHRASES = {
   ]
 };
 
+const CANTONESE_PHRASES = {
+  greetings: [
+    { native: "你好", phonetic: "néih hóu", english: "Hello" },
+    { native: "唔該", phonetic: "m̀hgōi", english: "Please / thank you (service)" },
+    { native: "多謝晒", phonetic: "dō jeh saai", english: "Thank you very much" },
+    { native: "早晨", phonetic: "jóu sàn", english: "Good morning" }
+  ],
+  kidsNeeds: [
+    { native: "兒童餐有冇呀？", phonetic: "yìh tùhng chāan yáuh móuh a?", english: "Do you have a kids meal?" },
+    { native: "可唔可以比張兒童椅?", phonetic: "hó m̀h hó yí béi jēung yìh tùhng yí?", english: "Can we get a high chair?" },
+    { native: "要暖水沖奶", phonetic: "yiu nyuhn séui chūng náaih", english: "We need warm water for milk" }
+  ],
+  restaurant: [
+    { native: "唔好辣", phonetic: "m̀h hóu laat", english: "Not spicy, please" },
+    { native: "唔該要中文餐牌", phonetic: "m̀hgōi yiu jūngmàhn chāan pàaih", english: "Can I see the Chinese menu?" },
+    { native: "埋單", phonetic: "màaih dāan", english: "Bill, please" },
+    { native: "好味", phonetic: "hóu méih", english: "It's delicious" }
+  ],
+  shopping: [
+    { native: "幾錢呀？", phonetic: "géi chín a?", english: "How much is it?" },
+    { native: "平啲啦", phonetic: "pèng dī lā", english: "Cheaper, please" },
+    { native: "可以刷卡嗎？", phonetic: "hó yí saat kāat maa?", english: "Can I pay by card?" }
+  ],
+  directions: [
+    { native: "點樣去地鐵站？", phonetic: "dím yéung heui deih tit jaahm?", english: "How do I get to the MTR?" },
+    { native: "喺邊度落車？", phonetic: "háai bīn dou lohk chē?", english: "Where should we get off?" },
+    { native: "車返酒店", phonetic: "chē fāan jáu dim", english: "Drive us back to the hotel" }
+  ],
+  emergency: [
+    { native: "我個小朋友唔見咗", phonetic: "ngóh go síu pàhng yáuh m̀h gin jó", english: "I've lost my child" },
+    { native: "可唔可以幫我搵醫生？", phonetic: "hó m̀h hó yí bōng ngóh wán yīsāng?", english: "Can you call a doctor?" },
+    { native: "報警", phonetic: "bou gíng", english: "Call the police" }
+  ],
+  activities: [
+    { native: "我哋想去迪士尼", phonetic: "ngóh deih séung heui dihk sì nèih", english: "We want to go to Disneyland" },
+    { native: "想坐纜車", phonetic: "séung chó laahm chē", english: "We want to take the cable car" },
+    { native: "影相得唔得？", phonetic: "yíng séung dāk m̀h dāk?", english: "Can we take a photo?" }
+  ]
+};
+
+const MANDARIN_PHRASES = {
+  greetings: [
+    { native: "你好", phonetic: "nǐ hǎo", english: "Hello" },
+    { native: "谢谢", phonetic: "xièxie", english: "Thank you" },
+    { native: "不好意思", phonetic: "bù hǎo yìsi", english: "Excuse me / sorry" },
+    { native: "再见", phonetic: "zàijiàn", english: "Goodbye" }
+  ],
+  kidsNeeds: [
+    { native: "请问有儿童餐吗？", phonetic: "qǐngwèn yǒu értóng cān ma?", english: "Do you have a kids meal?" },
+    { native: "可以给我儿童座椅吗？", phonetic: "kěyǐ gěi wǒ értóng zuòyǐ ma?", english: "Can we get a high chair?" },
+    { native: "能不能帮我加热奶？", phonetic: "néng bù néng bāng wǒ jiārè nǎi?", english: "Could you warm the milk?" }
+  ],
+  restaurant: [
+    { native: "不要辣", phonetic: "bú yào là", english: "Not spicy, please" },
+    { native: "请给我中文菜单", phonetic: "qǐng gěi wǒ zhōngwén càidān", english: "Chinese menu, please" },
+    { native: "买单", phonetic: "mǎidān", english: "Bill, please" },
+    { native: "很好吃", phonetic: "hěn hǎo chī", english: "It's delicious" }
+  ],
+  shopping: [
+    { native: "这个多少钱？", phonetic: "zhège duōshǎo qián?", english: "How much is this?" },
+    { native: "可以便宜一点吗？", phonetic: "kěyǐ piányí yīdiǎn ma?", english: "Can it be cheaper?" },
+    { native: "可以刷卡吗？", phonetic: "kěyǐ shuākǎ ma?", english: "Can I pay by card?" }
+  ],
+  directions: [
+    { native: "地铁站在哪里？", phonetic: "dìtiě zhàn zài nǎlǐ?", english: "Where is the subway station?" },
+    { native: "请在这儿停车", phonetic: "qǐng zài zhèr tíngchē", english: "Please stop here" },
+    { native: "离这里远吗？", phonetic: "lí zhèlǐ yuǎn ma?", english: "Is it far from here?" }
+  ],
+  emergency: [
+    { native: "我孩子不见了", phonetic: "wǒ háizi bújiàn le", english: "My child is missing" },
+    { native: "请帮我叫医生", phonetic: "qǐng bāng wǒ jiào yīshēng", english: "Please call a doctor" },
+    { native: "报警", phonetic: "bàojǐng", english: "Call the police" }
+  ],
+  activities: [
+    { native: "我们想去长城", phonetic: "wǒmen xiǎng qù chángchéng", english: "We want to visit the Great Wall" },
+    { native: "可以预约导游吗？", phonetic: "kěyǐ yùyuē dǎoyóu ma?", english: "Can we book a guide?" },
+    { native: "儿童票有优惠吗？", phonetic: "értóng piào yǒu yōuhuì ma?", english: "Is there a kids' ticket price?" }
+  ]
+};
+
+const DEFAULT_PHRASE_ORDER = [
+  'greetings',
+  'restaurant',
+  'kidsNeeds',
+  'shopping',
+  'directions',
+  'emergency',
+  'activities'
+];
+
+export const PHRASE_PACKS = {
+  TH: {
+    title: 'Thai Phrases',
+    subtitle: 'Essential Thai for Phuket adventures',
+    flag: '🇹🇭',
+    language: 'Thai',
+    categoryOrder: DEFAULT_PHRASE_ORDER,
+    phrases: THAI_PHRASES,
+    tips: [
+      'Add "krub" (men) or "ka" (women) for politeness.',
+      'Speak slowly and smile—Thais appreciate the effort.',
+      '"Mai pen rai" means "no worries" and is used constantly.'
+    ]
+  },
+  HK: {
+    title: 'Cantonese Phrases',
+    subtitle: 'Handy Cantonese for Hong Kong outings',
+    flag: '🇭🇰',
+    language: 'Cantonese',
+    categoryOrder: DEFAULT_PHRASE_ORDER,
+    phrases: CANTONESE_PHRASES,
+    tips: [
+      'Use "m̀hgōi" for please/thank you with service staff; "dō jeh" for gifts.',
+      'Tone matters, but clear slow speech is appreciated.',
+      'Most locals also speak English, but trying Cantonese wins smiles.'
+    ]
+  },
+  CN: {
+    title: 'Mandarin Phrases',
+    subtitle: 'Key Mandarin phrases for Mainland China',
+    flag: '🇨🇳',
+    language: 'Mandarin',
+    categoryOrder: DEFAULT_PHRASE_ORDER,
+    phrases: MANDARIN_PHRASES,
+    tips: [
+      'Use "qǐng" to soften requests (please).',
+      'Most signage is bilingual in tourist areas, but Mandarin works best.',
+      'Carry hotel cards written in Chinese for taxi drivers.'
+    ]
+  }
+};
+
+export const getPhrasePackForCountry = (iso2) => PHRASE_PACKS[iso2] || PHRASE_PACKS.TH;
+
 // Price Guide for Phuket
 export const PRICE_GUIDE = {
   food: {
@@ -745,35 +879,495 @@ export const PRICE_GUIDE = {
   }
 };
 
+const PRICE_GUIDE_HK = {
+  food: {
+    title: "Food & Drinks",
+    items: [
+      {
+        name: "Street Stall Snack",
+        hkd: { min: 25, max: 45, typical: 35 },
+        gbp: { min: 2.5, max: 4.5, typical: 3.5 },
+        note: "Egg waffles, fish balls",
+        icon: "🥢"
+      },
+      {
+        name: "Cha Chaan Teng Set",
+        hkd: { min: 55, max: 90, typical: 70 },
+        gbp: { min: 5.5, max: 9, typical: 7 },
+        note: "Tea restaurant breakfast/lunch",
+        icon: "🍳"
+      },
+      {
+        name: "Dim Sum (2 people)",
+        hkd: { min: 150, max: 250, typical: 200 },
+        gbp: { min: 15, max: 25, typical: 20 },
+        note: "Mid-range restaurant",
+        icon: "🥟"
+      },
+      {
+        name: "Specialty Coffee",
+        hkd: { min: 40, max: 65, typical: 50 },
+        gbp: { min: 4, max: 6.5, typical: 5 },
+        note: "Central / Sheung Wan cafes",
+        icon: "☕"
+      },
+      {
+        name: "Kids Meal (Food Court)",
+        hkd: { min: 50, max: 70, typical: 60 },
+        gbp: { min: 5, max: 7, typical: 6 },
+        note: "Mall dining levels",
+        icon: "🧒"
+      },
+      {
+        name: "Craft Beer",
+        hkd: { min: 70, max: 110, typical: 90 },
+        gbp: { min: 7, max: 11, typical: 9 },
+        note: "Lan Kwai Fong / Central",
+        icon: "🍺"
+      }
+    ]
+  },
+  activities: {
+    title: "Activities & Attractions",
+    items: [
+      {
+        name: "Peak Tram Return",
+        hkd: { adult: 88, child: 44 },
+        gbp: { adult: 8.8, child: 4.4 },
+        note: "Includes Sky Terrace 428",
+        icon: "🚋"
+      },
+      {
+        name: "Ngong Ping Cable Car",
+        hkd: { adult: 235, child: 110 },
+        gbp: { adult: 23.5, child: 11 },
+        note: "Crystal cabin round-trip",
+        icon: "🚠"
+      },
+      {
+        name: "Star Ferry Ride",
+        hkd: { typical: 5 },
+        gbp: { typical: 0.5 },
+        note: "Tsim Sha Tsui ↔ Central",
+        icon: "⛴️"
+      },
+      {
+        name: "Disneyland 1-Day",
+        hkd: { adult: 799, child: 589 },
+        gbp: { adult: 79.9, child: 58.9 },
+        note: "Standard season pricing",
+        icon: "🏰"
+      },
+      {
+        name: "sky100 Observation Deck",
+        hkd: { adult: 198, child: 98 },
+        gbp: { adult: 19.8, child: 9.8 },
+        note: "Online advance ticket",
+        icon: "🌆"
+      },
+      {
+        name: "Museums (Joint Pass)",
+        hkd: { typical: 30 },
+        gbp: { typical: 3 },
+        note: "Science + Space Museum combo",
+        icon: "🧪"
+      }
+    ]
+  },
+  transport: {
+    title: "Transportation",
+    items: [
+      {
+        name: "Airport Express (to Central)",
+        hkd: { typical: 120 },
+        gbp: { typical: 12 },
+        note: "Adult single journey",
+        icon: "🚈"
+      },
+      {
+        name: "MTR Ride",
+        hkd: { min: 12, max: 25, typical: 18 },
+        gbp: { min: 1.2, max: 2.5, typical: 1.8 },
+        note: "Depends on distance",
+        icon: "🚇"
+      },
+      {
+        name: "Taxi (5km)",
+        hkd: { typical: 80 },
+        gbp: { typical: 8 },
+        note: "Red urban taxi",
+        icon: "🚕"
+      },
+      {
+        name: "Tram Ride",
+        hkd: { typical: 3 },
+        gbp: { typical: 0.3 },
+        note: "Hong Kong Island ding ding",
+        icon: "🚊"
+      },
+      {
+        name: "Ferry to Outlying Islands",
+        hkd: { min: 18, max: 35, typical: 25 },
+        gbp: { min: 1.8, max: 3.5, typical: 2.5 },
+        note: "Central ⇄ Cheung Chau",
+        icon: "🛥️"
+      },
+      {
+        name: "Octopus Top-up",
+        hkd: { typical: 100 },
+        gbp: { typical: 10 },
+        note: "Recommended starter value",
+        icon: "💳"
+      }
+    ]
+  },
+  shopping: {
+    title: "Shopping & Essentials",
+    items: [
+      {
+        name: "Octopus Card Deposit",
+        hkd: { typical: 50 },
+        gbp: { typical: 5 },
+        note: "Refundable when returned",
+        icon: "🪪"
+      },
+      {
+        name: "Prepaid SIM (5-7 days)",
+        hkd: { typical: 88 },
+        gbp: { typical: 8.8 },
+        note: "Unlimited local data",
+        icon: "📶"
+      },
+      {
+        name: "Diapers (medium pack)",
+        hkd: { typical: 130 },
+        gbp: { typical: 13 },
+        note: "CitySuper / ParknShop",
+        icon: "🧷"
+      },
+      {
+        name: "Bottled Water 1L",
+        hkd: { typical: 10 },
+        gbp: { typical: 1 },
+        note: "Convenience stores",
+        icon: "💧"
+      },
+      {
+        name: "Souvenir Magnet",
+        hkd: { min: 30, max: 60, typical: 45 },
+        gbp: { min: 3, max: 6, typical: 4.5 },
+        note: "Temple Street / Stanley",
+        icon: "🧲"
+      },
+      {
+        name: "USB Fan / Gadget",
+        hkd: { min: 80, max: 120, typical: 100 },
+        gbp: { min: 8, max: 12, typical: 10 },
+        note: "Sham Shui Po gadget streets",
+        icon: "💡"
+      }
+    ]
+  },
+  tips: {
+    title: "Money Tips",
+    items: [
+      "Load an Octopus card for MTR, buses, ferries, and convenience stores.",
+      "Free tap-water refills are rare—carry a bottle or buy at 7-Eleven.",
+      "Most small shops accept cash or Octopus only—carry some HK$.",
+      "Taxis accept cash only; bring coins for exact change.",
+      "Bargaining works at street markets but not in malls.",
+      "Weekday lunch sets are far cheaper than hotel buffets."
+    ]
+  }
+};
+
+const PRICE_GUIDE_CN = {
+  food: {
+    title: "Food & Drinks",
+    items: [
+      {
+        name: "Street Noodles",
+        cny: { min: 12, max: 20, typical: 16 },
+        gbp: { min: 1.3, max: 2.2, typical: 1.7 },
+        note: "Breakfast stalls & night markets",
+        icon: "🍜"
+      },
+      {
+        name: "Hotpot Dinner (per person)",
+        cny: { min: 120, max: 200, typical: 160 },
+        gbp: { min: 13, max: 22, typical: 18 },
+        note: "Chongqing / Sichuan style",
+        icon: "🔥"
+      },
+      {
+        name: "Dumpling Basket",
+        cny: { min: 25, max: 40, typical: 30 },
+        gbp: { min: 2.7, max: 4.3, typical: 3.3 },
+        note: "Shanghai soup dumplings",
+        icon: "🥟"
+      },
+      {
+        name: "Specialty Coffee",
+        cny: { min: 28, max: 38, typical: 32 },
+        gbp: { min: 3, max: 4.1, typical: 3.5 },
+        note: "Boutique cafes in Tier-1 cities",
+        icon: "☕"
+      },
+      {
+        name: "Kids Meal (Western chain)",
+        cny: { min: 35, max: 50, typical: 45 },
+        gbp: { min: 3.8, max: 5.4, typical: 4.8 },
+        note: "McDonald's / KFC",
+        icon: "🍔"
+      },
+      {
+        name: "Bubble Tea",
+        cny: { min: 15, max: 25, typical: 20 },
+        gbp: { min: 1.6, max: 2.7, typical: 2.2 },
+        note: "HeyTea / Mixue",
+        icon: "🧋"
+      }
+    ]
+  },
+  activities: {
+    title: "Activities & Attractions",
+    items: [
+      {
+        name: "Forbidden City Ticket",
+        cny: { adult: 60, child: 30 },
+        gbp: { adult: 6.5, child: 3.2 },
+        note: "Advance booking required",
+        icon: "🏯"
+      },
+      {
+        name: "Shanghai Tower Observation",
+        cny: { adult: 180, child: 90 },
+        gbp: { adult: 19.5, child: 9.8 },
+        note: "118th floor view",
+        icon: "🏙️"
+      },
+      {
+        name: "Panda Research Base",
+        cny: { adult: 55, child: 30 },
+        gbp: { adult: 6, child: 3.2 },
+        note: "Chengdu ticket",
+        icon: "🐼"
+      },
+      {
+        name: "High-Speed Rail (2h route)",
+        cny: { typical: 550 },
+        gbp: { typical: 60 },
+        note: "Shanghai ⇄ Beijing second class",
+        icon: "🚄"
+      },
+      {
+        name: "Happy Valley Theme Park",
+        cny: { adult: 320, child: 240 },
+        gbp: { adult: 35, child: 26 },
+        note: "Peak season price",
+        icon: "🎢"
+      },
+      {
+        name: "Major Museum",
+        cny: { typical: 30 },
+        gbp: { typical: 3.3 },
+        note: "Capital Museum / Shanghai Museum",
+        icon: "🏛️"
+      }
+    ]
+  },
+  transport: {
+    title: "Transportation",
+    items: [
+      {
+        name: "Metro Ride",
+        cny: { min: 3, max: 7, typical: 4 },
+        gbp: { min: 0.3, max: 0.8, typical: 0.4 },
+        note: "Tap with transit card / QR",
+        icon: "🚇"
+      },
+      {
+        name: "Didi (8 km ride)",
+        cny: { typical: 35 },
+        gbp: { typical: 3.8 },
+        note: "Includes basic tolls",
+        icon: "🚕"
+      },
+      {
+        name: "Airport Taxi (Tier-1 city)",
+        cny: { min: 120, max: 180, typical: 150 },
+        gbp: { min: 13, max: 20, typical: 16 },
+        note: "Depends on tolls & traffic",
+        icon: "✈️"
+      },
+      {
+        name: "Maglev (Shanghai)",
+        cny: { adult: 50, child: 25 },
+        gbp: { adult: 5.4, child: 2.7 },
+        note: "One-way economy class",
+        icon: "⚡"
+      },
+      {
+        name: "Long-Distance Coach (per seat)",
+        cny: { typical: 160 },
+        gbp: { typical: 17.4 },
+        note: "2-3 hour intercity route",
+        icon: "🚌"
+      }
+    ]
+  },
+  shopping: {
+    title: "Shopping & Essentials",
+    items: [
+      {
+        name: "SIM or eSIM (7 days)",
+        cny: { typical: 60 },
+        gbp: { typical: 6.5 },
+        note: "Unlimited local data",
+        icon: "📱"
+      },
+      {
+        name: "Power Bank",
+        cny: { min: 90, max: 150, typical: 110 },
+        gbp: { min: 9.8, max: 16.3, typical: 12 },
+        note: "Xiaomi / Anker 10000mAh",
+        icon: "🔋"
+      },
+      {
+        name: "Bottled Water 500ml",
+        cny: { typical: 3 },
+        gbp: { typical: 0.3 },
+        note: "FamilyMart / Lawson",
+        icon: "💧"
+      },
+      {
+        name: "Diapers (medium pack)",
+        cny: { typical: 90 },
+        gbp: { typical: 9.8 },
+        note: "Ole / Walmart",
+        icon: "🍼"
+      },
+      {
+        name: "Tea Gift Set",
+        cny: { min: 160, max: 260, typical: 200 },
+        gbp: { min: 17, max: 28, typical: 22 },
+        note: "West Lake green tea",
+        icon: "🍵"
+      }
+    ]
+  },
+  tips: {
+    title: "Money Tips",
+    items: [
+      "Mobile payments dominate—set up Alipay/WeChat Pay or carry cash.",
+      "Keep your passport handy for hotel check-in and SIM purchases.",
+      "Taxi receipts (发票) help reclaim lost items or file complaints.",
+      "Most attractions require advance real-name booking—plan ahead.",
+      "Carry tissues; many public restrooms lack paper.",
+      "Stick to bottled drinks for kids when outside major hotels."
+    ]
+  }
+};
+
+export const PRICE_GUIDES = {
+  TH: {
+    title: 'Phuket Price Guide',
+    subtitle: 'Average prices for August 2025 • £1 ≈ ฿44',
+    currency: 'THB',
+    homeCurrency: 'GBP',
+    localLabel: '฿ THB',
+    homeLabel: '£ GBP',
+    localKey: 'thb',
+    homeKey: 'gbp',
+    data: PRICE_GUIDE,
+    quickReference: [
+      { label: 'Street Food', local: '฿40-80', home: '£0.9-1.8' },
+      { label: 'Taxi (10km)', local: '฿150-250', home: '£3.4-5.7' },
+      { label: 'Massage (1hr)', local: '฿300-500', home: '£6.8-11.4' },
+      { label: 'Beach Chair', local: '฿100', home: '£2.3' }
+    ]
+  },
+  HK: {
+    title: 'Hong Kong Price Guide',
+    subtitle: 'Benchmarks for city travel • £1 ≈ HK$10',
+    currency: 'HKD',
+    homeCurrency: 'GBP',
+    localLabel: 'HK$',
+    homeLabel: '£ GBP',
+    localKey: 'hkd',
+    homeKey: 'gbp',
+    data: PRICE_GUIDE_HK,
+    quickReference: [
+      { label: 'Street Snack', local: 'HK$25-45', home: '£2.5-4.5' },
+      { label: 'Airport Express', local: 'HK$120', home: '£12' },
+      { label: 'Peak Tram', local: 'HK$88', home: '£8.8' },
+      { label: 'Octopus Top-up', local: 'HK$100', home: '£10' }
+    ]
+  },
+  CN: {
+    title: 'Mainland China Price Guide',
+    subtitle: 'Typical Tier-1 city costs • £1 ≈ ¥9.2',
+    currency: 'CNY',
+    homeCurrency: 'GBP',
+    localLabel: '¥ CNY',
+    homeLabel: '£ GBP',
+    localKey: 'cny',
+    homeKey: 'gbp',
+    data: PRICE_GUIDE_CN,
+    quickReference: [
+      { label: 'Metro Ride', local: '¥3-7', home: '£0.3-0.8' },
+      { label: 'Bubble Tea', local: '¥15-25', home: '£1.6-2.7' },
+      { label: 'Didi (8km)', local: '¥35', home: '£3.8' },
+      { label: 'Panda Base', local: '¥55', home: '£6' }
+    ]
+  }
+};
+
+export const getPriceGuideForCountry = (iso2) => PRICE_GUIDES[iso2] || PRICE_GUIDES.TH;
+
 // Daily Phrase Suggestions - Rotate based on activities
-export const getDailyPhrases = (dayActivities, dayIndex) => {
+export const getDailyPhrases = (dayActivities, dayIndex, phraseSet = THAI_PHRASES) => {
   const phrases = [];
+  const safeGet = (category, index = 0) => {
+    const list = phraseSet[category]?.length ? phraseSet[category] : THAI_PHRASES[category] || [];
+    if (!list.length) {
+      return null;
+    }
+    return list[index % list.length];
+  };
   
-  // Always include a greeting
-  phrases.push(THAI_PHRASES.greetings[dayIndex % THAI_PHRASES.greetings.length]);
+  const greeting = safeGet('greetings', dayIndex);
+  if (greeting) {
+    phrases.push(greeting);
+  }
   
-  // Add context-specific phrases based on activities
   if (dayActivities.some(a => a.type === 'eat')) {
-    phrases.push(THAI_PHRASES.restaurant[0]); // Mai phet - most important!
-    phrases.push(THAI_PHRASES.restaurant[3]); // Aroy
+    const notSpicy = safeGet('restaurant', 0);
+    const tasty = safeGet('restaurant', 3);
+    if (notSpicy) phrases.push(notSpicy);
+    if (tasty) phrases.push(tasty);
   }
   
   if (dayActivities.some(a => a.title.toLowerCase().includes('market') || 
                              a.title.toLowerCase().includes('shopping'))) {
-    phrases.push(THAI_PHRASES.shopping[0]); // How much?
-    phrases.push(THAI_PHRASES.shopping[2]); // Can you reduce?
+    const price = safeGet('shopping', 0);
+    const discount = safeGet('shopping', 2);
+    if (price) phrases.push(price);
+    if (discount) phrases.push(discount);
   }
   
   if (dayActivities.some(a => a.title.toLowerCase().includes('beach'))) {
-    phrases.push(THAI_PHRASES.activities[0]); // Beach
+    const beach = safeGet('activities', 0);
+    if (beach) phrases.push(beach);
   }
   
   if (dayActivities.some(a => a.title.toLowerCase().includes('elephant'))) {
-    phrases.push(THAI_PHRASES.activities[2]); // Elephant
+    const elephant = safeGet('activities', 2);
+    if (elephant) phrases.push(elephant);
   }
   
-  // Always include a kids need phrase
-  phrases.push(THAI_PHRASES.kidsNeeds[dayIndex % THAI_PHRASES.kidsNeeds.length]);
+  const kids = safeGet('kidsNeeds', dayIndex);
+  if (kids) phrases.push(kids);
   
-  return phrases.slice(0, 5); // Return top 5 phrases for the day
+  return phrases.filter(Boolean).slice(0, 5); // Return top 5 phrases for the day
 };

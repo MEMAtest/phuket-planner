@@ -1,13 +1,54 @@
-import React, { useState } from 'react';
-import { Icons } from '../data/staticData';
-import { THAI_PHRASES, getDailyPhrases } from '../data/staticData';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Icons, getDailyPhrases, getPhrasePackForCountry } from '../data/staticData';
+import { useCountry } from '../state/CountryContext';
 
 const DailyPhrases = ({ dayData, dayIndex }) => {
+  const { country } = useCountry();
+  const phrasePack = getPhrasePackForCountry(country.iso2);
+  const phraseSet = phrasePack.phrases;
+  const categoryOrder = useMemo(
+    () =>
+      phrasePack.categoryOrder || [
+        'greetings',
+        'restaurant',
+        'kidsNeeds',
+        'shopping',
+        'directions',
+        'emergency',
+        'activities'
+      ],
+    [phrasePack]
+  );
+  const categories = useMemo(() => categoryOrder
+    .map(key => {
+      const labelMap = {
+        greetings: { title: 'Basic Greetings', icon: '👋' },
+        restaurant: { title: 'Restaurant', icon: '🍽️' },
+        kidsNeeds: { title: "Kids' Needs", icon: '👶' },
+        shopping: { title: 'Shopping', icon: '🛍️' },
+        directions: { title: 'Directions', icon: '🗺️' },
+        emergency: { title: 'Emergency', icon: '🚨' },
+        activities: { title: 'Activities', icon: '🎯' }
+      };
+      return {
+        key,
+        title: labelMap[key]?.title || key,
+        icon: labelMap[key]?.icon || '💬'
+      };
+    })
+    .filter(cat => phraseSet[cat.key] && phraseSet[cat.key].length),
+  [phraseSet, categoryOrder]);
+
   const [expandedCategory, setExpandedCategory] = useState(null);
   const [playingAudio, setPlayingAudio] = useState(null);
+
+  useEffect(() => {
+    setExpandedCategory(null);
+  }, [country.iso2]);
   
-  // Get daily suggested phrases based on activities
-  const dailyPhrases = dayData ? getDailyPhrases(dayData.blocks || [], dayIndex) : [];
+  const dailyPhrases = dayData
+    ? getDailyPhrases(dayData.blocks || [], dayIndex, phraseSet)
+    : [];
   
   const playPronunciation = (phraseId) => {
     // Placeholder for audio functionality
@@ -19,15 +60,8 @@ const DailyPhrases = ({ dayData, dayIndex }) => {
     // audio.play();
   };
   
-  const categories = [
-    { key: 'greetings', title: 'Basic Greetings', icon: '👋' },
-    { key: 'restaurant', title: 'Restaurant', icon: '🍽️' },
-    { key: 'kidsNeeds', title: "Kids' Needs", icon: '👶' },
-    { key: 'shopping', title: 'Shopping', icon: '🛍️' },
-    { key: 'directions', title: 'Directions', icon: '🗺️' },
-    { key: 'emergency', title: 'Emergency', icon: '🚨' },
-    { key: 'activities', title: 'Activities', icon: '🎯' }
-  ];
+  const getNative = (phrase) => phrase.native || phrase.thai || phrase.text;
+  const getPhonetic = (phrase) => phrase.phonetic || phrase.romanization || phrase.pinyin || '';
   
   return (
     <div className="bg-white rounded-xl shadow-lg overflow-hidden">
@@ -35,10 +69,10 @@ const DailyPhrases = ({ dayData, dayIndex }) => {
       <div className="bg-gradient-to-r from-purple-500 to-pink-500 p-4">
         <h3 className="font-bold text-xl text-white mb-2 flex items-center gap-2">
           <Icons.BookOpen className="w-6 h-6" />
-          Thai Phrases
+          {phrasePack.title}
         </h3>
         <p className="text-purple-100 text-sm">
-          Essential phrases for your Phuket adventure
+          {phrasePack.subtitle}
         </p>
       </div>
       
@@ -57,10 +91,10 @@ const DailyPhrases = ({ dayData, dayIndex }) => {
                 <div className="flex-1">
                   <div className="flex items-baseline gap-2">
                     <span className="font-thai text-lg text-purple-700">
-                      {phrase.thai}
+                      {getNative(phrase)}
                     </span>
                     <span className="text-xs text-slate-500">
-                      ({phrase.phonetic})
+                      ({getPhonetic(phrase)})
                     </span>
                   </div>
                   <p className="text-sm text-slate-700 mt-0.5">
@@ -106,7 +140,7 @@ const DailyPhrases = ({ dayData, dayIndex }) => {
                     {category.title}
                   </span>
                   <span className="text-xs text-slate-500">
-                    ({THAI_PHRASES[category.key].length} phrases)
+                    ({phraseSet[category.key]?.length || 0} phrases)
                   </span>
                 </div>
                 <Icons.ChevronDown 
@@ -118,7 +152,7 @@ const DailyPhrases = ({ dayData, dayIndex }) => {
               
               {expandedCategory === category.key && (
                 <div className="p-3 bg-white space-y-2">
-                  {THAI_PHRASES[category.key].map((phrase, i) => (
+                  {phraseSet[category.key].map((phrase, i) => (
                     <div 
                       key={i}
                       className="flex items-center justify-between p-2 rounded-lg
@@ -127,10 +161,10 @@ const DailyPhrases = ({ dayData, dayIndex }) => {
                       <div className="flex-1">
                         <div className="flex items-baseline gap-2 flex-wrap">
                           <span className="font-thai text-base text-slate-800">
-                            {phrase.thai}
+                            {getNative(phrase)}
                           </span>
                           <span className="text-xs text-slate-500">
-                            {phrase.phonetic}
+                            {getPhonetic(phrase)}
                           </span>
                         </div>
                         <p className="text-sm text-slate-600 mt-0.5">
@@ -163,10 +197,9 @@ const DailyPhrases = ({ dayData, dayIndex }) => {
           💡 Language Tips
         </h4>
         <ul className="space-y-1 text-xs text-amber-700">
-          <li>• Add "krub" (men) or "ka" (women) to be polite</li>
-          <li>• Smile while speaking - Thais appreciate the effort!</li>
-          <li>• Point with your chin, not your finger</li>
-          <li>• "Mai pen rai" (never mind) is the most Thai phrase ever</li>
+          {(phrasePack.tips || []).map((tip, index) => (
+            <li key={index}>• {tip}</li>
+          ))}
         </ul>
       </div>
     </div>

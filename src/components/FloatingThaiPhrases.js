@@ -1,11 +1,35 @@
-import React, { useState } from 'react';
-import { THAI_PHRASES } from '../data/staticData';
+import React, { useState, useMemo, useEffect } from 'react';
+import { getPhrasePackForCountry } from '../data/staticData';
+import { useCountry } from '../state/CountryContext';
 
 const FloatingThaiPhrases = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState('greetings');
+  const { country } = useCountry();
+  const phrasePack = getPhrasePackForCountry(country.iso2);
+  const phraseSet = phrasePack.phrases;
+  const categoryOrder = useMemo(
+    () =>
+      phrasePack.categoryOrder || [
+        'greetings',
+        'restaurant',
+        'kidsNeeds',
+        'shopping',
+        'directions',
+        'emergency',
+        'activities'
+      ],
+    [phrasePack]
+  );
+  const categories = useMemo(
+    () => categoryOrder.filter(key => phraseSet[key] && phraseSet[key].length),
+    [phraseSet, categoryOrder]
+  );
 
-  const categories = Object.keys(THAI_PHRASES);
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState(categories[0] || 'greetings');
+
+  useEffect(() => {
+    setSelectedCategory(categories[0] || 'greetings');
+  }, [country.iso2, categories]);
 
   const playAudio = (audioFile) => {
     // Placeholder for audio playback
@@ -18,6 +42,9 @@ const FloatingThaiPhrases = () => {
     alert('Copied: ' + text);
   };
 
+  const getNative = (phrase) => phrase.native || phrase.thai || phrase.text;
+  const getPhonetic = (phrase) => phrase.phonetic || phrase.romanization || phrase.pinyin || '';
+
   return (
     <>
       {/* Floating Action Button */}
@@ -26,9 +53,9 @@ const FloatingThaiPhrases = () => {
         className="fixed bottom-6 right-6 w-14 h-14 bg-sky-600 text-white rounded-full shadow-lg 
                  hover:bg-sky-700 transition-all hover:scale-110 z-40 flex items-center justify-center
                  animate-bounce"
-        title="Thai Phrases"
+        title={`${phrasePack.title}`}
       >
-        <span className="text-2xl">🗣️</span>
+        <span className="text-2xl">{phrasePack.flag || '🗣️'}</span>
       </button>
 
       {/* Modal Overlay */}
@@ -46,7 +73,7 @@ const FloatingThaiPhrases = () => {
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-sky-500 to-blue-600 
                           text-white rounded-t-2xl sm:rounded-t-2xl">
-              <h2 className="text-lg font-bold">🇹🇭 Thai Phrases</h2>
+              <h2 className="text-lg font-bold">{phrasePack.flag || '🗣️'} {phrasePack.title}</h2>
               <button
                 onClick={() => setIsOpen(false)}
                 className="p-2 hover:bg-white/20 rounded-lg transition-colors"
@@ -86,22 +113,22 @@ const FloatingThaiPhrases = () => {
             {/* Phrases List */}
             <div className="overflow-y-auto max-h-96 p-4">
               <div className="space-y-3">
-                {THAI_PHRASES[selectedCategory].map((phrase, idx) => (
+                {(phraseSet[selectedCategory] || []).map((phrase, idx) => (
                   <div 
                     key={idx}
                     className="p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors group"
                   >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <p className="font-bold text-lg text-slate-800">{phrase.thai}</p>
-                        <p className="text-sm text-sky-600 font-medium mt-1">
-                          {phrase.phonetic}
-                        </p>
-                        <p className="text-sm text-slate-600 mt-1">{phrase.english}</p>
-                      </div>
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <p className="font-bold text-lg text-slate-800">{getNative(phrase)}</p>
+                            <p className="text-sm text-sky-600 font-medium mt-1">
+                              {getPhonetic(phrase)}
+                            </p>
+                            <p className="text-sm text-slate-600 mt-1">{phrase.english}</p>
+                          </div>
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
-                          onClick={() => copyToClipboard(phrase.thai)}
+                          onClick={() => copyToClipboard(getNative(phrase))}
                           className="p-2 bg-white rounded-lg hover:bg-sky-50 transition-colors"
                           title="Copy Thai text"
                         >
@@ -126,11 +153,13 @@ const FloatingThaiPhrases = () => {
             {/* Footer Tips */}
             <div className="p-3 bg-amber-50 border-t rounded-b-2xl">
               <p className="text-xs text-amber-800">
-                💡 <strong>Tip:</strong> Add "krap" (male) or "ka" (female) at the end to be polite!
+                💡 <strong>Tip:</strong> {(phrasePack.tips || [])[0] || 'Practice aloud to build confidence.'}
               </p>
-              <p className="text-xs text-amber-800 mt-1">
-                🙏 "Sawadee krap/ka" = Hello (polite)
-              </p>
+              {phrasePack.tips?.[1] && (
+                <p className="text-xs text-amber-800 mt-1">
+                  🙏 {phrasePack.tips[1]}
+                </p>
+              )}
             </div>
           </div>
         </div>
