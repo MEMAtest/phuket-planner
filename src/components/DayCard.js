@@ -4,11 +4,10 @@ import AddActivityForm from './AddActivityForm';
 import WeatherWidget from './WeatherWidget';
 import ExpenseTracker from './ExpenseTracker';
 import ActivityNotes from './ActivityNotes';
-import SmartSuggestions from './SmartSuggestions';
 import NewsFeed from './NewsFeed';
 import DailyPhrases from './DailyPhrases';
-import { initializeExpenses, getExpenses } from '../services/expenseService';
 import { useTrip } from '../context/TripContext';
+import { useCountry } from '../state/CountryContext';
 
 // Activity badge component
 const ActivityBadge = ({ type }) => {
@@ -108,13 +107,21 @@ const UndoNotification = ({ onUndo, onClose }) => {
 
 const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
   const { undoLastOperation, showNotification, syncStatus } = useTrip();
-  const recommendations = TRIP_DATA.recommendations[dayData.location] || [];
-  const fact = TRIP_DATA.phuketFacts[dayIndex % TRIP_DATA.phuketFacts.length];
+  const { country } = useCountry();
+  const localOptions =
+    country.highlights?.localOptions?.length
+      ? country.highlights.localOptions
+      : TRIP_DATA.recommendations?.[dayData.location] || [];
+  const factSource =
+    country.highlights?.facts?.length
+      ? country.highlights.facts
+      : TRIP_DATA.phuketFacts || [];
+  const fact =
+    factSource.length > 0
+      ? factSource[dayIndex % factSource.length]
+      : 'Explore like a local wherever you are!';
   const [isAdding, setIsAdding] = useState(false);
   const [expandedActivity, setExpandedActivity] = useState(null);
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const [expenses, setExpenses] = useState(null);
-  const [weatherData, setWeatherData] = useState(null);
   const [showUndoNotification, setShowUndoNotification] = useState(false);
   const [completedActivities, setCompletedActivities] = useState({});
 
@@ -129,21 +136,6 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
       console.error('Error loading completed activities:', error);
     }
   }, []);
-
-  useEffect(() => {
-    // Initialize expenses if needed
-    if (!getExpenses()) {
-      initializeExpenses(planData || [dayData]);
-    }
-    setExpenses(getExpenses());
-
-    // Update time every minute
-    const interval = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 60000);
-
-    return () => clearInterval(interval);
-  }, [dayData, planData]);
 
   // Toggle activity completion
   const toggleActivityComplete = (activityId) => {
@@ -226,10 +218,6 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
     setExpandedActivity(expandedActivity === blockId ? null : blockId);
   };
 
-  const handleExpenseAdded = () => {
-    setExpenses(getExpenses());
-  };
-
   // Prevent event bubbling for interactive elements
   const handleInteraction = (e) => {
     e.stopPropagation();
@@ -290,28 +278,15 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
           {/* Weather Widget - Has its own event handling */}
           <div className="flex-1 max-w-sm">
             <WeatherWidget 
-              location={dayData.location} 
               date={dayData.date}
-              onWeatherUpdate={setWeatherData}
             />
           </div>
         </div>
       </div>
 
-      {/* Smart Suggestions - NO TOUCH HANDLERS */}
-      <div className="p-4 border-b" onClick={handleInteraction}>
-        <SmartSuggestions
-          currentTime={currentTime}
-          dayData={dayData}
-          weatherData={weatherData}
-          expenses={expenses?.days?.[dayData.date]}
-        />
-      </div>
-
       {/* News Feed - NO TOUCH HANDLERS */}
       <div className="p-4 border-b" onClick={handleInteraction}>
         <NewsFeed
-          location={dayData.location}
           date={dayData.date}
         />
       </div>
@@ -325,7 +300,6 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
             <ExpenseTracker
               date={dayData.date}
               activityId={null}
-              onExpenseAdded={handleExpenseAdded}
             />
           </div>
 
@@ -448,9 +422,11 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
         {/* Right Column - Recommendations & Facts - NO TOUCH HANDLERS */}
         <div className="lg:col-span-2 p-4 bg-slate-50 lg:border-l" onClick={handleInteraction}>
           {/* Local Options */}
-          <h3 className="font-semibold text-slate-700 mb-3">Local Options</h3>
+          <h3 className="font-semibold text-slate-700 mb-3">
+            Local Picks in {country.name}
+          </h3>
           <div className="space-y-3 mb-4">
-            {recommendations.map(item => (
+            {localOptions.map(item => (
               <div 
                 key={item.name} 
                 className="bg-white rounded-lg p-3 flex items-start gap-3 
@@ -491,10 +467,10 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
             ))}
           </div>
 
-          {/* Thai Phrases for Today */}
+          {/* Local Phrases for Today */}
           <div className="mt-4 pt-4 border-t border-slate-200">
             <h3 className="font-semibold text-slate-700 mb-2">
-              Today's Thai Phrases
+              Useful Phrases for {country.name}
             </h3>
             <DailyPhrases dayData={dayData} dayIndex={dayIndex} />
           </div>
@@ -502,7 +478,7 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
           {/* Phuket Fact of the Day */}
           <div className="mt-4 pt-4 border-t border-slate-200">
             <h3 className="font-semibold text-slate-700 mb-2">
-              Phuket Fact of the Day
+              {country.name} Fact of the Day
             </h3>
             <p className="text-sm text-slate-600 italic">
               "{fact}"

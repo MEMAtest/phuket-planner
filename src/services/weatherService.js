@@ -4,7 +4,7 @@
 const API_KEY = process.env.REACT_APP_OPENWEATHER_API_KEY || '4221eacbcab49fe83e6b6381d3255eb4';
 const BASE_URL = 'https://api.openweathermap.org/data/2.5';
 
-// Mai Khao Beach coordinates (near hotel)
+// Mai Khao Beach coordinates (legacy fallback)
 const MAI_KHAO_COORDS = {
   lat: 8.1707,
   lon: 98.2994
@@ -12,34 +12,44 @@ const MAI_KHAO_COORDS = {
 
 // Old Town Phuket coordinates
 const OLD_TOWN_COORDS = {
-  lat: 7.8840,
+  lat: 7.884,
   lon: 98.3865
 };
 
 // Cache weather data to avoid excessive API calls
-let weatherCache = {
-  current: null,
-  forecast: null,
-  lastFetch: null
-};
+const weatherCache = new Map();
 
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 
-// Get current weather
-export const getCurrentWeather = async (location = 'maiKhao') => {
-  try {
-    // Check cache first
-    if (weatherCache.current && weatherCache.lastFetch && 
-        (Date.now() - weatherCache.lastFetch < CACHE_DURATION)) {
-      console.log('Using cached weather data');
-      return weatherCache.current;
-    }
+const getCoordsForLocation = (location) => {
+  if (location === 'oldTown') return OLD_TOWN_COORDS;
+  return MAI_KHAO_COORDS;
+};
 
-    // Get coordinates based on location
-    const coords = location === 'oldTown' ? OLD_TOWN_COORDS : MAI_KHAO_COORDS;
+const getCacheBucket = (coords) => {
+  const key = `${coords.lat.toFixed(3)},${coords.lon.toFixed(3)}`;
+  if (!weatherCache.has(key)) {
+    weatherCache.set(key, {
+      current: null,
+      forecast: null,
+      lastCurrent: 0,
+      lastForecast: 0
+    });
+  }
+  return weatherCache.get(key);
+};
+
+// Get current weather
+export const getCurrentWeather = async ({ location = 'maiKhao', coords } = {}) => {
+  try {
+    const resolvedCoords = coords || getCoordsForLocation(location);
+    const bucket = getCacheBucket(resolvedCoords);
+    if (bucket.current && Date.now() - bucket.lastCurrent < CACHE_DURATION) {
+      return bucket.current;
+    }
     
     const response = await fetch(
-      `${BASE_URL}/weather?lat=${coords.lat}&lon=${coords.lon}&appid=${API_KEY}&units=metric`
+      `${BASE_URL}/weather?lat=${resolvedCoords.lat}&lon=${resolvedCoords.lon}&appid=${API_KEY}&units=metric`
     );
     
     if (!response.ok) {
@@ -64,8 +74,8 @@ export const getCurrentWeather = async (location = 'maiKhao') => {
     };
     
     // Update cache
-    weatherCache.current = weatherData;
-    weatherCache.lastFetch = Date.now();
+    bucket.current = weatherData;
+    bucket.lastCurrent = Date.now();
     
     return weatherData;
   } catch (error) {
@@ -75,19 +85,16 @@ export const getCurrentWeather = async (location = 'maiKhao') => {
 };
 
 // Get 5-day forecast (3-hour intervals)
-export const getWeatherForecast = async (location = 'maiKhao') => {
+export const getWeatherForecast = async ({ location = 'maiKhao', coords } = {}) => {
   try {
-    // Check cache
-    if (weatherCache.forecast && weatherCache.lastFetch && 
-        (Date.now() - weatherCache.lastFetch < CACHE_DURATION)) {
-      console.log('Using cached forecast data');
-      return weatherCache.forecast;
+    const resolvedCoords = coords || getCoordsForLocation(location);
+    const bucket = getCacheBucket(resolvedCoords);
+    if (bucket.forecast && Date.now() - bucket.lastForecast < CACHE_DURATION) {
+      return bucket.forecast;
     }
-
-    const coords = location === 'oldTown' ? OLD_TOWN_COORDS : MAI_KHAO_COORDS;
     
     const response = await fetch(
-      `${BASE_URL}/forecast?lat=${coords.lat}&lon=${coords.lon}&appid=${API_KEY}&units=metric&cnt=40`
+      `${BASE_URL}/forecast?lat=${resolvedCoords.lat}&lon=${resolvedCoords.lon}&appid=${API_KEY}&units=metric&cnt=40`
     );
     
     if (!response.ok) {
@@ -168,7 +175,8 @@ export const getWeatherForecast = async (location = 'maiKhao') => {
     });
     
     // Update cache
-    weatherCache.forecast = processedForecast;
+    bucket.forecast = processedForecast;
+    bucket.lastForecast = Date.now();
     
     return processedForecast;
   } catch (error) {
@@ -178,12 +186,12 @@ export const getWeatherForecast = async (location = 'maiKhao') => {
 };
 
 // Get UV Index (requires different endpoint - One Call API)
-export const getUVIndex = async (location = 'maiKhao') => {
+export const getUVIndex = async ({ location = 'maiKhao', coords } = {}) => {
   try {
-    const coords = location === 'oldTown' ? OLD_TOWN_COORDS : MAI_KHAO_COORDS;
+    const resolvedCoords = coords || getCoordsForLocation(location);
     
     const response = await fetch(
-      `${BASE_URL}/uvi?lat=${coords.lat}&lon=${coords.lon}&appid=${API_KEY}`
+      `${BASE_URL}/uvi?lat=${resolvedCoords.lat}&lon=${resolvedCoords.lon}&appid=${API_KEY}`
     );
     
     if (!response.ok) {
@@ -269,11 +277,7 @@ export const getWeatherRecommendations = (weather) => {
 
 // Clear cache (useful for manual refresh)
 export const clearWeatherCache = () => {
-  weatherCache = {
-    current: null,
-    forecast: null,
-    lastFetch: null
-  };
+  weatherCache.clear();
 };
 
 // Check if we should show weather alert

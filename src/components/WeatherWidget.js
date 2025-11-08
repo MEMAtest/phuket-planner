@@ -1,7 +1,18 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { getCurrentWeather, getWeatherForecast } from '../services/weatherService';
+import { useCountry } from '../state/CountryContext';
 
-const WeatherWidget = ({ location, date }) => {
+const WeatherWidget = ({ date }) => {
+  const { country } = useCountry();
+  const weatherTarget = useMemo(() => {
+    return (
+      country.weather || {
+        city: country.name,
+        lat: 8.1707,
+        lon: 98.2994
+      }
+    );
+  }, [country]);
   const [currentWeather, setCurrentWeather] = useState(null);
   const [forecast, setForecast] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -12,9 +23,9 @@ const WeatherWidget = ({ location, date }) => {
   const fetchWeatherData = useCallback(async () => {
     setLoading(true);
     try {
-      const current = await getCurrentWeather(location);
+      const current = await getCurrentWeather({ coords: weatherTarget });
       setCurrentWeather(current);
-      const forecastData = await getWeatherForecast(location);
+      const forecastData = await getWeatherForecast({ coords: weatherTarget });
       setForecast(forecastData);
       setLastUpdate(new Date());
     } catch (error) {
@@ -22,7 +33,7 @@ const WeatherWidget = ({ location, date }) => {
     } finally {
       setLoading(false);
     }
-  }, [location]);
+  }, [weatherTarget]);
   
   useEffect(() => {
     fetchWeatherData();
@@ -143,7 +154,7 @@ const WeatherWidget = ({ location, date }) => {
         <div className="flex justify-between items-start">
           <div>
             <p className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-              {location === 'maiKhao' ? '📍 Mai Khao Beach' : '📍 Old Town Phuket'}
+              📍 {weatherTarget.city}
             </p>
             <div className="flex items-baseline gap-3 mt-1">
               <span className="text-4xl font-bold text-slate-800">

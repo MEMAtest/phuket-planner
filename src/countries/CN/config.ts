@@ -20,6 +20,76 @@ const CN: CountryConfig = {
     addressSchema: 'CN',
     dialingCountry: 'CN'
   },
+  weather: {
+    city: 'Shanghai',
+    lat: 31.2304,
+    lon: 121.4737
+  },
+  news: {
+    query: 'China travel families safety updates',
+    region: 'CN',
+    staticAlerts: [
+      {
+        id: 'cn_real_name',
+        type: 'tip',
+        title: 'Real-Name Bookings',
+        description: 'Many attractions require ID/passport numbers. Carry passports daily.',
+        priority: 'medium',
+        icon: '🪪'
+      },
+      {
+        id: 'cn_air_quality',
+        type: 'warning',
+        title: 'Air Quality Swings',
+        description: 'In winter, AQI can exceed 150. Pack N95 masks for kids with asthma.',
+        priority: 'medium',
+        icon: '🌫️',
+        months: [11, 12, 1, 2]
+      }
+    ]
+  },
+  highlights: {
+    localOptions: [
+      {
+        name: 'Din Tai Fung',
+        type: 'eat',
+        notes: 'Steamed soup dumplings kids love (reservations recommended).',
+        rating: 4.7,
+        travelTime: 'Multiple branches',
+        map: 'https://maps.google.com/?q=Din%20Tai%20Fung%20Shanghai'
+      },
+      {
+        name: 'Lost Heaven',
+        type: 'eat',
+        notes: 'Yunnan cuisine in the French Concession—spacious tables for families.',
+        rating: 4.6,
+        travelTime: 'Xuhui District',
+        map: 'https://maps.google.com/?q=Lost%20Heaven%20Shanghai'
+      },
+      {
+        name: 'Shanghai Disneyland',
+        type: 'activity',
+        notes: 'Tron coaster + world’s largest castle. Buy Premier Access during holidays.',
+        rating: 4.8,
+        travelTime: 'Pudong',
+        map: 'https://maps.google.com/?q=Shanghai%20Disneyland'
+      },
+      {
+        name: 'Chengdu Research Base of Giant Panda Breeding',
+        type: 'activity',
+        notes: 'Arrive 8am feeding time for playful cubs.',
+        rating: 4.9,
+        travelTime: 'Chengdu',
+        map: 'https://maps.google.com/?q=Chengdu%20Research%20Base%20of%20Giant%20Panda'
+      }
+    ],
+    facts: [
+      'China’s high-speed rail network spans 42,000 km—long enough to circle the Earth.',
+      'Shanghai Tower’s observation deck is the world’s highest indoor deck.',
+      'Beijing’s Forbidden City holds more than 8,700 rooms across 180 acres.',
+      'Chengdu is nicknamed the “City of Gastronomy” by UNESCO.'
+    ]
+  },
   content: {
     emergency: {
       police: '110',

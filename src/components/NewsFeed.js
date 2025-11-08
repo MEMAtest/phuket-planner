@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useCountry } from '../state/CountryContext';
 
-const NewsFeed = ({ location, date }) => {
+const NewsFeed = ({ date }) => {
+  const { country } = useCountry();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -10,10 +12,12 @@ const NewsFeed = ({ location, date }) => {
   const fetchAndProcessNews = useCallback(async () => {
     setLoading(true);
     const allAlerts = [];
+    const newsConfig = country.news || {};
+    const query = newsConfig.query || `${country.name} travel news`;
+    const region = newsConfig.region || country.iso2 || 'US';
     
     try {
-      // Use simpler Google News RSS URL (no ceid parameter)
-      const rssUrl = 'https://news.google.com/rss/search?q=Phuket+Thailand&hl=en';
+      const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-${region}&gl=${region}&ceid=${region}:en`;
       const response = await fetch(
         `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`
       );
@@ -94,38 +98,23 @@ const NewsFeed = ({ location, date }) => {
     // Always add static alerts
     const currentDate = new Date(date || new Date());
     
-    // Jellyfish warning (Aug 20-28)
-    if (currentDate >= new Date('2025-08-20') && currentDate <= new Date('2025-08-28')) {
-      allAlerts.push({
-        id: 'jellyfish_warning',
-        type: 'warning',
-        title: 'Jellyfish Season Advisory',
-        description: 'Box jellyfish possible at beaches. Swim in designated areas only.',
-        priority: 'high',
-        icon: '⚠️',
-        dismissible: true
-      });
-    }
-    
-    // Sunday Walking Street
-    if (currentDate.getDay() === 0) {
-      allAlerts.push({
-        id: 'sunday_market',
-        type: 'event',
-        title: 'Old Town Sunday Walking Street',
-        description: 'Every Sunday 4-10pm. Great for souvenirs and street food.',
-        priority: 'low',
-        icon: '🎪',
-        dismissible: true
-      });
-    }
+    (newsConfig.staticAlerts || []).forEach(alert => {
+      const inMonth = !alert.months || alert.months.includes(currentDate.getMonth() + 1);
+      const inDay = !alert.daysOfWeek || alert.daysOfWeek.includes(currentDate.getDay());
+      if (inMonth && inDay) {
+        allAlerts.push({
+          ...alert,
+          dismissible: true
+        });
+      }
+    });
     
     // Always show useful tips
     allAlerts.push({
       id: 'atm_tip',
       type: 'tip',
-      title: 'ATM Tip',
-      description: 'Yellow (Krungsri) and Purple (SCB) ATMs have lowest fees.',
+      title: `${country.currency} Cash Tip`,
+      description: `Carry some ${country.currency} for markets—smaller shops may not accept cards.`,
       priority: 'low',
       icon: '💳',
       dismissible: true
@@ -136,7 +125,7 @@ const NewsFeed = ({ location, date }) => {
     setEvents(activeAlerts);
     setLastUpdate(new Date());
     setLoading(false);
-  }, [date, dismissedAlerts]);
+  }, [date, dismissedAlerts, country]);
 
   useEffect(() => {
     void fetchAndProcessNews();

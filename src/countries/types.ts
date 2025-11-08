@@ -21,6 +21,36 @@ export type CountryConfig = {
     addressSchema: string;      // Key that selects address layout/validation
     dialingCountry: string;     // For libphonenumber-js validation
   };
+  weather?: {
+    city: string;               // Default city label for weather widgets
+    lat: number;
+    lon: number;
+  };
+  news?: {
+    query: string;              // RSS search query
+    region?: string;            // Region code for Google News (e.g., "HK", "TH")
+    staticAlerts?: {
+      id: string;
+      type: 'event' | 'warning' | 'tip' | 'news';
+      title: string;
+      description: string;
+      priority: 'low' | 'medium' | 'high';
+      icon: string;
+      months?: number[];        // Active months (1-12)
+      daysOfWeek?: number[];    // Active weekdays (0 = Sunday)
+    }[];
+  };
+  highlights?: {
+    localOptions?: {
+      name: string;
+      type: 'eat' | 'activity' | 'shopping';
+      notes: string;
+      rating: number;
+      travelTime?: string;
+      map?: string;
+    }[];
+    facts?: string[];
+  };
   content: {
     emergency: {
       police?: string;
