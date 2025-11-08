@@ -39,27 +39,37 @@ export async function getFxRate(base: string, quote: string): Promise<FxRate> {
   }
 
   try {
-    const res = await fetch(
-      `/api/fx?base=${encodeURIComponent(base)}&quote=${encodeURIComponent(quote)}`
-    );
+    const url = `https://api.exchangerate.host/latest?base=${encodeURIComponent(
+      base
+    )}&symbols=${encodeURIComponent(quote)}&places=6`;
+    const res = await fetch(url);
 
     if (!res.ok) {
       throw new Error(`FX fetch failed: ${res.status}`);
     }
 
-    const data: FxRate = await res.json();
-    fxCache.set(cacheKey, data);
-    return data;
+    const data = await res.json();
+    const rate = data?.rates?.[quote];
+    if (!rate) {
+      throw new Error('Rate not found in response');
+    }
+
+    const fx: FxRate = {
+      base,
+      quote,
+      rate: Number(rate),
+      asOf: data.date || new Date().toISOString()
+    };
+    fxCache.set(cacheKey, fx);
+    return fx;
   } catch (error) {
     console.error('Error fetching FX rate:', error);
 
-    // If we have stale cached data, return it with a warning
     if (cached) {
       console.warn('Using stale FX rate');
       return { ...cached, asOf: cached.asOf + ' (stale)' };
     }
 
-    // Fallback to 1:1 if all else fails
     return {
       base,
       quote,
