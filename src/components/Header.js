@@ -1,12 +1,34 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Icons } from '../data/staticData';
 import { useTrip } from '../context/TripContext';
 import { generateICS } from '../utils/calendar';
 import CountrySwitcher from './CountrySwitcher';
+import { useCountry } from '../state/CountryContext';
 
 const Header = () => {
-  const { activeTab, setActiveTab, planData, setCurrentDayIndex } = useTrip();
+  const { activeTab, setActiveTab, planData, setCurrentDayIndex, tripDates, setTripDatesForCountry } = useTrip();
+  const { country } = useCountry();
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [draftDates, setDraftDates] = useState({ startDate: '', endDate: '' });
+  const datePickerRef = useRef(null);
+
+  const activeDates = tripDates?.[country.iso2];
+
+  useEffect(() => {
+    setDraftDates(activeDates || { startDate: '', endDate: '' });
+  }, [country.iso2, activeDates]);
+
+  useEffect(() => {
+    if (!showDatePicker) return undefined;
+    const handleClick = event => {
+      if (datePickerRef.current && !datePickerRef.current.contains(event.target)) {
+        setShowDatePicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showDatePicker]);
 
   // Calculate today's index
   const getTodayIndex = () => {
@@ -65,6 +87,39 @@ const Header = () => {
 
   const tabs = ['Itinerary', 'Jet Lag', 'Food Helper', 'Tools & Info', 'Documents'];
 
+  const dateLabel = useMemo(() => {
+    if (activeDates?.startDate && activeDates?.endDate) {
+      return `${new Date(activeDates.startDate).toLocaleDateString()} – ${new Date(activeDates.endDate).toLocaleDateString()}`;
+    }
+    if (activeDates?.startDate) {
+      return new Date(activeDates.startDate).toLocaleDateString();
+    }
+    return 'Select travel dates';
+  }, [activeDates]);
+
+  const handleSaveDates = () => {
+    if (!draftDates.startDate && !draftDates.endDate) {
+      setTripDatesForCountry(country.iso2, null);
+    } else {
+      setTripDatesForCountry(country.iso2, {
+        startDate: draftDates.startDate || draftDates.endDate,
+        endDate: draftDates.endDate || draftDates.startDate
+      });
+    }
+    setShowDatePicker(false);
+  };
+
+  const handleClearDates = () => {
+    setDraftDates({ startDate: '', endDate: '' });
+    setTripDatesForCountry(country.iso2, null);
+    setShowDatePicker(false);
+  };
+
+  const handleUseToday = () => {
+    const today = new Date().toISOString().split('T')[0];
+    setDraftDates({ startDate: today, endDate: today });
+  };
+
   // Format time for display
   const formatTime = (date, timeZone) => {
     return date.toLocaleTimeString('en-GB', {
@@ -91,7 +146,7 @@ const Header = () => {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-slate-800">Trip Planner</h1>
-                <p className="text-sm text-slate-500">August 19–29, 2025</p>
+                <p className="text-sm text-slate-500">{dateLabel}</p>
                 {/* Dual Time Display */}
                 <div className="flex gap-3 mt-1 text-xs">
                   <span className="text-slate-600">
@@ -107,6 +162,55 @@ const Header = () => {
             {/* Navigation Tabs and Export Button */}
             <div className="flex items-center gap-2">
               <CountrySwitcher />
+              <div className="relative" ref={datePickerRef}>
+                <button
+                  onClick={() => setShowDatePicker(prev => !prev)}
+                  className={`px-3 py-2 rounded-lg border text-sm flex items-center gap-2 ${showDatePicker ? 'bg-sky-50 border-sky-200 text-sky-700' : 'bg-white hover:bg-slate-50'}`}
+                >
+                  <Icons.Calendar className="w-4 h-4" />
+                  {dateLabel}
+                </button>
+
+                {showDatePicker && (
+                  <div className="absolute right-0 mt-2 w-72 bg-white border rounded-xl shadow-xl p-4 z-30">
+                    <h4 className="text-sm font-semibold text-slate-800 mb-3">
+                      Travel dates for {country.name}
+                    </h4>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">Start date</label>
+                    <input
+                      type="date"
+                      value={draftDates.startDate || ''}
+                      onChange={(e) => setDraftDates(prev => ({ ...prev, startDate: e.target.value }))}
+                      className="w-full border rounded-lg px-3 py-2 mb-3"
+                    />
+                    <label className="block text-xs font-medium text-slate-600 mb-1">End date</label>
+                    <input
+                      type="date"
+                      value={draftDates.endDate || ''}
+                      onChange={(e) => setDraftDates(prev => ({ ...prev, endDate: e.target.value }))}
+                      className="w-full border rounded-lg px-3 py-2 mb-3"
+                    />
+                    <div className="flex items-center justify-between text-xs text-slate-500 mb-3">
+                      <button onClick={handleUseToday} className="text-sky-600 hover:text-sky-800">Use today</button>
+                      <button onClick={handleClearDates} className="text-rose-600 hover:text-rose-800">Clear</button>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleSaveDates}
+                        className="flex-1 bg-sky-600 text-white py-2 rounded-lg font-semibold hover:bg-sky-700"
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={() => setShowDatePicker(false)}
+                        className="flex-1 border py-2 rounded-lg font-semibold text-slate-600 hover:bg-slate-50"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               <div className="p-1 bg-slate-200 rounded-lg flex gap-1">
                 {tabs.map(tab => (
@@ -144,7 +248,7 @@ const Header = () => {
                 </div>
                 <div>
                   <h1 className="text-lg font-bold text-slate-800">Phuket Trip</h1>
-                  <p className="text-xs text-slate-500">Aug 19–29, 2025</p>
+                  <p className="text-xs text-slate-500">{dateLabel}</p>
                   {/* Mobile Time Display */}
                   <div className="flex gap-2 mt-0.5 text-xs">
                     <span className="text-slate-600">🇬🇧 {londonTime}</span>

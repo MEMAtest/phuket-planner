@@ -40,6 +40,17 @@ export const TripProvider = ({ children }) => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [syncStatus, setSyncStatus] = useState('idle'); // 'idle', 'syncing', 'synced', 'error'
   const [undoStack, setUndoStack] = useState([]);
+  const [tripDates, setTripDates] = useState(() => {
+    const saved = localStorage.getItem('trip_dates_v1');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (error) {
+        console.error('Error parsing trip dates:', error);
+      }
+    }
+    return {};
+  });
   const planDataRef = useRef(planData);
 
   useEffect(() => {
@@ -75,6 +86,10 @@ export const TripProvider = ({ children }) => {
   useEffect(() => {
     localStorage.setItem('phuket_current_day', currentDayIndex.toString());
   }, [currentDayIndex]);
+
+  useEffect(() => {
+    localStorage.setItem('trip_dates_v1', JSON.stringify(tripDates));
+  }, [tripDates]);
   
   const syncWithFirebase = useCallback(async () => {
     if (!isFirebaseConfigured() || !isOnline) return;
@@ -142,6 +157,18 @@ export const TripProvider = ({ children }) => {
       setSyncStatus('error');
       return undefined;
     }
+  }, []);
+
+  const setTripDatesForCountry = useCallback((countryIso, dates) => {
+    setTripDates(prev => {
+      const updated = { ...prev };
+      if (!dates || (!dates.startDate && !dates.endDate)) {
+        delete updated[countryIso];
+      } else {
+        updated[countryIso] = dates;
+      }
+      return updated;
+    });
   }, []);
 
   // Monitor online/offline status
@@ -305,7 +332,9 @@ export const TripProvider = ({ children }) => {
     resetPlan,
     undoLastOperation,
     undoStack,
-    showNotification
+    showNotification,
+    tripDates,
+    setTripDatesForCountry
   };
   
   return (
