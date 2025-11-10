@@ -4,10 +4,14 @@ import { useTrip } from '../context/TripContext';
 import { generateICS } from '../utils/calendar';
 import CountrySwitcher from './CountrySwitcher';
 import { useCountry } from '../state/CountryContext';
+import { useProfile } from '../state/ProfileContext';
+import { useTheme } from '../hooks/useTheme';
 
 const Header = () => {
   const { activeTab, setActiveTab, planData, setCurrentDayIndex, tripDates, setTripDatesForCountry } = useTrip();
   const { country } = useCountry();
+  const { currentProfile, allProfiles, setCurrentProfile } = useProfile();
+  const { isDark, toggleTheme } = useTheme();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [draftDates, setDraftDates] = useState({ startDate: '', endDate: '' });
@@ -162,7 +166,7 @@ const Header = () => {
   };
 
   return (
-    <header className="bg-white/80 backdrop-blur-lg sticky top-0 z-20 border-b">
+    <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg sticky top-0 z-20 border-b dark:border-slate-700">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="py-4">
           {/* Desktop Layout */}
@@ -178,14 +182,14 @@ const Header = () => {
                 <Icons.TripLogo className="w-8 h-8" />
               </div>
               <div className="text-left">
-                <h1 className="text-2xl font-bold text-slate-800">Trip Planner</h1>
-                <p className="text-sm text-slate-500">{dateLabel}</p>
+                <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Trip Planner</h1>
+                <p className="text-sm text-slate-500 dark:text-slate-400">{dateLabel}</p>
                 {/* Dual Time Display */}
                 <div className="flex gap-3 mt-1 text-xs">
-                  <span className="text-slate-600">
+                  <span className="text-slate-600 dark:text-slate-300">
                     🇬🇧 London: <span className="font-semibold">{londonTime}</span>
                   </span>
-                  <span className="text-slate-600">
+                  <span className="text-slate-600 dark:text-slate-300">
                     {getCountryFlag(country.iso2)} {country.name}:{' '}
                     <span className="font-semibold">{destinationTime}</span>
                   </span>
@@ -196,6 +200,30 @@ const Header = () => {
             {/* Navigation Tabs and Export Button */}
             <div className="flex items-center gap-2">
               <CountrySwitcher />
+
+              {/* Profile Selector */}
+              <select
+                value={currentProfile?.id || ''}
+                onChange={(e) => setCurrentProfile(e.target.value || null)}
+                className="px-3 py-2 rounded-lg border dark:border-slate-600 text-sm bg-white dark:bg-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 focus:ring-2 focus:ring-sky-500"
+                title="Select traveler profile"
+              >
+                {allProfiles.map((profile) => (
+                  <option key={profile.id} value={profile.id}>
+                    {profile.name}
+                  </option>
+                ))}
+              </select>
+
+              {/* Dark Mode Toggle */}
+              <button
+                onClick={toggleTheme}
+                className="px-3 py-2 rounded-lg border dark:border-slate-600 text-sm bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2"
+                title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+              >
+                {isDark ? '☀️' : '🌙'}
+              </button>
+
               <div className="relative" ref={datePickerRef}>
                 <button
                   onClick={() => setShowDatePicker(prev => !prev)}
@@ -286,26 +314,52 @@ const Header = () => {
                   <Icons.TripLogo className="w-6 h-6" />
                 </div>
                 <div className="text-left">
-                  <h1 className="text-lg font-bold text-slate-800">{country.name} Trip</h1>
-                  <p className="text-xs text-slate-500">{dateLabel}</p>
+                  <h1 className="text-lg font-bold text-slate-800 dark:text-slate-100">{country.name} Trip</h1>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{dateLabel}</p>
                   {/* Mobile Time Display */}
                   <div className="flex gap-2 mt-0.5 text-xs">
-                    <span className="text-slate-600">🇬🇧 {londonTime}</span>
-                    <span className="text-slate-600">
+                    <span className="text-slate-600 dark:text-slate-300">🇬🇧 {londonTime}</span>
+                    <span className="text-slate-600 dark:text-slate-300">
                       {getCountryFlag(country.iso2)} {destinationTime}
                     </span>
                   </div>
                 </div>
               </button>
-              
-              {/* Export Button */}
-              <button 
-                onClick={handleExport} 
-                title="Export to Calendar" 
-                className="p-2 bg-white rounded-lg shadow-sm border hover:bg-slate-100 transition-colors"
-              >
-                <Icons.Calendar className="w-4 h-4 text-slate-600"/>
-              </button>
+
+              {/* Mobile Controls */}
+              <div className="flex items-center gap-2">
+                {/* Profile Selector (Mobile) */}
+                <select
+                  value={currentProfile?.id || ''}
+                  onChange={(e) => setCurrentProfile(e.target.value || null)}
+                  className="px-2 py-1 rounded-lg border dark:border-slate-600 text-xs bg-white dark:bg-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-sky-500"
+                  title="Select traveler profile"
+                >
+                  {allProfiles.map((profile) => (
+                    <option key={profile.id} value={profile.id}>
+                      {profile.type === 'business' ? '💼' : profile.type === 'leisure' ? '🏖️' : profile.type === 'adventure' ? '🏔️' : '👨‍👩‍👧'}
+                    </option>
+                  ))}
+                </select>
+
+                {/* Dark Mode Toggle (Mobile) */}
+                <button
+                  onClick={toggleTheme}
+                  className="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm border dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                  title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+                >
+                  <span className="text-sm">{isDark ? '☀️' : '🌙'}</span>
+                </button>
+
+                {/* Export Button */}
+                <button
+                  onClick={handleExport}
+                  title="Export to Calendar"
+                  className="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm border dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                >
+                  <Icons.Calendar className="w-4 h-4 text-slate-600 dark:text-slate-300"/>
+                </button>
+              </div>
             </div>
             
             {/* Mobile Navigation Tabs - Scrollable */}

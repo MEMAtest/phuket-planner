@@ -12,6 +12,7 @@ import SmartJetLagScheduler from './components/SmartJetLagScheduler';
 import FoodHelperTab from './components/FoodHelperTab';
 import CurrencyConverter from './components/CurrencyConverter';
 import KidComfortChecklist from './components/KidComfortChecklist';
+import PackingChecklist from './components/PackingChecklist';
 import TravelDocuments from './components/TravelDocuments';
 import PriceGuide from './components/PriceGuide';
 import FloatingThaiPhrases from './components/FloatingThaiPhrases';
@@ -353,6 +354,7 @@ const App = () => {
           <div className="space-y-8">
             <CitySelector />
             <TransitInfo />
+            <PackingChecklist />
             <CurrencyConverter />
             <PriceGuide />
             <KidComfortChecklist />
@@ -409,17 +411,17 @@ const App = () => {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-100 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-100 dark:bg-slate-900 flex items-center justify-center">
         <div className="text-center">
           {React.createElement(Icons.Plane, { className: "w-12 h-12 text-sky-600 animate-pulse mx-auto mb-4" })}
-          <p className="text-slate-600">Loading your trip planner...</p>
+          <p className="text-slate-600 dark:text-slate-300">Loading your trip planner...</p>
         </div>
       </div>
     );
   }
-  
+
   return (
-    <div className="min-h-screen bg-slate-100">
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-900">
       <Header />
       
       {/* Weather Alert Banner with Dismiss Button */}

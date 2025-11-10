@@ -5,6 +5,7 @@ import './i18n/i18n'; // Initialize i18next
 import App from './App';
 import { TripProvider } from './context/TripContext';
 import { CountryProvider } from './state/CountryContext';
+import { ProfileProvider } from './state/ProfileContext';
 import * as serviceWorkerRegistration from './serviceWorkerRegistration';
 
 const root = ReactDOM.createRoot(
@@ -14,9 +15,11 @@ const root = ReactDOM.createRoot(
 root.render(
   <React.StrictMode>
     <CountryProvider>
-      <TripProvider>
-        <App />
-      </TripProvider>
+      <ProfileProvider>
+        <TripProvider>
+          <App />
+        </TripProvider>
+      </ProfileProvider>
     </CountryProvider>
   </React.StrictMode>
 );
