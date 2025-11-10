@@ -56,7 +56,8 @@ const CN: CountryConfig = {
         notes: 'Steamed soup dumplings kids love (reservations recommended).',
         rating: 4.7,
         travelTime: 'Multiple branches',
-        map: 'https://maps.google.com/?q=Din%20Tai%20Fung%20Shanghai'
+        map: 'https://maps.google.com/?q=Din%20Tai%20Fung%20Shanghai',
+        website: 'https://www.dintaifung.com.cn/'
       },
       {
         name: 'Lost Heaven',
@@ -64,7 +65,8 @@ const CN: CountryConfig = {
         notes: 'Yunnan cuisine in the French Concession—spacious tables for families.',
         rating: 4.6,
         travelTime: 'Xuhui District',
-        map: 'https://maps.google.com/?q=Lost%20Heaven%20Shanghai'
+        map: 'https://maps.google.com/?q=Lost%20Heaven%20Shanghai',
+        website: 'https://lostheaven.com.cn/'
       },
       {
         name: 'Shanghai Disneyland',
@@ -72,7 +74,8 @@ const CN: CountryConfig = {
         notes: 'Tron coaster + world’s largest castle. Buy Premier Access during holidays.',
         rating: 4.8,
         travelTime: 'Pudong',
-        map: 'https://maps.google.com/?q=Shanghai%20Disneyland'
+        map: 'https://maps.google.com/?q=Shanghai%20Disneyland',
+        website: 'https://www.shanghaidisneyresort.com/'
       },
       {
         name: 'Chengdu Research Base of Giant Panda Breeding',
@@ -80,7 +83,8 @@ const CN: CountryConfig = {
         notes: 'Arrive 8am feeding time for playful cubs.',
         rating: 4.9,
         travelTime: 'Chengdu',
-        map: 'https://maps.google.com/?q=Chengdu%20Research%20Base%20of%20Giant%20Panda'
+        map: 'https://maps.google.com/?q=Chengdu%20Research%20Base%20of%20Giant%20Panda',
+        website: 'https://www.panda.org.cn/'
       }
     ],
     facts: [

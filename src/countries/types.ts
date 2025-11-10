@@ -48,6 +48,7 @@ export type CountryConfig = {
       rating: number;
       travelTime?: string;
       map?: string;
+      website?: string;
     }[];
     facts?: string[];
   };

@@ -56,7 +56,8 @@ const HK: CountryConfig = {
         notes: 'Legendary wonton noodle bowls—tiny portions, big flavor.',
         rating: 4.5,
         travelTime: 'Central Mid-Levels',
-        map: 'https://maps.google.com/?q=Mak%27s%20Noodle%20Central'
+        map: 'https://maps.google.com/?q=Mak%27s%20Noodle%20Central',
+        website: 'https://maksnoodle.com/'
       },
       {
         name: 'Tim Ho Wan (Sham Shui Po)',
@@ -64,7 +65,8 @@ const HK: CountryConfig = {
         notes: 'Michelin dim sum that’s affordable and kid-friendly.',
         rating: 4.6,
         travelTime: 'Sham Shui Po',
-        map: 'https://maps.google.com/?q=Tim%20Ho%20Wan%20Sham%20Shui%20Po'
+        map: 'https://maps.google.com/?q=Tim%20Ho%20Wan%20Sham%20Shui%20Po',
+        website: 'https://www.timhowan.com/'
       },
       {
         name: 'Tai O Heritage Hotel',
@@ -72,7 +74,8 @@ const HK: CountryConfig = {
         notes: 'Combine Big Buddha with Tai O village + egg waffles.',
         rating: 4.7,
         travelTime: 'Lantau Island',
-        map: 'https://maps.google.com/?q=Tai%20O'
+        map: 'https://maps.google.com/?q=Tai%20O',
+        website: 'https://www.taioheritagehotel.com/'
       },
       {
         name: 'PMQ Design Market',
@@ -80,7 +83,8 @@ const HK: CountryConfig = {
         notes: 'Indie Hong Kong designers—great rainy-day stroll.',
         rating: 4.4,
         travelTime: 'SoHo',
-        map: 'https://maps.google.com/?q=PMQ%20Hong%20Kong'
+        map: 'https://maps.google.com/?q=PMQ%20Hong%20Kong',
+        website: 'https://www.pmq.org.hk/'
       }
     ],
     facts: [

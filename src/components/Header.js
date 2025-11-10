@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Icons } from '../data/staticData';
 import { useTrip } from '../context/TripContext';
 import { generateICS } from '../utils/calendar';
@@ -30,27 +30,36 @@ const Header = () => {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [showDatePicker]);
 
-  // Calculate today's index
-  const getTodayIndex = () => {
+  const getTodayIndex = useCallback(() => {
     if (!planData || planData.length === 0) return 0;
-    
+    const activeTrip = tripDates?.[country.iso2];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
+    if (activeTrip?.startDate) {
+      const start = new Date(activeTrip.startDate);
+      start.setHours(0, 0, 0, 0);
+      if (!Number.isNaN(start.getTime())) {
+        const diff = Math.floor((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+        if (diff < 0) return 0;
+        if (diff >= planData.length) return planData.length - 1;
+        return diff;
+      }
+    }
+
     const todayIndex = planData.findIndex(day => {
       const dayDate = new Date(day.date);
       dayDate.setHours(0, 0, 0, 0);
       return dayDate.getTime() === today.getTime();
     });
-    
+
     if (todayIndex >= 0) return todayIndex;
-    
+
     const firstDay = new Date(planData[0].date);
     firstDay.setHours(0, 0, 0, 0);
-    
     if (today < firstDay) return 0;
     return planData.length - 1;
-  };
+  }, [planData, tripDates, country.iso2]);
 
   // Update time every minute
   useEffect(() => {
@@ -76,6 +85,12 @@ const Header = () => {
       link.click();
       document.body.removeChild(link);
     }
+  };
+
+  const handleLogoClick = () => {
+    setActiveTab('Itinerary');
+    const todayIdx = getTodayIndex();
+    setCurrentDayIndex(todayIdx);
   };
 
   // Handle tab click - navigate to today if clicking Itinerary
@@ -154,9 +169,14 @@ const Header = () => {
           <div className="hidden sm:flex items-center justify-between gap-4">
             {/* Logo and Title */}
             <div className="flex items-center gap-4">
-              <div className="bg-sky-600 p-2.5 rounded-xl text-white shadow-md">
-                <Icons.Plane className="w-8 h-8" />
-              </div>
+              <button
+                type="button"
+                onClick={handleLogoClick}
+                className="bg-sky-600 p-2.5 rounded-xl text-white shadow-md hover:bg-sky-700 transition-colors"
+                aria-label="Back to itinerary"
+              >
+                <Icons.TripLogo className="w-8 h-8" />
+              </button>
               <div>
                 <h1 className="text-2xl font-bold text-slate-800">Trip Planner</h1>
                 <p className="text-sm text-slate-500">{dateLabel}</p>
@@ -257,9 +277,14 @@ const Header = () => {
             {/* Logo and Title */}
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
-                <div className="bg-sky-600 p-2 rounded-lg text-white shadow-md">
-                  <Icons.Plane className="w-6 h-6" />
-                </div>
+                <button
+                  type="button"
+                  onClick={handleLogoClick}
+                  className="bg-sky-600 p-2 rounded-lg text-white shadow-md hover:bg-sky-700 transition-colors"
+                  aria-label="Back to itinerary"
+                >
+                  <Icons.TripLogo className="w-6 h-6" />
+                </button>
                 <div>
                   <h1 className="text-lg font-bold text-slate-800">{country.name} Trip</h1>
                   <p className="text-xs text-slate-500">{dateLabel}</p>

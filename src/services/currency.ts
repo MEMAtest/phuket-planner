@@ -12,6 +12,21 @@ export type FxRate = {
 // Cache for FX rates (in-memory, per session)
 const fxCache = new Map<string, FxRate>();
 
+const FALLBACK_RATES: Record<string, number> = {
+  'GBP-THB': 43.5,
+  'THB-GBP': 1 / 43.5,
+  'GBP-HKD': 10,
+  'HKD-GBP': 0.1,
+  'GBP-CNY': 9.2,
+  'CNY-GBP': 1 / 9.2,
+  'USD-THB': 36.5,
+  'THB-USD': 1 / 36.5,
+  'USD-HKD': 7.8,
+  'HKD-USD': 1 / 7.8,
+  'USD-CNY': 7.3,
+  'CNY-USD': 1 / 7.3
+};
+
 /**
  * Fetch FX rate from serverless API with caching
  */
@@ -68,6 +83,17 @@ export async function getFxRate(base: string, quote: string): Promise<FxRate> {
     if (cached) {
       console.warn('Using stale FX rate');
       return { ...cached, asOf: cached.asOf + ' (stale)' };
+    }
+
+    const fallback = FALLBACK_RATES[`${base}-${quote}`];
+    if (fallback) {
+      console.warn('Using fallback FX rate');
+      return {
+        base,
+        quote,
+        rate: fallback,
+        asOf: new Date().toISOString() + ' (fallback)'
+      };
     }
 
     return {

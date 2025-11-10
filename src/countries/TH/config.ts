@@ -56,7 +56,8 @@ const TH: CountryConfig = {
         notes: 'Beloved southern Thai, great for families.',
         rating: 4.7,
         travelTime: '10–12 min drive',
-        map: 'https://maps.google.com/?q=Kin%20Dee%20Restaurant%20Mai%20Khao'
+        map: 'https://maps.google.com/?q=Kin%20Dee%20Restaurant%20Mai%20Khao',
+        website: 'https://www.kindeephuket.com/'
       },
       {
         name: 'Sea.Fire.Salt',
@@ -64,7 +65,8 @@ const TH: CountryConfig = {
         notes: 'Upscale beachfront BBQ at Anantara.',
         rating: 4.6,
         travelTime: 'On-site',
-        map: 'https://maps.google.com/?q=Sea.Fire.Salt%20Anantara%20Mai%20Khao'
+        map: 'https://maps.google.com/?q=Sea.Fire.Salt%20Anantara%20Mai%20Khao',
+        website: 'https://www.anantara.com/en/mai-khao-phuket/restaurants/sea-fire-salt'
       },
       {
         name: 'Black Ginger',
@@ -72,7 +74,8 @@ const TH: CountryConfig = {
         notes: 'Michelin-rated Thai fine dining with lagoon arrival.',
         rating: 4.8,
         travelTime: '20 min drive',
-        map: 'https://maps.google.com/?q=Black%20Ginger%20Phuket'
+        map: 'https://maps.google.com/?q=Black%20Ginger%20Phuket',
+        website: 'https://www.thenaiharn.com/dining/black-ginger'
       },
       {
         name: 'Soi Dog Foundation',
@@ -80,7 +83,8 @@ const TH: CountryConfig = {
         notes: 'Ethical sanctuary tour—book in advance.',
         rating: 4.9,
         travelTime: '10 min drive',
-        map: 'https://maps.google.com/?q=Soi%20Dog%20Foundation%20Phuket'
+        map: 'https://maps.google.com/?q=Soi%20Dog%20Foundation%20Phuket',
+        website: 'https://www.soidog.org/'
       }
     ],
     facts: [

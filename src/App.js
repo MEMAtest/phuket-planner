@@ -24,7 +24,8 @@ const App = () => {
     activeTab, 
     currentDayIndex, 
     setCurrentDayIndex,
-    isOnline 
+    isOnline,
+    tripDates
   } = useTrip();
   const { country } = useCountry();
   const weatherAlertKey = useMemo(() => `weather_alert_${country.iso2}`, [country.iso2]);
@@ -39,32 +40,57 @@ const App = () => {
   // Calculate today's index based on current date
   const getTodayIndex = useCallback(() => {
     if (!planData || planData.length === 0) return 0;
-    
+    const activeTrip = tripDates?.[country.iso2];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
-    // Find the index of today's date in planData
+
+    if (activeTrip?.startDate) {
+      const start = new Date(activeTrip.startDate);
+      start.setHours(0, 0, 0, 0);
+      if (!Number.isNaN(start.getTime())) {
+        const diff = Math.floor((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+        if (diff < 0) return 0;
+        if (diff >= planData.length) return planData.length - 1;
+        return diff;
+      }
+    }
+
     const todayIndex = planData.findIndex(day => {
       const dayDate = new Date(day.date);
       dayDate.setHours(0, 0, 0, 0);
       return dayDate.getTime() === today.getTime();
     });
-    
-    // If today is within trip dates, return that index
-    // Otherwise return 0 (first day) if before trip, or last day if after trip
+
     if (todayIndex >= 0) {
       return todayIndex;
     }
-    
+
     const firstDay = new Date(planData[0].date);
     firstDay.setHours(0, 0, 0, 0);
-    
+
     if (today < firstDay) {
-      return 0; // Trip hasn't started, show first day
+      return 0;
     }
-    
-    return planData.length - 1; // Trip has ended, show last day
-  }, [planData]);
+
+    return planData.length - 1;
+  }, [planData, tripDates, country.iso2]);
+
+  const getDisplayDateForIndex = useCallback(
+    (index) => {
+      const activeTrip = tripDates?.[country.iso2];
+      if (activeTrip?.startDate) {
+        const start = new Date(activeTrip.startDate);
+        if (!Number.isNaN(start.getTime())) {
+          const projected = new Date(start);
+          projected.setDate(start.getDate() + index);
+          return projected;
+        }
+      }
+      const fallback = planData?.[index]?.date ? new Date(planData[index].date) : new Date();
+      return Number.isNaN(fallback.getTime()) ? new Date() : fallback;
+    },
+    [tripDates, country.iso2, planData]
+  );
   
   // Auto-navigate to today on mount and when planData loads
   useEffect(() => {
@@ -220,6 +246,7 @@ const App = () => {
         
         const todayIdx = getTodayIndex();
         const isToday = currentDayIndex === todayIdx;
+        const currentDisplayDate = getDisplayDateForIndex(currentDayIndex);
         
         return (
           <div>
@@ -245,7 +272,7 @@ const App = () => {
               
               <div className="text-center">
                 <h2 className="font-bold text-xl text-slate-800 flex items-center justify-center gap-2">
-                  {new Date(currentDay.date).toLocaleDateString('en-US', { weekday: 'long' })}
+                  {currentDisplayDate.toLocaleDateString('en-US', { weekday: 'long' })}
                   {isToday && (
                     <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full">
                       TODAY
@@ -253,7 +280,7 @@ const App = () => {
                   )}
                 </h2>
                 <p className="text-sm text-slate-500">
-                  {new Date(currentDay.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
+                  {currentDisplayDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
                 </p>
                 <div className="flex justify-center items-center gap-2 mt-2">
                   <div className="flex gap-1">

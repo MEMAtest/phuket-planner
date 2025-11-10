@@ -477,6 +477,26 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
                   <p className="text-xs font-semibold text-slate-600 mt-1">
                     {item.travelTime}
                   </p>
+                  <div className="flex flex-wrap gap-2 mt-2 text-xs font-semibold">
+                    <a
+                      href={item.map}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-2 py-1 rounded-full border border-slate-200 text-slate-600 hover:text-sky-600 hover:border-sky-200"
+                      onClick={handleInteraction}
+                    >
+                      📍 Map
+                    </a>
+                    <a
+                      href={item.website || item.map}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-2 py-1 rounded-full border border-slate-200 text-slate-600 hover:text-sky-600 hover:border-sky-200"
+                      onClick={handleInteraction}
+                    >
+                      🔗 Website
+                    </a>
+                  </div>
                 </div>
                 <div className="flex items-center gap-1 text-xs font-bold 
                               text-amber-600 bg-amber-100 px-2 py-1 rounded-full">

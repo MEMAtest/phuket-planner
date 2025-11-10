@@ -7,6 +7,18 @@ const ICON_DEFINITIONS = {
       <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>
     </svg>
   ),
+  tripLogo: (props) => (
+    <svg {...props} width="36" height="36" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="4" y="4" width="56" height="56" rx="14" fill="#4C7DC5"/>
+      <rect x="16" y="18" width="32" height="28" rx="4" fill="#FFFFFF"/>
+      <path d="M22 24h14" stroke="#4C7DC5" strokeWidth="2" strokeLinecap="round"/>
+      <path d="M22 30h14" stroke="#4C7DC5" strokeWidth="2" strokeLinecap="round"/>
+      <path d="M22 36h10" stroke="#4C7DC5" strokeWidth="2" strokeLinecap="round"/>
+      <path d="M32 18v28" stroke="#1B3D73" strokeWidth="2"/>
+      <path d="M38 22l10 5-10 22" stroke="#1B3D73" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+      <circle cx="26" cy="26" r="3" fill="#7AC27D"/>
+    </svg>
+  ),
   clock: (props) => (
     <svg {...props} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
