@@ -1,6 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useCountry } from '../state/CountryContext';
+import { getDestinationContacts } from '../data/countryContent';
 
 const TravelDocuments = () => {
+  const { country } = useCountry();
   // Demo Mode Control - SET THIS TO true FOR DEMOS
   const [isDemoMode, setIsDemoMode] = useState(true); // Toggle this for demo/real use
   const [showDemoPassword, setShowDemoPassword] = useState(false);
@@ -81,7 +84,7 @@ const TravelDocuments = () => {
   };
 
   // Demo-safe traveler data
-  const defaultTravelers = [
+  const defaultTravelers = useMemo(() => ([
     {
       id: 1,
       name: "Amari Goziem Omosanya",
@@ -202,12 +205,13 @@ const TravelDocuments = () => {
       },
       seat: "12B"
     }
-  ];
+  ]), []);
 
-  const [travelers] = useState(() => {
-    const saved = localStorage.getItem('phuket_travelers');
-    return saved ? JSON.parse(saved) : defaultTravelers;
-  });
+  const destinationContacts = getDestinationContacts(country.iso2);
+  const travelerStorageKey = useMemo(() => `travelers_${country.iso2}`, [country.iso2]);
+  const emergencyNumbers = country.content?.emergency || {};
+
+  const [travelers, setTravelers] = useState(defaultTravelers);
 
   const insuranceInfo = {
     provider: "Nationwide FlexPlus",
@@ -237,10 +241,26 @@ const TravelDocuments = () => {
   };
 
   useEffect(() => {
-    if (!isDemoMode) {
-      localStorage.setItem('phuket_travelers', JSON.stringify(travelers));
+    const saved = localStorage.getItem(travelerStorageKey);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setTravelers(parsed);
+          return;
+        }
+      } catch (error) {
+        console.error('Failed to parse traveler data', error);
+      }
     }
-  }, [travelers, isDemoMode]);
+    setTravelers(defaultTravelers);
+  }, [travelerStorageKey, defaultTravelers]);
+
+  useEffect(() => {
+    if (!isDemoMode) {
+      localStorage.setItem(travelerStorageKey, JSON.stringify(travelers));
+    }
+  }, [travelers, isDemoMode, travelerStorageKey]);
 
   const copyToClipboard = (text, fieldId) => {
     if (isDemoMode) {
@@ -264,18 +284,6 @@ const TravelDocuments = () => {
     return 'text-green-600';
   };
 
-  const emergencyContacts = {
-    thailand: [
-      { name: "Tourist Police", number: "1155", note: "24/7 English support" },
-      { name: "Phuket Hospital", number: "+66 76 361 234", note: "Government hospital" },
-      { name: "Bangkok Hospital Phuket", number: "+66 76 254 425", note: "Private - Best for emergencies" },
-      { name: "Anantara Mai Khao Hotel", number: "+66 76 336 100", note: "Your accommodation" }
-    ],
-    embassies: [
-      { country: "UK Embassy Bangkok", number: "+66 2 305 8333", note: "Emergency: +66 2 305 8333" },
-      { country: "German Embassy Bangkok", number: "+66 2 287 9000", note: "Emergency: +66 81 845 6224" }
-    ]
-  };
 
   return (
     <div className="space-y-6">
@@ -407,18 +415,25 @@ const TravelDocuments = () => {
       {/* Emergency Contacts Section */}
       {selectedSection === 'emergency' && (
         <div className="bg-red-50 rounded-xl p-4 border border-red-200">
-          <h3 className="font-bold text-lg text-red-800 mb-4">🚨 Emergency Contacts</h3>
+          <h3 className="font-bold text-lg text-red-800 mb-4">🚨 Emergency Contacts — {country.name}</h3>
           <div className="grid md:grid-cols-2 gap-4">
             <div>
-              <h4 className="font-semibold text-sm text-red-700 mb-2">Thailand Emergency</h4>
+              <h4 className="font-semibold text-sm text-red-700 mb-2">Local Services</h4>
               <div className="space-y-2">
-                {emergencyContacts.thailand.map(contact => (
-                  <div key={contact.name} className="bg-white p-2 rounded">
-                    <p className="font-medium text-sm">{contact.name}</p>
-                    <p className="font-mono text-sm font-bold text-red-600">
-                      {contact.number}
+                {Object.entries(emergencyNumbers).map(([label, number]) => (
+                  <div key={label} className="bg-white p-2 rounded">
+                    <p className="font-medium text-sm text-slate-800">
+                      {label.charAt(0).toUpperCase() + label.slice(1)}
                     </p>
-                    <p className="text-xs text-slate-600">{contact.note}</p>
+                    <p className="font-mono text-sm font-bold text-red-600">{number}</p>
+                    <p className="text-xs text-slate-500">Direct emergency line</p>
+                  </div>
+                ))}
+                {destinationContacts.local.map(contact => (
+                  <div key={contact.label} className="bg-white p-2 rounded">
+                    <p className="font-medium text-sm">{contact.label}</p>
+                    <p className="font-mono text-sm font-bold text-red-600">{contact.number}</p>
+                    {contact.note && <p className="text-xs text-slate-600">{contact.note}</p>}
                   </div>
                 ))}
               </div>
@@ -427,11 +442,11 @@ const TravelDocuments = () => {
             <div>
               <h4 className="font-semibold text-sm text-red-700 mb-2">Embassy Support</h4>
               <div className="space-y-2">
-                {emergencyContacts.embassies.map(contact => (
-                  <div key={contact.country} className="bg-white p-2 rounded">
-                    <p className="font-medium text-sm">{contact.country}</p>
+                {destinationContacts.embassy.map(contact => (
+                  <div key={contact.label} className="bg-white p-2 rounded">
+                    <p className="font-medium text-sm">{contact.label}</p>
                     <p className="font-mono text-xs text-slate-700">{contact.number}</p>
-                    <p className="text-xs text-slate-600">{contact.note}</p>
+                    {contact.note && <p className="text-xs text-slate-600">{contact.note}</p>}
                   </div>
                 ))}
               </div>

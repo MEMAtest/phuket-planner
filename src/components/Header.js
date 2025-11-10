@@ -62,11 +62,16 @@ const Header = () => {
 
   const handleExport = () => {
     if (planData && planData.length > 0) {
-      const icsContent = generateICS(planData);
+      const icsContent = generateICS(planData, country, {
+        timeZone: country.timeZones?.[0],
+        tripLabel: `${country.name} Family Trip`,
+        location: country.name,
+        description: `Custom itinerary for ${country.name}`
+      });
       const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.setAttribute('download', 'Phuket_Itinerary.ics');
+      link.setAttribute('download', `${country.iso2 || 'trip'}_Itinerary.ics`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -131,7 +136,15 @@ const Header = () => {
   };
 
   const londonTime = formatTime(currentTime, 'Europe/London');
-  const phuketTime = formatTime(currentTime, 'Asia/Bangkok');
+  const destinationTimeZone = country.timeZones?.[0] || 'UTC';
+  const destinationTime = formatTime(currentTime, destinationTimeZone);
+
+  const getCountryFlag = (iso = '') => {
+    if (!iso) return '🌍';
+    return iso
+      .toUpperCase()
+      .replace(/./g, char => String.fromCodePoint(127397 + char.charCodeAt(0)));
+  };
 
   return (
     <header className="bg-white/80 backdrop-blur-lg sticky top-0 z-20 border-b">
@@ -153,7 +166,8 @@ const Header = () => {
                     🇬🇧 London: <span className="font-semibold">{londonTime}</span>
                   </span>
                   <span className="text-slate-600">
-                    🇹🇭 Phuket: <span className="font-semibold">{phuketTime}</span>
+                    {getCountryFlag(country.iso2)} {country.name}:{' '}
+                    <span className="font-semibold">{destinationTime}</span>
                   </span>
                 </div>
               </div>
@@ -247,12 +261,14 @@ const Header = () => {
                   <Icons.Plane className="w-6 h-6" />
                 </div>
                 <div>
-                  <h1 className="text-lg font-bold text-slate-800">Phuket Trip</h1>
+                  <h1 className="text-lg font-bold text-slate-800">{country.name} Trip</h1>
                   <p className="text-xs text-slate-500">{dateLabel}</p>
                   {/* Mobile Time Display */}
                   <div className="flex gap-2 mt-0.5 text-xs">
                     <span className="text-slate-600">🇬🇧 {londonTime}</span>
-                    <span className="text-slate-600">🇹🇭 {phuketTime}</span>
+                    <span className="text-slate-600">
+                      {getCountryFlag(country.iso2)} {destinationTime}
+                    </span>
                   </div>
                 </div>
               </div>

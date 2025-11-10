@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { TRIP_DATA } from '../data/staticData';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { db, isFirebaseConfigured } from '../firebase/config';
 import { collection, doc, setDoc, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { getTripPreset } from '../data/itineraryContent';
+import { useCountry } from '../state/CountryContext';
 
 const TripContext = createContext();
 
@@ -14,9 +15,21 @@ export const useTrip = () => {
 };
 
 export const TripProvider = ({ children }) => {
+  const { country } = useCountry();
+  const planPreset = useMemo(() => getTripPreset(country.iso2), [country.iso2]);
+  const planStorageKey = useMemo(() => `trip_plan_${country.iso2}`, [country.iso2]);
+  const activeTabKey = useMemo(() => `trip_active_tab_${country.iso2}`, [country.iso2]);
+  const currentDayKey = useMemo(() => `trip_current_day_${country.iso2}`, [country.iso2]);
+
+  const clonePlan = useCallback((plan) => {
+    return plan.map(day => ({
+      ...day,
+      blocks: day.blocks.map(block => ({ ...block }))
+    }));
+  }, []);
+
   const [planData, setPlanData] = useState(() => {
-    // Try to load from localStorage first
-    const saved = localStorage.getItem('phuket_trip_plan');
+    const saved = localStorage.getItem(planStorageKey);
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -24,16 +37,16 @@ export const TripProvider = ({ children }) => {
         console.error('Error loading saved plan:', e);
       }
     }
-    return TRIP_DATA.initialPlan;
+    return clonePlan(planPreset.initialPlan);
   });
   
   const [activeTab, setActiveTab] = useState(() => {
-    const saved = localStorage.getItem('phuket_active_tab');
+    const saved = localStorage.getItem(activeTabKey);
     return saved || 'Itinerary';
   });
   
   const [currentDayIndex, setCurrentDayIndex] = useState(() => {
-    const saved = localStorage.getItem('phuket_current_day');
+    const saved = localStorage.getItem(currentDayKey);
     return saved ? parseInt(saved) : 0;
   });
   
@@ -75,17 +88,37 @@ export const TripProvider = ({ children }) => {
   
   // Save to localStorage whenever data changes
   useEffect(() => {
-    localStorage.setItem('phuket_trip_plan', JSON.stringify(planData));
-    console.log('📱 Saved to localStorage:', planData.length, 'days');
-  }, [planData]);
+    localStorage.setItem(planStorageKey, JSON.stringify(planData));
+    console.log(`📱 Saved ${country.iso2} plan:`, planData.length, 'days');
+  }, [planData, planStorageKey, country.iso2]);
   
   useEffect(() => {
-    localStorage.setItem('phuket_active_tab', activeTab);
-  }, [activeTab]);
+    localStorage.setItem(activeTabKey, activeTab);
+  }, [activeTab, activeTabKey]);
   
   useEffect(() => {
-    localStorage.setItem('phuket_current_day', currentDayIndex.toString());
-  }, [currentDayIndex]);
+    localStorage.setItem(currentDayKey, currentDayIndex.toString());
+  }, [currentDayIndex, currentDayKey]);
+
+  useEffect(() => {
+    const savedPlan = localStorage.getItem(planStorageKey);
+    if (savedPlan) {
+      try {
+        setPlanData(JSON.parse(savedPlan));
+      } catch (error) {
+        console.error('Failed to parse saved plan', error);
+        setPlanData(clonePlan(planPreset.initialPlan));
+      }
+    } else {
+      setPlanData(clonePlan(planPreset.initialPlan));
+    }
+
+    const savedTab = localStorage.getItem(activeTabKey);
+    setActiveTab(savedTab || 'Itinerary');
+
+    const savedDay = localStorage.getItem(currentDayKey);
+    setCurrentDayIndex(savedDay ? parseInt(savedDay, 10) : 0);
+  }, [planStorageKey, planPreset, clonePlan, activeTabKey, currentDayKey]);
 
   useEffect(() => {
     localStorage.setItem('trip_dates_v1', JSON.stringify(tripDates));
@@ -229,7 +262,7 @@ export const TripProvider = ({ children }) => {
     setPlanData(newPlanData);
     
     // Force localStorage save immediately
-    localStorage.setItem('phuket_trip_plan', JSON.stringify(newPlanData));
+    localStorage.setItem(planStorageKey, JSON.stringify(newPlanData));
     console.log('💾 Activity saved to localStorage', updatedBlocks);
     
     // Sync to Firebase if online
@@ -259,7 +292,7 @@ export const TripProvider = ({ children }) => {
     setUndoStack(prev => prev.slice(0, -1));
     
     // Save to localStorage
-    localStorage.setItem('phuket_trip_plan', JSON.stringify(newPlanData));
+    localStorage.setItem(planStorageKey, JSON.stringify(newPlanData));
     
     // Sync to Firebase
     if (isFirebaseConfigured() && isOnline) {
@@ -304,12 +337,12 @@ export const TripProvider = ({ children }) => {
   
   // Reset to default plan
   const resetPlan = () => {
-    setPlanData(TRIP_DATA.initialPlan);
+    setPlanData(clonePlan(planPreset.initialPlan));
     setCurrentDayIndex(0);
     setUndoStack([]);
     
     // Clear localStorage
-    localStorage.setItem('phuket_trip_plan', JSON.stringify(TRIP_DATA.initialPlan));
+    localStorage.setItem(planStorageKey, JSON.stringify(clonePlan(planPreset.initialPlan)));
     
     // Sync to Firebase
     if (isFirebaseConfigured() && isOnline) {
@@ -334,7 +367,8 @@ export const TripProvider = ({ children }) => {
     undoStack,
     showNotification,
     tripDates,
-    setTripDatesForCountry
+    setTripDatesForCountry,
+    country
   };
   
   return (

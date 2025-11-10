@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Icons } from '../data/staticData';
 import {
   addExpense,
@@ -6,39 +6,74 @@ import {
   fetchExchangeRate,
   updateExchangeRate,
   checkBudgetAlert,
-  QUICK_AMOUNTS
+  configureExpenseService
 } from '../services/expenseService';
+import { useCountry } from '../state/CountryContext';
+import { formatMoney } from '../services/currency';
 
 const ExpenseTracker = ({ date, activityId, onExpenseAdded }) => {
+  const { country, homeCurrency, language } = useCountry();
+  const localCurrency = country.currency;
+  const locale = language || 'en-GB';
   const [expenses, setExpenses] = useState(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [amount, setAmount] = useState('');
-  const [currency, setCurrency] = useState('THB');
+  const [currency, setCurrency] = useState(localCurrency);
   const [category, setCategory] = useState('food');
   const [description, setDescription] = useState('');
-  const [exchangeRate, setExchangeRate] = useState(43.5);
+  const [exchangeRate, setExchangeRate] = useState(1);
   const [budgetAlert, setBudgetAlert] = useState(null);
   const [editingExpense, setEditingExpense] = useState(null);
   const [showAllExpenses, setShowAllExpenses] = useState(false);
 
-  useEffect(() => {
-    loadExpenses();
-    loadExchangeRate();
-  }, [date]);
+  const quickAmounts = useMemo(() => [
+    { label: formatMoney(100, localCurrency, locale), amount: 100, currency: localCurrency },
+    { label: formatMoney(500, localCurrency, locale), amount: 500, currency: localCurrency },
+    { label: formatMoney(1000, localCurrency, locale), amount: 1000, currency: localCurrency },
+    { label: formatMoney(10, homeCurrency, locale), amount: 10, currency: homeCurrency },
+    { label: formatMoney(25, homeCurrency, locale), amount: 25, currency: homeCurrency },
+    { label: formatMoney(50, homeCurrency, locale), amount: 50, currency: homeCurrency }
+  ], [localCurrency, homeCurrency, locale]);
 
-  const loadExpenses = () => {
-    const exp = getExpenses();
-    setExpenses(exp);
-    
-    // Check budget
+  const loadExpenses = useCallback(() => {
+    const ledger = getExpenses();
+    setExpenses(ledger);
     const alert = checkBudgetAlert();
     setBudgetAlert(alert);
-  };
+  }, []);
 
-  const loadExchangeRate = async () => {
+  const loadExchangeRate = useCallback(async () => {
     const rate = await fetchExchangeRate();
     setExchangeRate(rate);
+  }, []);
+
+  const handleRefreshRate = async () => {
+    const updatedLedger = await updateExchangeRate();
+    if (updatedLedger) {
+      setExchangeRate(updatedLedger.exchangeRate);
+      setExpenses(updatedLedger);
+      const alert = checkBudgetAlert();
+      setBudgetAlert(alert);
+    } else {
+      loadExchangeRate();
+    }
   };
+
+  useEffect(() => {
+    configureExpenseService({
+      localCurrency,
+      homeCurrency,
+      storageKey: `expenses_${country.iso2}`,
+      rateCacheKey: `fx_rate_${homeCurrency}_${localCurrency}`
+    });
+    setCurrency(localCurrency);
+    loadExpenses();
+    loadExchangeRate();
+  }, [country.iso2, localCurrency, homeCurrency, loadExpenses, loadExchangeRate]);
+
+  useEffect(() => {
+    loadExpenses();
+  }, [date, loadExpenses]);
 
   const handleAddExpense = async () => {
     if (!amount || amount <= 0) return;
@@ -55,6 +90,7 @@ const ExpenseTracker = ({ date, activityId, onExpenseAdded }) => {
     setShowAddForm(false);
     setAmount('');
     setDescription('');
+    setCurrency(localCurrency);
     
     if (onExpenseAdded) {
       onExpenseAdded(newExpense);
@@ -78,11 +114,12 @@ const ExpenseTracker = ({ date, activityId, onExpenseAdded }) => {
     const rate = allExpenses.exchangeRate || exchangeRate;
 
     // Calculate new amounts
-    const newAmountTHB = editingExpense.currency === 'GBP' 
-      ? editingExpense.amount * rate 
+    const isHome = editingExpense.currency === homeCurrency;
+    const newAmountLocal = isHome
+      ? editingExpense.amount * rate
       : editingExpense.amount;
-    const newAmountGBP = editingExpense.currency === 'GBP' 
-      ? editingExpense.amount 
+    const newAmountHome = isHome
+      ? editingExpense.amount
       : editingExpense.amount / rate;
 
     // Update the expense
@@ -90,16 +127,15 @@ const ExpenseTracker = ({ date, activityId, onExpenseAdded }) => {
       ...oldExpense,
       amount: parseFloat(editingExpense.amount),
       currency: editingExpense.currency,
-      amountTHB: newAmountTHB,
-      amountGBP: newAmountGBP,
+      amountLocal: newAmountLocal,
+      amountHome: newAmountHome,
       category: editingExpense.category,
       description: editingExpense.description,
       lastModified: new Date().toISOString()
     };
 
-    // Recalculate day totals
-    dayExpenses.totalTHB = dayExpenses.items.reduce((sum, item) => sum + item.amountTHB, 0);
-    dayExpenses.totalGBP = dayExpenses.items.reduce((sum, item) => sum + item.amountGBP, 0);
+    dayExpenses.totalLocal = dayExpenses.items.reduce((sum, item) => sum + item.amountLocal, 0);
+    dayExpenses.totalHome = dayExpenses.items.reduce((sum, item) => sum + item.amountHome, 0);
 
     // Update category totals
     Object.keys(allExpenses.categories).forEach(cat => {
@@ -110,22 +146,23 @@ const ExpenseTracker = ({ date, activityId, onExpenseAdded }) => {
     Object.values(allExpenses.days).forEach(day => {
       day.items.forEach(item => {
         if (allExpenses.categories[item.category]) {
-          allExpenses.categories[item.category].total += item.amountTHB;
+          allExpenses.categories[item.category].total += item.amountLocal;
           allExpenses.categories[item.category].count += 1;
         }
       });
     });
 
-    // Update grand totals
-    allExpenses.totalTHB = Object.values(allExpenses.days).reduce(
-      (sum, day) => sum + day.totalTHB, 0
+    allExpenses.totalLocal = Object.values(allExpenses.days).reduce(
+      (sum, day) => sum + day.totalLocal,
+      0
     );
-    allExpenses.totalGBP = Object.values(allExpenses.days).reduce(
-      (sum, day) => sum + day.totalGBP, 0
+    allExpenses.totalHome = Object.values(allExpenses.days).reduce(
+      (sum, day) => sum + day.totalHome,
+      0
     );
 
     // Save to localStorage
-    localStorage.setItem('phuket_expense_data', JSON.stringify(allExpenses));
+    localStorage.setItem(`expenses_${country.iso2}`, JSON.stringify(allExpenses));
     
     // Reload and clear editing state
     loadExpenses();
@@ -149,21 +186,21 @@ const ExpenseTracker = ({ date, activityId, onExpenseAdded }) => {
     dayExpenses.items = dayExpenses.items.filter(item => item.id !== expenseId);
 
     // Recalculate day totals
-    dayExpenses.totalTHB -= expenseToDelete.amountTHB;
-    dayExpenses.totalGBP -= expenseToDelete.amountGBP;
+    dayExpenses.totalLocal -= expenseToDelete.amountLocal;
+    dayExpenses.totalHome -= expenseToDelete.amountHome;
 
     // Update category totals
     if (allExpenses.categories[expenseToDelete.category]) {
-      allExpenses.categories[expenseToDelete.category].total -= expenseToDelete.amountTHB;
+      allExpenses.categories[expenseToDelete.category].total -= expenseToDelete.amountLocal;
       allExpenses.categories[expenseToDelete.category].count -= 1;
     }
 
     // Update grand totals
-    allExpenses.totalTHB -= expenseToDelete.amountTHB;
-    allExpenses.totalGBP -= expenseToDelete.amountGBP;
+    allExpenses.totalLocal -= expenseToDelete.amountLocal;
+    allExpenses.totalHome -= expenseToDelete.amountHome;
 
     // Save to localStorage
-    localStorage.setItem('phuket_expense_data', JSON.stringify(allExpenses));
+    localStorage.setItem(`expenses_${country.iso2}`, JSON.stringify(allExpenses));
     
     // Reload
     loadExpenses();
@@ -192,9 +229,9 @@ const ExpenseTracker = ({ date, activityId, onExpenseAdded }) => {
             Today's Spending
           </h3>
           <p className="text-xs text-slate-500 mt-1">
-            Rate: £1 = ฿{exchangeRate.toFixed(1)}
+            Rate: 1 {homeCurrency} = {formatMoney(exchangeRate, localCurrency, locale)}
             <button
-              onClick={updateExchangeRate}
+              onClick={handleRefreshRate}
               className="ml-2 text-sky-600 hover:text-sky-700"
               title="Update rate"
             >
@@ -204,10 +241,10 @@ const ExpenseTracker = ({ date, activityId, onExpenseAdded }) => {
         </div>
         <div className="text-right">
           <p className="text-2xl font-bold text-slate-800">
-            ฿{todayExpenses?.totalTHB.toFixed(0) || 0}
+            {formatMoney(todayExpenses?.totalLocal || 0, localCurrency, locale)}
           </p>
           <p className="text-sm text-slate-500">
-            £{todayExpenses?.totalGBP.toFixed(2) || 0}
+            {formatMoney(todayExpenses?.totalHome || 0, homeCurrency, locale)}
           </p>
         </div>
       </div>
@@ -224,7 +261,7 @@ const ExpenseTracker = ({ date, activityId, onExpenseAdded }) => {
 
       {/* Quick Add Buttons */}
       <div className="flex flex-wrap gap-2 mb-3">
-        {QUICK_AMOUNTS.map(qa => (
+        {quickAmounts.map(qa => (
           <button
             key={qa.label}
             onClick={() => handleQuickAdd(qa)}
@@ -261,8 +298,8 @@ const ExpenseTracker = ({ date, activityId, onExpenseAdded }) => {
               onChange={(e) => setCurrency(e.target.value)}
               className="px-3 py-2 border rounded-lg text-sm"
             >
-              <option value="THB">THB ฿</option>
-              <option value="GBP">GBP £</option>
+              <option value={localCurrency}>{localCurrency}</option>
+              <option value={homeCurrency}>{homeCurrency}</option>
             </select>
           </div>
           
@@ -354,8 +391,8 @@ const ExpenseTracker = ({ date, activityId, onExpenseAdded }) => {
                         })}
                         className="px-2 py-1 border rounded text-sm"
                       >
-                        <option value="THB">THB ฿</option>
-                        <option value="GBP">GBP £</option>
+                        <option value={localCurrency}>{localCurrency}</option>
+                        <option value={homeCurrency}>{homeCurrency}</option>
                       </select>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
@@ -424,9 +461,14 @@ const ExpenseTracker = ({ date, activityId, onExpenseAdded }) => {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-slate-800">
-                        {item.currency === 'THB' ? '฿' : '£'}{item.amount}
-                      </span>
+                      <div className="text-right">
+                        <p className="font-bold text-slate-800">
+                          {formatMoney(item.amount, item.currency, locale)}
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                          {formatMoney(item.amountLocal, localCurrency, locale)} • {formatMoney(item.amountHome, homeCurrency, locale)}
+                        </p>
+                      </div>
                       <div className="flex gap-1">
                         <button
                           onClick={() => {
@@ -459,16 +501,16 @@ const ExpenseTracker = ({ date, activityId, onExpenseAdded }) => {
 
       {/* Trip Total Summary */}
       <div className="mt-3 pt-3 border-t border-slate-200">
-        <div className="flex justify-between text-sm">
-          <span className="text-slate-600">Trip Total</span>
-          <span className="font-bold text-slate-800">
-            ฿{expenses?.totalTHB.toFixed(0) || 0} 
+      <div className="flex justify-between text-sm">
+        <span className="text-slate-600">Trip Total</span>
+        <span className="font-bold text-slate-800">
+            {formatMoney(expenses?.totalLocal || 0, localCurrency, locale)} 
             <span className="text-slate-500 font-normal ml-1">
-              (£{expenses?.totalGBP.toFixed(2) || 0})
+              ({formatMoney(expenses?.totalHome || 0, homeCurrency, locale)})
             </span>
-          </span>
-        </div>
+        </span>
       </div>
+    </div>
     </div>
   );
 };

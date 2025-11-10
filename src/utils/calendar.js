@@ -1,20 +1,24 @@
 // Calendar export utility for generating .ics files
 
-export const generateICS = (planData) => {
+const sanitizeText = (value = '') =>
+  value
+    .replace(/\n/g, '\\n')
+    .replace(/,/g, '\\,')
+    .replace(/;/g, '\\;');
+
+export const generateICS = (planData, country, options = {}) => {
+  const timeZone = options.timeZone || country?.timeZones?.[0] || 'UTC';
+  const tripLabel = options.tripLabel || `${country?.name || 'Family'} Trip`;
+  const tripLocation = options.location || country?.name || 'Worldwide';
+  const tripDescription = options.description || `Family adventure in ${country?.name || 'destination'}`;
+
   let icsString = `BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//PhuketPlanner//EN
+PRODID:-//TripPlanner//EN
 CALSCALE:GREGORIAN
 METHOD:PUBLISH
-X-WR-CALNAME:Phuket Family Trip 2025
-X-WR-TIMEZONE:Asia/Bangkok
-BEGIN:VTIMEZONE
-TZID:Asia/Bangkok
-TZOFFSETFROM:+0700
-TZOFFSETTO:+0700
-TZNAME:ICT
-DTSTART:19700101T000000
-END:VTIMEZONE
+X-WR-CALNAME:${sanitizeText(tripLabel)}
+X-WR-TIMEZONE:${sanitizeText(timeZone)}
 `;
 
   planData.forEach(day => {
@@ -42,9 +46,9 @@ END:VTIMEZONE
       const uid = `${block.id}@phuketplanner-${Date.now()}`;
       
       // Add location information
-      const location = day.location === 'maiKhao' 
-        ? 'Mai Khao Beach Area, Phuket' 
-        : 'Phuket Old Town';
+      const location = sanitizeText(
+        day.locationLabel || day.location || country?.name || 'Trip Activity'
+      );
       
       // Add description based on type
       let description = `Type: ${block.type}`;
@@ -55,10 +59,10 @@ END:VTIMEZONE
       icsString += `BEGIN:VEVENT
 UID:${uid}
 DTSTAMP:${new Date().toISOString().replace(/[-:]|\.\d{3}/g, '')}Z
-DTSTART;TZID=Asia/Bangkok:${startTime}
-DTEND;TZID=Asia/Bangkok:${endTime}
-SUMMARY:${block.title}
-DESCRIPTION:${description}
+DTSTART;TZID=${sanitizeText(timeZone)}:${startTime}
+DTEND;TZID=${sanitizeText(timeZone)}:${endTime}
+SUMMARY:${sanitizeText(block.title)}
+DESCRIPTION:${sanitizeText(description)}
 LOCATION:${location}
 STATUS:CONFIRMED
 SEQUENCE:0
@@ -75,13 +79,13 @@ END:VEVENT
     const lastDayPlus1 = nextDay.toISOString().split('T')[0].replace(/-/g, '');
 
     icsString += `BEGIN:VEVENT
-UID:trip-overview@phuketplanner-${Date.now()}
+UID:trip-overview@tripplanner-${Date.now()}
 DTSTAMP:${new Date().toISOString().replace(/[-:]|\.\d{3}/g, '')}Z
 DTSTART;VALUE=DATE:${firstDay}
 DTEND;VALUE=DATE:${lastDayPlus1}
-SUMMARY:🏝️ Phuket Family Trip
-DESCRIPTION:Family vacation at Anantara Mai Khao Phuket Villas
-LOCATION:Phuket, Thailand
+SUMMARY:${sanitizeText(tripLabel)}
+DESCRIPTION:${sanitizeText(tripDescription)}
+LOCATION:${sanitizeText(tripLocation)}
 STATUS:CONFIRMED
 SEQUENCE:0
 END:VEVENT

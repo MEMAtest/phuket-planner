@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from './firebase/config';
 import { Icons } from './data/staticData';
 import { useTrip } from './context/TripContext';
+import { useCountry } from './state/CountryContext';
 
 // Import all components
 import Header from './components/Header';
@@ -25,6 +26,8 @@ const App = () => {
     setCurrentDayIndex,
     isOnline 
   } = useTrip();
+  const { country } = useCountry();
+  const weatherAlertKey = useMemo(() => `weather_alert_${country.iso2}`, [country.iso2]);
   
   const [loading, setLoading] = useState(false);
   const [firebaseError, setFirebaseError] = useState(null);
@@ -73,7 +76,7 @@ const App = () => {
   
   // Load dismissed weather alert state
   useEffect(() => {
-    const dismissed = localStorage.getItem('phuket_dismissed_weather_alert');
+    const dismissed = localStorage.getItem(weatherAlertKey);
     if (dismissed) {
       const dismissedDate = new Date(dismissed);
       const today = new Date();
@@ -81,10 +84,10 @@ const App = () => {
       if (dismissedDate.toDateString() === today.toDateString()) {
         setDismissedWeatherAlert(true);
       } else {
-        localStorage.removeItem('phuket_dismissed_weather_alert');
+        localStorage.removeItem(weatherAlertKey);
       }
     }
-  }, []);
+  }, [weatherAlertKey]);
   
   // Firebase sync (only if configured)
   useEffect(() => {
@@ -151,7 +154,7 @@ const App = () => {
   // Function to dismiss weather alert
   const dismissWeatherAlert = () => {
     setDismissedWeatherAlert(true);
-    localStorage.setItem('phuket_dismissed_weather_alert', new Date().toISOString());
+    localStorage.setItem(weatherAlertKey, new Date().toISOString());
   };
   
   // Navigation functions
@@ -424,7 +427,7 @@ const App = () => {
       
       {/* Footer */}
       <footer className="text-center py-8 text-xs text-slate-400">
-        <p>Phuket Trip Planner v2.0 • Built with ❤️ for family adventures</p>
+        <p>Trip Planner v2.0 • Built with ❤️ for adventures in {country.name}</p>
         {isFirebaseConfigured() && (
           <p className="mt-1">
             {isOnline ? '🟢 Online - Syncing' : '🔴 Offline - Local Only'}

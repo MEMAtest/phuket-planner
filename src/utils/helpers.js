@@ -37,52 +37,6 @@ export const getTypeColor = (type) => {
   return colorMap[type] || 'bg-slate-100 text-slate-800';
 };
 
-// Generate ICS Calendar File
-export const generateICS = (planData) => {
-  let icsString = `BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//PhuketPlanner//EN\n`;
-  
-  planData.forEach(day => {
-    day.blocks.forEach(block => {
-      if (!block.time || !/\d/.test(block.time)) return;
-      
-      const timeMatch = block.time.match(/(\d{2}):(\d{2})/);
-      if (!timeMatch) return;
-      
-      const [, hour, minute] = timeMatch.map(Number);
-      const [year, month, dayOfMonth] = day.date.split('-').map(Number);
-      
-      const formatForICS = (h, m) => 
-        `${year}${String(month).padStart(2, '0')}${String(dayOfMonth).padStart(2, '0')}T${String(h).padStart(2, '0')}${String(m).padStart(2, '0')}00`;
-
-      const startTime = formatForICS(hour, minute);
-      const endTime = formatForICS(hour + 1, minute);
-
-      icsString += `BEGIN:VEVENT\n`;
-      icsString += `UID:${block.id}@phuketplanner\n`;
-      icsString += `DTSTAMP:${new Date().toISOString().replace(/[-:]|\.\d{3}/g, '')}Z\n`;
-      icsString += `DTSTART;TZID=Asia/Bangkok:${startTime}\n`;
-      icsString += `DTEND;TZID=Asia/Bangkok:${endTime}\n`;
-      icsString += `SUMMARY:${block.title}\n`;
-      icsString += `END:VEVENT\n`;
-    });
-  });
-  
-  icsString += `END:VCALENDAR`;
-  return icsString;
-};
-
-// Download ICS File
-export const downloadICS = (planData) => {
-  const icsContent = generateICS(planData);
-  const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.setAttribute("download", "Phuket_Itinerary.ics");
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-};
-
 // Format Date
 export const formatDate = (dateString, format = 'long') => {
   const date = new Date(dateString);
@@ -122,11 +76,11 @@ export const getWeatherRecommendations = (summary) => {
       icon: <Icons.AlertTriangle className="w-4 h-4 text-amber-500"/>,
       message: "Indoor activities recommended today",
       suggestions: [
-        "Visit Phuket Aquarium",
-        "Shopping at Central Festival", 
-        "Thai cooking class",
-        "Kids' Club activities",
-        "Spa treatments"
+        "Visit a local aquarium or science museum",
+        "Explore a nearby mall or indoor market", 
+        "Book a family cooking class",
+        "Spend extra time at the kids club",
+        "Schedule a spa or wellness session"
       ]
     };
   }

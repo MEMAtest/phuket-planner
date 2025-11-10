@@ -1,57 +1,94 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Icons } from '../data/staticData';
+import { BASE_KID_CHECKLIST, getKidChecklistGuide } from '../data/countryContent';
+import { useCountry } from '../state/CountryContext';
+
+const normalizeChecklistItems = (items = []) => {
+  return items.map(item => {
+    if (typeof item.isCustom === 'boolean') {
+      return item;
+    }
+
+    const id = (item.id ?? '').toString();
+    const numericId = parseInt(id, 10);
+    const isLegacyBaseId = !Number.isNaN(numericId) && numericId <= BASE_KID_CHECKLIST.length;
+    const isBaseLike = id.startsWith('base-') || isLegacyBaseId;
+    const isExtraLike = id.startsWith('extra-');
+
+    return {
+      ...item,
+      isCustom: !(isBaseLike || isExtraLike)
+    };
+  });
+};
 
 const KidComfortChecklist = () => {
+  const { country } = useCountry();
+  const storageKey = `kidChecklist_${country.iso2}`;
+  const kidGuide = useMemo(() => getKidChecklistGuide(country.iso2), [country.iso2]);
+
+  const buildDefaultItems = useCallback(() => {
+    const baseItems = BASE_KID_CHECKLIST.map((item, index) => ({
+      id: `base-${index}`,
+      text: item.text,
+      category: item.category,
+      checked: false,
+      isCustom: false
+    }));
+
+    const extras = (kidGuide.extras || []).map((item, index) => ({
+      id: `extra-${country.iso2}-${index}`,
+      text: item.text,
+      category: item.category,
+      checked: false,
+      isCustom: false
+    }));
+
+    return [...baseItems, ...extras];
+  }, [kidGuide, country.iso2]);
+
   const [items, setItems] = useState(() => {
-    // Load from localStorage or use defaults
-    const saved = localStorage.getItem('kidChecklist');
+    const saved = localStorage.getItem(storageKey);
     if (saved) {
-      return JSON.parse(saved);
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return normalizeChecklistItems(parsed);
+        }
+      } catch (error) {
+        console.warn('Failed to parse saved kid checklist', error);
+      }
     }
-    
-    return [
-      // Essential Items
-      { id: '1', text: 'Passports & travel documents', category: 'essential', checked: false },
-      { id: '2', text: 'Travel insurance documents', category: 'essential', checked: false },
-      { id: '3', text: 'Hotel booking confirmations', category: 'essential', checked: false },
-      { id: '4', text: 'Emergency contact list', category: 'essential', checked: false },
-      
-      // Comfort Items
-      { id: '5', text: 'Travel car seat / booster', category: 'comfort', checked: false },
-      { id: '6', text: 'Lightweight stroller with rain cover', category: 'comfort', checked: false },
-      { id: '7', text: 'Portable blackout blind', category: 'comfort', checked: false },
-      { id: '8', text: 'Favorite blanket/comforter', category: 'comfort', checked: false },
-      { id: '9', text: 'Travel pillow', category: 'comfort', checked: false },
-      
-      // Entertainment
-      { id: '10', text: 'Tablet with downloaded content', category: 'entertainment', checked: false },
-      { id: '11', text: 'Headphones (kid-sized)', category: 'entertainment', checked: false },
-      { id: '12', text: 'Coloring books & crayons', category: 'entertainment', checked: false },
-      { id: '13', text: 'Favorite small toys', category: 'entertainment', checked: false },
-      { id: '14', text: 'Travel games/cards', category: 'entertainment', checked: false },
-      
-      // Safety & Health
-      { id: '15', text: 'Kid-safe insect repellent', category: 'safety', checked: false },
-      { id: '16', text: 'SPF 50+ sunscreen', category: 'safety', checked: false },
-      { id: '17', text: 'First-aid kit (Calpol, plasters)', category: 'safety', checked: false },
-      { id: '18', text: 'Prescribed medications', category: 'safety', checked: false },
-      { id: '19', text: 'Thermometer', category: 'safety', checked: false },
-      { id: '20', text: 'Rehydration salts', category: 'safety', checked: false },
-      { id: '21', text: 'Floaties/armbands for pool', category: 'safety', checked: false },
-      { id: '22', text: 'UV swimwear/rash vests', category: 'safety', checked: false },
-      { id: '23', text: 'Sun hats & sunglasses', category: 'safety', checked: false },
-      { id: '24', text: 'Reusable water bottles', category: 'safety', checked: false },
-    ];
+    return buildDefaultItems();
   });
   
   const [customItem, setCustomItem] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('essential');
   const [filter, setFilter] = useState('all');
   
+  // Refresh items when the user switches countries
+  useEffect(() => {
+    const saved = localStorage.getItem(storageKey);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setItems(normalizeChecklistItems(parsed));
+          return;
+        }
+      } catch (error) {
+        console.warn('Failed to parse saved kid checklist', error);
+      }
+    } else {
+      setItems(buildDefaultItems());
+      return;
+    }
+  }, [storageKey, buildDefaultItems]);
+
   // Save to localStorage whenever items change
   useEffect(() => {
-    localStorage.setItem('kidChecklist', JSON.stringify(items));
-  }, [items]);
+    localStorage.setItem(storageKey, JSON.stringify(items));
+  }, [items, storageKey]);
   
   const toggleItem = (id) => {
     setItems(prev => prev.map(item => 
@@ -65,7 +102,8 @@ const KidComfortChecklist = () => {
         id: Date.now().toString(),
         text: customItem,
         category: selectedCategory,
-        checked: false
+        checked: false,
+        isCustom: true
       };
       setItems(prev => [...prev, newItem]);
       setCustomItem('');
@@ -81,7 +119,7 @@ const KidComfortChecklist = () => {
     : items.filter(item => item.category === filter);
   
   const checkedCount = items.filter(item => item.checked).length;
-  const progressPercentage = (checkedCount / items.length) * 100;
+  const progressPercentage = items.length ? (checkedCount / items.length) * 100 : 0;
   
   const getCategoryIcon = (category) => {
     switch(category) {
@@ -164,7 +202,7 @@ const KidComfortChecklist = () => {
             <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getCategoryColor(item.category)}`}>
               {getCategoryIcon(item.category)}
             </span>
-            {parseInt(item.id) > 24 && (
+            {item.isCustom && (
               <button
                 onClick={() => removeItem(item.id)}
                 className="text-red-500 hover:text-red-700"
@@ -210,8 +248,7 @@ const KidComfortChecklist = () => {
       {/* Travel Tip */}
       <div className="mt-4 p-3 bg-sky-50 rounded-lg border border-sky-200">
         <p className="text-xs text-sky-800">
-          <strong>✈️ Pro Tip:</strong> Pack essentials in carry-on. Most forgotten items can be bought in Phuket 
-          (often cheaper!). Focus on items specific to your kids' needs.
+          <strong>✈️ Local Tip ({country.name}):</strong> {kidGuide.tip}
         </p>
       </div>
     </div>

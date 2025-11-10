@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { TRIP_DATA } from '../data/staticData';
+import React, { useState, useEffect, useMemo } from 'react';
 import AddActivityForm from './AddActivityForm';
 import WeatherWidget from './WeatherWidget';
 import ExpenseTracker from './ExpenseTracker';
@@ -8,6 +7,7 @@ import NewsFeed from './NewsFeed';
 import DailyPhrases from './DailyPhrases';
 import { useTrip } from '../context/TripContext';
 import { useCountry } from '../state/CountryContext';
+import { getTripPreset } from '../data/itineraryContent';
 
 // Activity badge component
 const ActivityBadge = ({ type }) => {
@@ -108,18 +108,21 @@ const UndoNotification = ({ onUndo, onClose }) => {
 const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
   const { undoLastOperation, showNotification, syncStatus } = useTrip();
   const { country } = useCountry();
+  const itineraryPreset = useMemo(() => getTripPreset(country.iso2), [country.iso2]);
+  const completionStorageKey = useMemo(() => `completed_activities_${country.iso2}`, [country.iso2]);
   const localOptions =
     country.highlights?.localOptions?.length
       ? country.highlights.localOptions
-      : TRIP_DATA.recommendations?.[dayData.location] || [];
+      : itineraryPreset.recommendations?.[dayData.location] || [];
   const factSource =
     country.highlights?.facts?.length
       ? country.highlights.facts
-      : TRIP_DATA.phuketFacts || [];
+      : itineraryPreset.facts || [];
   const fact =
     factSource.length > 0
       ? factSource[dayIndex % factSource.length]
       : 'Explore like a local wherever you are!';
+  const locationLabel = dayData.locationLabel || dayData.focus || dayData.location || country.name;
   const [isAdding, setIsAdding] = useState(false);
   const [expandedActivity, setExpandedActivity] = useState(null);
   const [showUndoNotification, setShowUndoNotification] = useState(false);
@@ -128,14 +131,17 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
   // Load completed activities from localStorage
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('phuket_completed_activities');
+      const saved = localStorage.getItem(completionStorageKey);
       if (saved) {
         setCompletedActivities(JSON.parse(saved));
+      } else {
+        setCompletedActivities({});
       }
     } catch (error) {
       console.error('Error loading completed activities:', error);
+      setCompletedActivities({});
     }
-  }, []);
+  }, [completionStorageKey]);
 
   // Toggle activity completion
   const toggleActivityComplete = (activityId) => {
@@ -146,7 +152,7 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
     
     setCompletedActivities(newCompleted);
     try {
-      localStorage.setItem('phuket_completed_activities', JSON.stringify(newCompleted));
+      localStorage.setItem(completionStorageKey, JSON.stringify(newCompleted));
     } catch (error) {
       console.error('Error saving completed activities:', error);
     }
@@ -210,7 +216,7 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
       const newCompleted = { ...completedActivities };
       delete newCompleted[activityKey];
       setCompletedActivities(newCompleted);
-      localStorage.setItem('phuket_completed_activities', JSON.stringify(newCompleted));
+      localStorage.setItem(completionStorageKey, JSON.stringify(newCompleted));
     }
   };
 
@@ -243,7 +249,7 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
               })}
             </h2>
             <p className="text-sm text-slate-600 mt-1">
-              📍 {dayData.location === 'maiKhao' ? 'Mai Khao Area' : 'Phuket Old Town'}
+              📍 {locationLabel}
             </p>
             {/* Sync Status Indicator - FIXED to use emojis */}
             <div className="flex items-center gap-2 mt-2">
@@ -475,7 +481,7 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
             <DailyPhrases dayData={dayData} dayIndex={dayIndex} />
           </div>
 
-          {/* Phuket Fact of the Day */}
+          {/* Destination Fact of the Day */}
           <div className="mt-4 pt-4 border-t border-slate-200">
             <h3 className="font-semibold text-slate-700 mb-2">
               {country.name} Fact of the Day

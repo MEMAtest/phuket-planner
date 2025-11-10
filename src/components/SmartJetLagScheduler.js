@@ -1,28 +1,42 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useCountry } from '../state/CountryContext';
+import { useTrip } from '../context/TripContext';
 
 const SmartJetLagScheduler = ({ currentDate }) => {
+  const { country } = useCountry();
+  const { tripDates, planData } = useTrip();
   const [currentDay, setCurrentDay] = useState(1);
   const [selectedPerson, setSelectedPerson] = useState('all');
   const [editMode, setEditMode] = useState(false);
-  const [actualSleepData, setActualSleepData] = useState(() => {
-    const saved = localStorage.getItem('jetlag_actual_sleep');
-    return saved ? JSON.parse(saved) : {};
-  });
+  const storageKey = useMemo(() => `jetlag_actual_sleep_${country.iso2}`, [country.iso2]);
+  const [actualSleepData, setActualSleepData] = useState({});
   const [editingPerson, setEditingPerson] = useState(null);
   const [tempSleepData, setTempSleepData] = useState({});
+  const destinationLabel = country.name;
+  const tripStartDate = useMemo(() => {
+    const countryDates = tripDates?.[country.iso2];
+    if (countryDates?.startDate) return countryDates.startDate;
+    if (planData?.length) return planData[0].date;
+    return null;
+  }, [tripDates, country.iso2, planData]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem(storageKey);
+    setActualSleepData(saved ? JSON.parse(saved) : {});
+  }, [storageKey]);
   
   // Calculate which day of the trip we're on
   useEffect(() => {
-    const tripStart = new Date('2025-08-20');
+    const tripStart = tripStartDate ? new Date(tripStartDate) : new Date();
     const current = currentDate ? new Date(currentDate) : new Date();
     const dayNumber = Math.max(1, Math.ceil((current - tripStart) / (1000 * 60 * 60 * 24)) + 1);
     setCurrentDay(Math.min(9, dayNumber));
-  }, [currentDate]);
+  }, [currentDate, tripStartDate]);
   
   // Save actual sleep data whenever it changes
   useEffect(() => {
-    localStorage.setItem('jetlag_actual_sleep', JSON.stringify(actualSleepData));
-  }, [actualSleepData]);
+    localStorage.setItem(storageKey, JSON.stringify(actualSleepData));
+  }, [actualSleepData, storageKey]);
   
   // Family members with their specific needs
   const familyMembers = [
@@ -141,7 +155,7 @@ const SmartJetLagScheduler = ({ currentDate }) => {
   // Get meal timing recommendations
   const getMealSchedule = (day) => {
     const meals = [
-      { day: 1, breakfast: '06:00', lunch: '12:00', dinner: '18:00', note: 'Eat at Phuket times immediately' },
+      { day: 1, breakfast: '06:00', lunch: '12:00', dinner: '18:00', note: `Eat on ${destinationLabel} time immediately` },
       { day: 2, breakfast: '06:30', lunch: '12:00', dinner: '18:30', note: 'Keep regular meal intervals' },
       { day: 3, breakfast: '07:00', lunch: '12:30', dinner: '18:30', note: 'Normal schedule' },
       { day: 4, breakfast: '07:00', lunch: '12:30', dinner: '19:00', note: 'Fully adjusted' },
@@ -309,7 +323,7 @@ const SmartJetLagScheduler = ({ currentDate }) => {
           Smart Jet Lag Schedule - Day {currentDay}
         </h2>
         <p className="text-indigo-100 text-sm">
-          Personalized sleep schedules for your family's adjustment to Phuket time (+6 hours)
+          Personalized sleep schedules for your family's adjustment to {destinationLabel} time
         </p>
         <div className="mt-2 flex gap-2">
           <button
