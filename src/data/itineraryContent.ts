@@ -445,10 +445,47 @@ const CN_PLAN: TripPreset = {
   ]
 };
 
+// Minimal presets for new countries (cities provide actual content)
+const FR_PLAN: TripPreset = {
+  hotel: { name: 'City Center Hotel' },
+  forecast: [{ date: '2025-08-20', dow: 'Wed', hi: 24, lo: 16, summary: 'Partly cloudy' }],
+  initialPlan: [{ date: '2025-08-20', dow: 'Wed', location: 'paris', focus: 'Arrival', blocks: [] }],
+  recommendations: {},
+  facts: []
+};
+
+const ES_PLAN: TripPreset = {
+  hotel: { name: 'City Center Hotel' },
+  forecast: [{ date: '2025-08-20', dow: 'Wed', hi: 28, lo: 18, summary: 'Sunny' }],
+  initialPlan: [{ date: '2025-08-20', dow: 'Wed', location: 'madrid', focus: 'Arrival', blocks: [] }],
+  recommendations: {},
+  facts: []
+};
+
+const PT_PLAN: TripPreset = {
+  hotel: { name: 'City Center Hotel' },
+  forecast: [{ date: '2025-08-20', dow: 'Wed', hi: 26, lo: 17, summary: 'Sunny' }],
+  initialPlan: [{ date: '2025-08-20', dow: 'Wed', location: 'lisbon', focus: 'Arrival', blocks: [] }],
+  recommendations: {},
+  facts: []
+};
+
+const DE_PLAN: TripPreset = {
+  hotel: { name: 'City Center Hotel' },
+  forecast: [{ date: '2025-08-20', dow: 'Wed', hi: 22, lo: 14, summary: 'Partly cloudy' }],
+  initialPlan: [{ date: '2025-08-20', dow: 'Wed', location: 'berlin', focus: 'Arrival', blocks: [] }],
+  recommendations: {},
+  facts: []
+};
+
 const TRIP_PRESETS: Record<CountryIso2, TripPreset> = {
   TH: TH_PLAN,
   HK: HK_PLAN,
-  CN: CN_PLAN
+  CN: CN_PLAN,
+  FR: FR_PLAN,
+  ES: ES_PLAN,
+  PT: PT_PLAN,
+  DE: DE_PLAN
 };
 
 export const getTripPreset = (iso2: CountryIso2): TripPreset => {

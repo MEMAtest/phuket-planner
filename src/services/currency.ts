@@ -20,12 +20,16 @@ const FALLBACK_RATES: Record<string, number> = {
   'HKD-GBP': 1 / 9.7,
   'GBP-CNY': 9.2,
   'CNY-GBP': 1 / 9.2,
+  'GBP-EUR': 1.17,
+  'EUR-GBP': 1 / 1.17,
   'USD-THB': 36.5,
   'THB-USD': 1 / 36.5,
   'USD-HKD': 7.8,
   'HKD-USD': 1 / 7.8,
   'USD-CNY': 7.3,
-  'CNY-USD': 1 / 7.3
+  'CNY-USD': 1 / 7.3,
+  'USD-EUR': 0.92,
+  'EUR-USD': 1 / 0.92
 };
 
 /**

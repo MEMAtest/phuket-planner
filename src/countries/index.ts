@@ -6,6 +6,10 @@
 import TH from './TH/config';
 import HK from './HK/config';
 import CN from './CN/config';
+import FR from './FR/config';
+import ES from './ES/config';
+import PT from './PT/config';
+import DE from './DE/config';
 
 export * from './types';
 
@@ -13,7 +17,11 @@ export * from './types';
 export const COUNTRIES = {
   TH,
   HK,
-  CN
+  CN,
+  FR,
+  ES,
+  PT,
+  DE
 } as const;
 
 export type CountryIso2 = keyof typeof COUNTRIES;
