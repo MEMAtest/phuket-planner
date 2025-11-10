@@ -70,6 +70,8 @@ export const getCurrentWeather = async ({ location = 'maiKhao', coords } = {}) =
       icon: data.weather[0].icon,
       wind_speed: data.wind.speed,
       clouds: data.clouds.all,
+      sunrise: data.sys?.sunrise ? data.sys.sunrise * 1000 : null,
+      sunset: data.sys?.sunset ? data.sys.sunset * 1000 : null,
       timestamp: Date.now()
     };
     

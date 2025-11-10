@@ -106,8 +106,22 @@ const UndoNotification = ({ onUndo, onClose }) => {
 };
 
 const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
-  const { undoLastOperation, showNotification, syncStatus } = useTrip();
+  const { undoLastOperation, showNotification, syncStatus, tripDates } = useTrip();
   const { country } = useCountry();
+  const displayDate = useMemo(() => {
+    const activeTripDates = tripDates?.[country.iso2];
+    if (activeTripDates?.startDate) {
+      const start = new Date(activeTripDates.startDate);
+      if (!Number.isNaN(start.getTime())) {
+        const projected = new Date(start);
+        projected.setDate(start.getDate() + dayIndex);
+        return projected;
+      }
+    }
+    const fallback = new Date(dayData.date);
+    return Number.isNaN(fallback.getTime()) ? new Date() : fallback;
+  }, [tripDates, country.iso2, dayIndex, dayData.date]);
+  const displayDateISO = useMemo(() => displayDate.toISOString().split('T')[0], [displayDate]);
   const itineraryPreset = useMemo(() => getTripPreset(country.iso2), [country.iso2]);
   const completionStorageKey = useMemo(() => `completed_activities_${country.iso2}`, [country.iso2]);
   const localOptions =
@@ -145,7 +159,7 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
 
   // Toggle activity completion
   const toggleActivityComplete = (activityId) => {
-    const activityKey = `${dayData.date}_${activityId}`;
+    const activityKey = `${displayDateISO}_${activityId}`;
     const newCompleted = { ...completedActivities };
     
     newCompleted[activityKey] = !newCompleted[activityKey];
@@ -160,7 +174,7 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
 
   // Check if activity is completed
   const isActivityCompleted = (activityId) => {
-    const activityKey = `${dayData.date}_${activityId}`;
+    const activityKey = `${displayDateISO}_${activityId}`;
     return completedActivities[activityKey] || false;
   };
 
@@ -212,7 +226,7 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
       console.log('🗑️ Activity removed:', removedActivity);
       
       // Also remove from completed activities
-      const activityKey = `${dayData.date}_${blockId}`;
+      const activityKey = `${displayDateISO}_${blockId}`;
       const newCompleted = { ...completedActivities };
       delete newCompleted[activityKey];
       setCompletedActivities(newCompleted);
@@ -243,7 +257,7 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
               {dayData.dow.toUpperCase()}
             </p>
             <h2 className="text-xl font-bold text-slate-800">
-              {new Date(dayData.date).toLocaleDateString('en-US', { 
+              {displayDate.toLocaleDateString('en-US', { 
                 month: 'long', 
                 day: 'numeric' 
               })}
@@ -284,7 +298,7 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
           {/* Weather Widget - Has its own event handling */}
           <div className="flex-1 max-w-sm">
             <WeatherWidget 
-              date={dayData.date}
+              date={displayDateISO}
             />
           </div>
         </div>
@@ -293,7 +307,7 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
       {/* News Feed - NO TOUCH HANDLERS */}
       <div className="p-4 border-b" onClick={handleInteraction}>
         <NewsFeed
-          date={dayData.date}
+          date={displayDateISO}
         />
       </div>
 
@@ -304,7 +318,7 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
           {/* Expense Tracker */}
           <div className="mb-4" onClick={handleInteraction}>
             <ExpenseTracker
-              date={dayData.date}
+              date={displayDateISO}
               activityId={null}
             />
           </div>

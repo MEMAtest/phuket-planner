@@ -69,56 +69,6 @@ const WeatherWidget = ({ date }) => {
     return Math.max(0, Math.min(10, score));
   };
   
-  const getActivitySuitability = () => {
-    const hour = new Date().getHours();
-    const uvi = currentWeather?.uvi || 5;
-    const temp = currentWeather?.temp || 30;
-    const rain = forecast?.[0]?.rainAmount || 0;
-    
-    return {
-      beach: {
-        score: hour < 10 && uvi < 6 && rain < 5 ? 9 : hour > 16 ? 7 : 4,
-        bestTime: '7-10am',
-        icon: '🏖️'
-      },
-      pool: {
-        score: temp > 25 && rain < 5 ? 8 : 5,
-        bestTime: '3-5pm',
-        icon: '🏊'
-      },
-      indoor: {
-        score: hour >= 11 && hour <= 14 ? 9 : 6,
-        bestTime: '11am-2pm',
-        icon: '🏛️'
-      },
-      dining: {
-        score: hour >= 18 && hour <= 20 && rain < 10 ? 9 : 6,
-        bestTime: '6-8pm',
-        icon: '🍽️'
-      }
-    };
-  };
-  
-  const getKidsComfort = () => {
-    const temp = currentWeather?.temp || 30;
-    const humidity = currentWeather?.humidity || 80;
-    const uvi = currentWeather?.uvi || 5;
-    
-    let babyScore = 10;
-    let kidsScore = 10;
-    
-    if (temp > 32) { babyScore -= 3; kidsScore -= 2; }
-    else if (temp > 30) { babyScore -= 2; kidsScore -= 1; }
-    if (humidity > 85) { babyScore -= 2; kidsScore -= 1; }
-    if (uvi > 8) { babyScore -= 3; kidsScore -= 2; }
-    else if (uvi > 6) { babyScore -= 2; kidsScore -= 1; }
-    
-    return {
-      baby: Math.max(0, babyScore),
-      kids: Math.max(0, kidsScore)
-    };
-  };
-  
   const getTimeBasedTheme = () => {
     const hour = new Date().getHours();
     if (hour >= 5 && hour < 8) return 'from-amber-50 to-orange-100';
@@ -128,6 +78,90 @@ const WeatherWidget = ({ date }) => {
     return 'from-indigo-50 to-purple-100';
   };
   
+  const weatherScore = getWeatherScore();
+  const uvInfo = getUVInfo(currentWeather?.uvi || 0);
+  const theme = getTimeBasedTheme();
+  const todaysForecast = forecast?.find(f => f.date === date);
+  const daypartHighlights = useMemo(() => {
+    const rain = todaysForecast?.rainAmount || 0;
+    const uv = currentWeather?.uvi || 0;
+    const humidity = currentWeather?.humidity || 0;
+    return [
+      {
+        icon: '🌅',
+        label: 'Morning',
+        window: '6–10 am',
+        detail: rain < 2 ? 'Clearest skies—ideal for walks or transit' : 'Spotty showers possible, carry a light layer'
+      },
+      {
+        icon: '🌞',
+        label: 'Midday',
+        window: '11 am–2 pm',
+        detail: uv >= 6 ? 'High UV—plan shade breaks & reapply SPF' : 'Balanced sun for sightseeing'
+      },
+      {
+        icon: '🌆',
+        label: 'Evening',
+        window: '5–8 pm',
+        detail: humidity > 80 ? 'Humid glow—hydrate and slow the pace' : 'Comfortable temps for dinner plans'
+      }
+    ];
+  }, [todaysForecast, currentWeather]);
+
+  const conditionAlerts = useMemo(() => {
+    const alerts = [];
+    const rain = todaysForecast?.rainAmount || 0;
+    if (rain >= 5) {
+      alerts.push({ icon: '☔', text: `${rain}mm of rain expected—pack a shell and waterproof shoes.` });
+    }
+    if ((currentWeather?.uvi || 0) >= 6) {
+      alerts.push({ icon: '🧴', text: 'UV index climbs this afternoon—schedule shade + sunscreen stops.' });
+    }
+    if ((currentWeather?.humidity || 0) >= 85) {
+      alerts.push({ icon: '💧', text: 'Humidity stays high—plan extra hydration and cooling breaks.' });
+    }
+    if ((currentWeather?.wind_speed || 0) >= 10) {
+      alerts.push({ icon: '💨', text: 'Gusty winds—secure hats and prep for breezy ferry rides.' });
+    }
+    if (!alerts.length) {
+      alerts.push({ icon: '✅', text: 'Stable conditions all day—no major weather blockers.' });
+    }
+    return alerts;
+  }, [todaysForecast, currentWeather]);
+
+  const comfortMetrics = useMemo(() => {
+    const metrics = [];
+    const temp = currentWeather?.temp;
+    const humidity = currentWeather?.humidity;
+    const wind = currentWeather?.wind_speed;
+    if (typeof temp === 'number') {
+      const status = temp >= 33 ? 'High heat' : temp >= 28 ? 'Warm' : 'Mild';
+      const detail = temp >= 33 ? 'Limit midday exertion & seek AC' : temp >= 28 ? 'Keep water handy on longer walks' : 'Comfortable heat load';
+      metrics.push({ icon: '🔥', label: 'Heat load', status, detail });
+    }
+    if (typeof humidity === 'number') {
+      const status = humidity >= 85 ? 'Sticky' : humidity >= 60 ? 'Humid' : 'Dry';
+      const detail = humidity >= 85 ? 'Expect muggy air—pack wipes & breathable fabrics' : humidity >= 60 ? 'Moderate humidity—pace hydration' : 'Pleasant air feel';
+      metrics.push({ icon: '💧', label: 'Air feel', status, detail });
+    }
+    if (typeof wind === 'number') {
+      const status = wind >= 12 ? 'Windy' : wind >= 6 ? 'Breezy' : 'Calm';
+      const detail = wind >= 12 ? 'Secure hats + plan layers for ferries' : wind >= 6 ? 'Light breeze—great for walking' : 'Calm winds everywhere';
+      metrics.push({ icon: '🌬️', label: 'Wind', status, detail });
+    }
+    return metrics;
+  }, [currentWeather]);
+  
+  const uvPercent = Math.min(100, (currentWeather?.uvi || 0) * 10);
+  const humidityPercent = currentWeather?.humidity || 0;
+  const rainPercent = Math.min(100, (todaysForecast?.rainAmount || 0) * 10);
+  const sunriseTime = currentWeather?.sunrise
+    ? new Date(currentWeather.sunrise).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+    : '--';
+  const sunsetTime = currentWeather?.sunset
+    ? new Date(currentWeather.sunset).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+    : '--';
+
   if (loading) {
     return (
       <div className="animate-pulse">
@@ -135,17 +169,6 @@ const WeatherWidget = ({ date }) => {
       </div>
     );
   }
-  
-  const weatherScore = getWeatherScore();
-  const uvInfo = getUVInfo(currentWeather?.uvi || 0);
-  const activities = getActivitySuitability();
-  const kidsComfort = getKidsComfort();
-  const theme = getTimeBasedTheme();
-  const todaysForecast = forecast?.find(f => f.date === date);
-  
-  const uvPercent = Math.min(100, (currentWeather?.uvi || 0) * 10);
-  const humidityPercent = currentWeather?.humidity || 0;
-  const rainPercent = Math.min(100, (todaysForecast?.rainAmount || 0) * 10);
   
   return (
     <div className="space-y-2">
@@ -247,7 +270,7 @@ const WeatherWidget = ({ date }) => {
       
       {/* Tab Navigation - SIMPLE FIX: Just stopPropagation */}
       <div className="flex gap-1 p-1 bg-white rounded-lg shadow-sm">
-        {['overview', 'activities', 'comfort'].map((tab) => (
+        {['overview', 'insights', 'alerts'].map((tab) => (
           <button
             key={tab}
             onClick={(e) => {
@@ -261,8 +284,8 @@ const WeatherWidget = ({ date }) => {
             }`}
           >
             {tab === 'overview' && '📊 Overview'}
-            {tab === 'activities' && '🏃 Activities'}
-            {tab === 'comfort' && '👶 Family'}
+            {tab === 'insights' && '🕒 Dayparts'}
+            {tab === 'alerts' && '⚠️ Alerts'}
           </button>
         ))}
       </div>
@@ -271,38 +294,42 @@ const WeatherWidget = ({ date }) => {
       <div className="space-y-2">
         {activeTab === 'overview' && (
           <>
-            {/* Smart Timing Bar */}
-            <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-3 border border-indigo-200">
+            <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-lg p-3 border border-indigo-100">
               <h4 className="text-xs font-bold text-indigo-800 mb-2 flex items-center gap-2">
-                <span className="text-sm">⏰</span> TODAY'S OPTIMAL SCHEDULE
+                <span>🧭</span> Weather Highlights
               </h4>
-              <div className="relative">
-                <div className="flex h-10 rounded-lg overflow-hidden">
-                  <div className="flex-1 flex items-center justify-center bg-green-400/30 border-r border-white">
-                    <span className="text-xs font-semibold text-green-700">7-10am Beach</span>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {daypartHighlights.map((highlight) => (
+                  <div key={highlight.label} className="bg-white rounded-lg p-2 border border-slate-100 shadow-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">{highlight.icon}</span>
+                      <div>
+                        <p className="font-semibold text-sm text-slate-800">{highlight.label}</p>
+                        <p className="text-[11px] text-slate-500">{highlight.window}</p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-600 mt-1">{highlight.detail}</p>
                   </div>
-                  <div className="flex-1 flex items-center justify-center bg-red-400/30 border-r border-white">
-                    <span className="text-xs font-semibold text-red-700">11-2pm Indoor</span>
-                  </div>
-                  <div className="flex-1 flex items-center justify-center bg-blue-400/30 border-r border-white">
-                    <span className="text-xs font-semibold text-blue-700">3-5pm Pool</span>
-                  </div>
-                  <div className="flex-1 flex items-center justify-center bg-amber-400/30">
-                    <span className="text-xs font-semibold text-amber-700">6-8pm Dinner</span>
-                  </div>
-                </div>
+                ))}
+              </div>
+              <div className="mt-3 pt-2 border-t border-indigo-100">
+                <p className="text-xs text-indigo-700 flex items-center gap-1">
+                  <span>{conditionAlerts[0]?.icon || '✅'}</span>
+                  <span>{conditionAlerts[0]?.text || 'No major weather blockers today.'}</span>
+                </p>
               </div>
             </div>
-            
-            {/* Key Insights */}
+
             <div className="grid grid-cols-2 gap-2">
               <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-lg p-2 border border-orange-200">
                 <div className="flex items-center gap-1 mb-1">
                   <span className="text-lg">🌅</span>
                   <span className="text-xs font-bold text-orange-800">Sunrise</span>
                 </div>
-                <p className="text-base font-bold text-orange-900">6:14 AM</p>
-                <p className="text-xs text-orange-700">Best photos 6:30-7:00</p>
+                <p className="text-base font-bold text-orange-900">{sunriseTime}</p>
+                <p className="text-xs text-orange-700">
+                  {sunriseTime !== '--' ? 'Blue hour hits ~30 min earlier' : 'Times update once data loads'}
+                </p>
               </div>
               
               <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-2 border border-purple-200">
@@ -310,111 +337,61 @@ const WeatherWidget = ({ date }) => {
                   <span className="text-lg">🌇</span>
                   <span className="text-xs font-bold text-purple-800">Sunset</span>
                 </div>
-                <p className="text-base font-bold text-purple-900">6:31 PM</p>
-                <p className="text-xs text-purple-700">Golden hour 5:30-6:30</p>
+                <p className="text-base font-bold text-purple-900">{sunsetTime}</p>
+                <p className="text-xs text-purple-700">
+                  {sunsetTime !== '--' ? 'Golden hour roughly 60 min before' : 'Times update once data loads'}
+                </p>
               </div>
             </div>
           </>
         )}
-        
-        {activeTab === 'activities' && (
-          <div className="space-y-1.5">
-            {Object.entries(activities).map(([activity, data]) => (
-              <div key={activity} className="bg-white rounded-lg p-2 border border-slate-200 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl">{data.icon}</span>
+
+        {activeTab === 'insights' && (
+          <div className="space-y-2">
+            <div className="bg-white rounded-lg p-3 border border-slate-200 shadow-sm">
+              <h4 className="text-xs font-bold text-slate-700 mb-2">🕒 Daypart planner</h4>
+              <div className="space-y-2">
+                {daypartHighlights.map((highlight) => (
+                  <div key={highlight.label} className="flex items-start gap-3">
+                    <span className="text-xl">{highlight.icon}</span>
                     <div>
-                      <p className="font-semibold text-sm capitalize text-slate-800">{activity}</p>
-                      <p className="text-xs text-slate-600">Best: {data.bestTime}</p>
+                      <p className="text-sm font-semibold text-slate-800">{highlight.label}</p>
+                      <p className="text-[11px] text-slate-500">{highlight.window}</p>
+                      <p className="text-xs text-slate-600 mt-0.5">{highlight.detail}</p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="flex items-center gap-0.5 mb-0.5">
-                      {[...Array(5)].map((_, i) => (
-                        <div
-                          key={i}
-                          className={`h-1.5 w-3 rounded-sm ${
-                            i < Math.ceil(data.score / 2) 
-                              ? data.score >= 8 ? 'bg-green-500' : data.score >= 5 ? 'bg-yellow-500' : 'bg-red-500'
-                              : 'bg-gray-200'
-                          }`}
-                        />
-                      ))}
+                ))}
+              </div>
+            </div>
+
+            {comfortMetrics.length > 0 && (
+              <div className="bg-white rounded-lg p-3 border border-slate-200 shadow-sm">
+                <h4 className="text-xs font-bold text-slate-700 mb-2">🌡️ Comfort snapshot</h4>
+                <div className="space-y-1.5">
+                  {comfortMetrics.map((metric) => (
+                    <div key={metric.label} className="flex items-start gap-2">
+                      <span className="text-lg">{metric.icon}</span>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-800">{metric.label}</p>
+                        <p className="text-xs font-bold text-slate-500">{metric.status}</p>
+                        <p className="text-xs text-slate-600">{metric.detail}</p>
+                      </div>
                     </div>
-                    <p className="text-xs font-bold text-slate-700">
-                      {data.score >= 8 ? 'Perfect' : data.score >= 5 ? 'Good' : 'Wait'}
-                    </p>
-                  </div>
+                  ))}
                 </div>
               </div>
-            ))}
+            )}
           </div>
         )}
-        
-        {activeTab === 'comfort' && (
-          <div className="space-y-2">
-            {/* Kids Comfort Meters */}
-            <div className="bg-gradient-to-r from-pink-50 to-purple-50 rounded-lg p-3 border border-pink-200">
-              <h4 className="text-xs font-bold text-purple-800 mb-2">👶 FAMILY COMFORT INDEX</h4>
-              
-              <div className="space-y-2">
-                <div>
-                  <div className="flex justify-between items-center mb-0.5">
-                    <span className="text-sm font-semibold text-slate-700">Baby Askia (1yr)</span>
-                    <span className="text-xs font-bold text-purple-600">{kidsComfort.baby}/10</span>
-                  </div>
-                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full transition-all duration-500 ${
-                        kidsComfort.baby >= 8 ? 'bg-green-500' : kidsComfort.baby >= 5 ? 'bg-yellow-500' : 'bg-red-500'
-                      }`}
-                      style={{ width: `${kidsComfort.baby * 10}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-slate-600 mt-0.5">
-                    {kidsComfort.baby >= 8 ? '✅ Perfect conditions' : kidsComfort.baby >= 5 ? '⚠️ Keep cool & hydrated' : '❌ Stay indoors'}
-                  </p>
-                </div>
-                
-                <div>
-                  <div className="flex justify-between items-center mb-0.5">
-                    <span className="text-sm font-semibold text-slate-700">Amari (4yr)</span>
-                    <span className="text-xs font-bold text-purple-600">{kidsComfort.kids}/10</span>
-                  </div>
-                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full transition-all duration-500 ${
-                        kidsComfort.kids >= 8 ? 'bg-green-500' : kidsComfort.kids >= 5 ? 'bg-yellow-500' : 'bg-red-500'
-                      }`}
-                      style={{ width: `${kidsComfort.kids * 10}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-slate-600 mt-0.5">
-                    {kidsComfort.kids >= 8 ? '✅ Great for activities' : kidsComfort.kids >= 5 ? '⚠️ Frequent breaks needed' : '❌ Too hot for outdoors'}
-                  </p>
-                </div>
+
+        {activeTab === 'alerts' && (
+          <div className="space-y-1.5">
+            {conditionAlerts.map((alert, idx) => (
+              <div key={`${alert.text}-${idx}`} className="bg-white rounded-lg p-2 border border-slate-200 shadow-sm flex gap-2 items-start">
+                <span className="text-xl">{alert.icon}</span>
+                <p className="text-sm text-slate-700">{alert.text}</p>
               </div>
-            </div>
-            
-            {/* Health Reminders */}
-            <div className="bg-blue-50 rounded-lg p-2 border border-blue-200">
-              <h4 className="text-xs font-bold text-blue-800 mb-1">💙 HEALTH REMINDERS</h4>
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-2 text-xs text-blue-700">
-                  <span>🧴</span>
-                  <span>Reapply sunscreen: 10am, 12pm, 2pm, 4pm</span>
-                </div>
-                <div className="flex items-center gap-2 text-xs text-blue-700">
-                  <span>💧</span>
-                  <span>Hydration check every 30 minutes</span>
-                </div>
-                <div className="flex items-center gap-2 text-xs text-blue-700">
-                  <span>🦟</span>
-                  <span>Bug spray after 5pm (high mosquito activity)</span>
-                </div>
-              </div>
-            </div>
+            ))}
           </div>
         )}
       </div>
