@@ -89,10 +89,14 @@ const App = () => {
           return projected;
         }
       }
-      const fallback = planData?.[index]?.date ? new Date(planData[index].date) : new Date();
-      return Number.isNaN(fallback.getTime()) ? new Date() : fallback;
+      // If no travel dates set, use today + index instead of hardcoded preset dates
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const projected = new Date(today);
+      projected.setDate(today.getDate() + index);
+      return projected;
     },
-    [tripDates, country.iso2, planData]
+    [tripDates, country.iso2]
   );
   
   // Auto-navigate to today on mount and when planData loads
