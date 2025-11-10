@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Icons } from '../../data/staticData';
 import { useCountry } from '../../state/CountryContext';
 import { useProfile } from '../../state/ProfileContext';
 import { useTrip } from '../../context/TripContext';
@@ -330,7 +329,7 @@ const PackingChecklist = () => {
       <div className="flex items-start justify-between mb-4">
         <div>
           <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100 flex items-center gap-2">
-            <Icons.Luggage className="w-6 h-6 text-sky-600"/>
+            <span className="text-2xl">🧳</span>
             Smart Packing Checklist
           </h3>
           <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
@@ -425,7 +424,7 @@ const PackingChecklist = () => {
                   className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                   title="Remove custom item"
                 >
-                  <Icons.Trash className="w-4 h-4" />
+                  <span className="text-sm">🗑️</span>
                 </button>
               )}
             </div>

@@ -3,6 +3,7 @@ import { Icons } from '../data/staticData';
 import { useTrip } from '../context/TripContext';
 import { generateICS } from '../utils/calendar';
 import CountrySwitcher from './CountrySwitcher';
+import CitySelector from './CitySelector';
 import { useCountry } from '../state/CountryContext';
 import { useProfile } from '../state/ProfileContext';
 import { useTheme } from '../hooks/useTheme';
@@ -200,6 +201,7 @@ const Header = () => {
             {/* Navigation Tabs and Export Button */}
             <div className="flex items-center gap-2">
               <CountrySwitcher />
+              <CitySelector />
 
               {/* Profile Selector */}
               <select
