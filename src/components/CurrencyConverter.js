@@ -162,6 +162,23 @@ const CurrencyConverter = () => {
     ? `1 ${rate.base} = ${rate.rate.toFixed(4)} ${rate.quote}`
     : 'Fetching rate...';
 
+  const getStatusBadge = () => {
+    if (!rate?.status) return null;
+    const badges = {
+      live: { text: 'Live', color: 'bg-green-100 text-green-700 border-green-200' },
+      stale: { text: 'Stale', color: 'bg-amber-100 text-amber-700 border-amber-200' },
+      fallback: { text: 'Fallback', color: 'bg-orange-100 text-orange-700 border-orange-200' },
+      unavailable: { text: 'Unavailable', color: 'bg-red-100 text-red-700 border-red-200' }
+    };
+    const badge = badges[rate.status];
+    if (!badge) return null;
+    return (
+      <span className={`text-xs px-2 py-0.5 rounded-full border ${badge.color}`}>
+        {badge.text}
+      </span>
+    );
+  };
+
   return (
     <div className="bg-white p-4 sm:p-6 rounded-xl shadow-lg">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
@@ -247,7 +264,10 @@ const CurrencyConverter = () => {
       </div>
 
       <div className="mt-4 text-sm text-slate-600 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-        <span>{rateText}</span>
+        <div className="flex items-center gap-2">
+          <span>{rateText}</span>
+          {getStatusBadge()}
+        </div>
         {lastUpdated && (
           <span className="text-xs text-slate-500">
             Updated: {formatTimestamp(lastUpdated)}
@@ -268,7 +288,7 @@ const CurrencyConverter = () => {
                   {formatMoney(amount, fromCurrency, locale)} →
                 </p>
                 <p className="text-lg font-semibold text-slate-800">
-                  {rate
+                  {rate && rate.rate
                     ? formatMoney(amount * rate.rate, toCurrency, locale)
                     : '…'}
                 </p>
@@ -278,7 +298,7 @@ const CurrencyConverter = () => {
                   {formatMoney(amount, toCurrency, locale)} →
                 </p>
                 <p className="text-lg font-semibold text-slate-800">
-                  {rate
+                  {rate && rate.rate
                     ? formatMoney(amount / rate.rate, fromCurrency, locale)
                     : '…'}
                 </p>

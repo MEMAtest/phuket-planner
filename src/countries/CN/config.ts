@@ -20,6 +20,145 @@ const CN: CountryConfig = {
     addressSchema: 'CN',
     dialingCountry: 'CN'
   },
+  cities: {
+    foshan: {
+      id: 'foshan',
+      name: 'Foshan',
+      weather: {
+        lat: 23.0216,
+        lon: 113.1219
+      },
+      highlights: {
+        localOptions: [
+          {
+            name: 'Foshan Ancestral Temple',
+            type: 'activity',
+            notes: 'Ancient temple complex showcasing traditional Lingnan architecture and martial arts.',
+            rating: 4.6,
+            travelTime: 'City Center',
+            map: 'https://maps.google.com/?q=Foshan%20Ancestral%20Temple',
+            website: 'http://www.fsancetemp.com/'
+          },
+          {
+            name: 'Nanfeng Ancient Kiln',
+            type: 'activity',
+            notes: 'Working pottery kiln dating back 500 years. Hands-on workshops for families.',
+            rating: 4.5,
+            travelTime: 'Shiwan District',
+            map: 'https://maps.google.com/?q=Nanfeng%20Ancient%20Kiln%20Foshan'
+          },
+          {
+            name: 'Lingnan Tiandi',
+            type: 'eat',
+            notes: 'Restored Qing-era street with Cantonese restaurants and tea houses.',
+            rating: 4.4,
+            travelTime: 'Chancheng District',
+            map: 'https://maps.google.com/?q=Lingnan%20Tiandi%20Foshan'
+          },
+          {
+            name: 'Qinghui Garden',
+            type: 'activity',
+            notes: 'Classical Chinese garden with ponds, pavilions, and bonsai displays.',
+            rating: 4.7,
+            travelTime: 'Shunde District',
+            map: 'https://maps.google.com/?q=Qinghui%20Garden%20Foshan'
+          }
+        ],
+        facts: [
+          'Foshan is the birthplace of Bruce Lee and renowned for Wing Chun kung fu.',
+          'The city is famous for traditional ceramics—over 60% of China\'s ceramic tiles are made here.',
+          'Foshan\'s Cantonese cuisine features "Shunde cooking," celebrated for fresh seafood and double-boiled soups.',
+          'The Foshan Metro connects to Guangzhou, making intercity travel seamless.'
+        ]
+      },
+      transit: {
+        systems: [
+          {
+            name: 'Foshan Metro',
+            type: 'metro',
+            notes: '4 lines connecting to Guangzhou Metro. Use Alipay or Yangchengtong card.',
+            website: 'http://www.fmetro.net/',
+            app: 'Foshan Metro App (支付宝 Alipay accepted)'
+          },
+          {
+            name: 'Guangfo Line',
+            type: 'rail',
+            notes: 'Intercity metro line linking Foshan and Guangzhou (35 min journey).',
+            website: 'http://www.fmetro.net/'
+          }
+        ]
+      }
+    },
+    guangzhou: {
+      id: 'guangzhou',
+      name: 'Guangzhou',
+      weather: {
+        lat: 23.1291,
+        lon: 113.2644
+      },
+      highlights: {
+        localOptions: [
+          {
+            name: 'Canton Tower',
+            type: 'activity',
+            notes: 'Iconic 600m tower with observation decks, sky drop, and night light shows.',
+            rating: 4.7,
+            travelTime: 'Haizhu District',
+            map: 'https://maps.google.com/?q=Canton%20Tower%20Guangzhou',
+            website: 'https://www.cantontower.com/'
+          },
+          {
+            name: 'Chen Clan Ancestral Hall',
+            type: 'activity',
+            notes: 'Elaborate 19th-century complex with wood carvings, pottery, and folk art museum.',
+            rating: 4.8,
+            travelTime: 'Liwan District',
+            map: 'https://maps.google.com/?q=Chen%20Clan%20Ancestral%20Hall%20Guangzhou'
+          },
+          {
+            name: 'Dim sum at Taotao Ju',
+            type: 'eat',
+            notes: 'Historic tea house since 1880. Try shrimp dumplings and char siu bao.',
+            rating: 4.6,
+            travelTime: 'Shangxiajiu Pedestrian Street',
+            map: 'https://maps.google.com/?q=Taotao%20Ju%20Guangzhou'
+          },
+          {
+            name: 'Chimelong Paradise',
+            type: 'activity',
+            notes: 'Massive theme park with roller coasters, safari, and circus shows—great for families.',
+            rating: 4.8,
+            travelTime: 'Panyu District',
+            map: 'https://maps.google.com/?q=Chimelong%20Paradise%20Guangzhou',
+            website: 'https://www.chimelong.com/'
+          }
+        ],
+        facts: [
+          'Guangzhou is the birthplace of Cantonese cuisine and dim sum culture.',
+          'The Pearl River divides the city and offers evening light cruises.',
+          'Guangzhou hosted the first Canton Fair in 1957, now the world\'s largest trade fair.',
+          'The city\'s metro is the 3rd largest in the world by ridership.'
+        ]
+      },
+      transit: {
+        systems: [
+          {
+            name: 'Guangzhou Metro',
+            type: 'metro',
+            notes: '18+ lines covering the entire city. Use Yangchengtong card or Alipay.',
+            website: 'http://www.gzmtr.com/',
+            app: 'Guangzhou Metro App / Alipay / WeChat Pay'
+          },
+          {
+            name: 'Pearl River Water Bus',
+            type: 'ferry',
+            notes: 'Scenic river transport with routes along the Pearl River.',
+            website: 'http://www.gzwxkj.com/'
+          }
+        ]
+      }
+    }
+  },
   weather: {
     city: 'Shanghai',
     lat: 31.2304,

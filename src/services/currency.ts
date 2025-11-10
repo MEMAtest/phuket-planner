@@ -7,6 +7,7 @@ export type FxRate = {
   quote: string;
   rate: number;
   asOf: string;  // ISO date string
+  status?: 'live' | 'stale' | 'fallback' | 'unavailable';
 };
 
 // Cache for FX rates (in-memory, per session)
@@ -15,8 +16,8 @@ const fxCache = new Map<string, FxRate>();
 const FALLBACK_RATES: Record<string, number> = {
   'GBP-THB': 43.5,
   'THB-GBP': 1 / 43.5,
-  'GBP-HKD': 10,
-  'HKD-GBP': 0.1,
+  'GBP-HKD': 9.7,
+  'HKD-GBP': 1 / 9.7,
   'GBP-CNY': 9.2,
   'CNY-GBP': 1 / 9.2,
   'USD-THB': 36.5,
@@ -37,7 +38,8 @@ export async function getFxRate(base: string, quote: string): Promise<FxRate> {
       base,
       quote,
       rate: 1.0,
-      asOf: new Date().toISOString()
+      asOf: new Date().toISOString(),
+      status: 'live'
     };
   }
 
@@ -73,7 +75,8 @@ export async function getFxRate(base: string, quote: string): Promise<FxRate> {
       base,
       quote,
       rate: Number(rate),
-      asOf: data.date || new Date().toISOString()
+      asOf: data.date ? `${data.date}T00:00:00.000Z` : new Date().toISOString(),
+      status: 'live'
     };
     fxCache.set(cacheKey, fx);
     return fx;
@@ -82,7 +85,7 @@ export async function getFxRate(base: string, quote: string): Promise<FxRate> {
 
     if (cached) {
       console.warn('Using stale FX rate');
-      return { ...cached, asOf: cached.asOf + ' (stale)' };
+      return { ...cached, status: 'stale' };
     }
 
     const fallback = FALLBACK_RATES[`${base}-${quote}`];
@@ -92,15 +95,18 @@ export async function getFxRate(base: string, quote: string): Promise<FxRate> {
         base,
         quote,
         rate: fallback,
-        asOf: new Date().toISOString() + ' (fallback)'
+        asOf: new Date().toISOString(),
+        status: 'fallback'
       };
     }
 
+    console.warn('No FX rate available, using 1:1');
     return {
       base,
       quote,
       rate: 1.0,
-      asOf: new Date().toISOString()
+      asOf: new Date().toISOString(),
+      status: 'unavailable'
     };
   }
 }

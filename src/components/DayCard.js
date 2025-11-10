@@ -107,7 +107,7 @@ const UndoNotification = ({ onUndo, onClose }) => {
 
 const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
   const { undoLastOperation, showNotification, syncStatus, tripDates } = useTrip();
-  const { country } = useCountry();
+  const { country, city } = useCountry();
   const displayDate = useMemo(() => {
     const activeTripDates = tripDates?.[country.iso2];
     if (activeTripDates?.startDate) {
@@ -122,16 +122,34 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
     return Number.isNaN(fallback.getTime()) ? new Date() : fallback;
   }, [tripDates, country.iso2, dayIndex, dayData.date]);
   const displayDateISO = useMemo(() => displayDate.toISOString().split('T')[0], [displayDate]);
+  const displayDOW = useMemo(() => {
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    return days[displayDate.getDay()];
+  }, [displayDate]);
   const itineraryPreset = useMemo(() => getTripPreset(country.iso2), [country.iso2]);
   const completionStorageKey = useMemo(() => `completed_activities_${country.iso2}`, [country.iso2]);
-  const localOptions =
-    country.highlights?.localOptions?.length
-      ? country.highlights.localOptions
-      : itineraryPreset.recommendations?.[dayData.location] || [];
-  const factSource =
-    country.highlights?.facts?.length
-      ? country.highlights.facts
-      : itineraryPreset.facts || [];
+
+  // Use city-level data if available, fallback to country, then preset
+  const localOptions = useMemo(() => {
+    if (city?.highlights?.localOptions?.length) {
+      return city.highlights.localOptions;
+    }
+    if (country.highlights?.localOptions?.length) {
+      return country.highlights.localOptions;
+    }
+    return itineraryPreset.recommendations?.[dayData.location] || [];
+  }, [city, country, itineraryPreset, dayData.location]);
+
+  const factSource = useMemo(() => {
+    if (city?.highlights?.facts?.length) {
+      return city.highlights.facts;
+    }
+    if (country.highlights?.facts?.length) {
+      return country.highlights.facts;
+    }
+    return itineraryPreset.facts || [];
+  }, [city, country, itineraryPreset]);
+
   const fact =
     factSource.length > 0
       ? factSource[dayIndex % factSource.length]
@@ -254,12 +272,12 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
           {/* Day Info */}
           <div>
             <p className="text-xs font-semibold text-sky-600">
-              {dayData.dow.toUpperCase()}
+              {displayDOW.toUpperCase()}
             </p>
             <h2 className="text-xl font-bold text-slate-800">
-              {displayDate.toLocaleDateString('en-US', { 
-                month: 'long', 
-                day: 'numeric' 
+              {displayDate.toLocaleDateString('en-US', {
+                month: 'long',
+                day: 'numeric'
               })}
             </h2>
             <p className="text-sm text-slate-600 mt-1">

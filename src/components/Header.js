@@ -167,17 +167,17 @@ const Header = () => {
         <div className="py-4">
           {/* Desktop Layout */}
           <div className="hidden sm:flex items-center justify-between gap-4">
-            {/* Logo and Title */}
-            <div className="flex items-center gap-4">
-              <button
-                type="button"
-                onClick={handleLogoClick}
-                className="bg-sky-600 p-2.5 rounded-xl text-white shadow-md hover:bg-sky-700 transition-colors"
-                aria-label="Back to itinerary"
-              >
+            {/* Logo and Title - Entire block clickable */}
+            <button
+              type="button"
+              onClick={handleLogoClick}
+              className="flex items-center gap-4 hover:opacity-80 transition-opacity"
+              aria-label="Back to itinerary"
+            >
+              <div className="bg-sky-600 p-2.5 rounded-xl text-white shadow-md">
                 <Icons.TripLogo className="w-8 h-8" />
-              </button>
-              <div>
+              </div>
+              <div className="text-left">
                 <h1 className="text-2xl font-bold text-slate-800">Trip Planner</h1>
                 <p className="text-sm text-slate-500">{dateLabel}</p>
                 {/* Dual Time Display */}
@@ -191,7 +191,7 @@ const Header = () => {
                   </span>
                 </div>
               </div>
-            </div>
+            </button>
             
             {/* Navigation Tabs and Export Button */}
             <div className="flex items-center gap-2">
@@ -276,16 +276,16 @@ const Header = () => {
           <div className="sm:hidden">
             {/* Logo and Title */}
             <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={handleLogoClick}
-                  className="bg-sky-600 p-2 rounded-lg text-white shadow-md hover:bg-sky-700 transition-colors"
-                  aria-label="Back to itinerary"
-                >
+              <button
+                type="button"
+                onClick={handleLogoClick}
+                className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+                aria-label="Back to itinerary"
+              >
+                <div className="bg-sky-600 p-2 rounded-lg text-white shadow-md">
                   <Icons.TripLogo className="w-6 h-6" />
-                </button>
-                <div>
+                </div>
+                <div className="text-left">
                   <h1 className="text-lg font-bold text-slate-800">{country.name} Trip</h1>
                   <p className="text-xs text-slate-500">{dateLabel}</p>
                   {/* Mobile Time Display */}
@@ -296,7 +296,7 @@ const Header = () => {
                     </span>
                   </div>
                 </div>
-              </div>
+              </button>
               
               {/* Export Button */}
               <button 

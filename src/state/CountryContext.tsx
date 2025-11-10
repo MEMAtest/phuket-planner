@@ -4,13 +4,15 @@
 // ──────────────────────────────────────────────────────────────────────────────
 
 import React, { createContext, useContext, useMemo, useState, useEffect, ReactNode, useCallback } from 'react';
-import { COUNTRIES, CountryConfig, CountryIso2 } from '../countries';
+import { COUNTRIES, CountryConfig, CountryIso2, CityConfig } from '../countries';
 
 export type CountryState = {
   country: CountryConfig;
+  city: CityConfig | null;    // Current city within the country (optional)
   language: string;           // Active language/locale (e.g., 'en-GB')
   homeCurrency: string;       // User's home currency for conversions (e.g., 'GBP')
   setCountry: (iso2: CountryIso2) => void;
+  setCity: (cityId: string | null) => void;
   setLanguage: (locale: string) => void;
   setHomeCurrency: (code: string) => void;
 };
@@ -27,6 +29,14 @@ export const CountryProvider: React.FC<{ children: ReactNode }> = ({ children })
       return COUNTRIES[saved as CountryIso2];
     }
     return defaultCountry;
+  });
+
+  const [city, setCityState] = useState<CityConfig | null>(() => {
+    const saved = localStorage.getItem(`city_${country.iso2}`);
+    if (saved && country.cities && saved in country.cities) {
+      return country.cities[saved];
+    }
+    return null;
   });
 
   const [language, setLanguageState] = useState<string>(() => {
@@ -64,7 +74,25 @@ export const CountryProvider: React.FC<{ children: ReactNode }> = ({ children })
       setLanguageState(cfg.defaultLocale);
       localStorage.setItem('global_language', cfg.defaultLocale);
     }
+
+    // Reset city when changing countries
+    setCityState(null);
+    localStorage.removeItem(`city_${iso2}`);
   }, [language]);
+
+  const setCity = useCallback((cityId: string | null) => {
+    if (!cityId) {
+      setCityState(null);
+      localStorage.removeItem(`city_${country.iso2}`);
+      return;
+    }
+
+    if (country.cities && cityId in country.cities) {
+      const cityConfig = country.cities[cityId];
+      setCityState(cityConfig);
+      localStorage.setItem(`city_${country.iso2}`, cityId);
+    }
+  }, [country]);
 
   const setLanguage = useCallback((locale: string) => {
     setLanguageState(locale);
@@ -79,13 +107,15 @@ export const CountryProvider: React.FC<{ children: ReactNode }> = ({ children })
   const value = useMemo(
     () => ({
       country,
+      city,
       language,
       homeCurrency,
       setCountry,
+      setCity,
       setLanguage,
       setHomeCurrency
     }),
-    [country, language, homeCurrency, setCountry, setLanguage, setHomeCurrency]
+    [country, city, language, homeCurrency, setCountry, setCity, setLanguage, setHomeCurrency]
   );
 
   return <CountryContext.Provider value={value}>{children}</CountryContext.Provider>;

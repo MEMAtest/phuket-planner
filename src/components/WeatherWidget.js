@@ -3,8 +3,16 @@ import { getCurrentWeather, getWeatherForecast } from '../services/weatherServic
 import { useCountry } from '../state/CountryContext';
 
 const WeatherWidget = ({ date }) => {
-  const { country } = useCountry();
+  const { country, city } = useCountry();
   const weatherTarget = useMemo(() => {
+    // Prefer city weather if available, fallback to country weather
+    if (city?.weather) {
+      return {
+        city: city.name,
+        lat: city.weather.lat,
+        lon: city.weather.lon
+      };
+    }
     return (
       country.weather || {
         city: country.name,
@@ -12,7 +20,7 @@ const WeatherWidget = ({ date }) => {
         lon: 98.2994
       }
     );
-  }, [country]);
+  }, [country, city]);
   const [currentWeather, setCurrentWeather] = useState(null);
   const [forecast, setForecast] = useState(null);
   const [loading, setLoading] = useState(true);

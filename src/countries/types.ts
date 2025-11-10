@@ -6,6 +6,36 @@
 export type MapProvider = 'google' | 'mapbox' | 'amap' | 'baidu';
 export type CoordSystem = 'WGS84' | 'GCJ-02';
 
+export type CityConfig = {
+  id: string;                   // Unique city identifier, e.g., "foshan"
+  name: string;                 // Display name, e.g., "Foshan"
+  weather: {
+    lat: number;
+    lon: number;
+  };
+  highlights?: {
+    localOptions?: {
+      name: string;
+      type: 'eat' | 'activity' | 'shopping';
+      notes: string;
+      rating: number;
+      travelTime?: string;
+      map?: string;
+      website?: string;
+    }[];
+    facts?: string[];
+  };
+  transit?: {
+    systems: {
+      name: string;
+      type: 'metro' | 'bus' | 'rail' | 'ferry';
+      notes: string;
+      website?: string;
+      app?: string;
+    }[];
+  };
+};
+
 export type CountryConfig = {
   iso2: string;                 // ISO 3166-1 alpha-2 code, e.g., "HK"
   name: string;                 // Display name, e.g., "Hong Kong"
@@ -21,6 +51,7 @@ export type CountryConfig = {
     addressSchema: string;      // Key that selects address layout/validation
     dialingCountry: string;     // For libphonenumber-js validation
   };
+  cities?: Record<string, CityConfig>;  // City-level configurations
   weather?: {
     city: string;               // Default city label for weather widgets
     lat: number;

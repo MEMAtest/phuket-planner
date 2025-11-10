@@ -15,6 +15,8 @@ import KidComfortChecklist from './components/KidComfortChecklist';
 import TravelDocuments from './components/TravelDocuments';
 import PriceGuide from './components/PriceGuide';
 import FloatingThaiPhrases from './components/FloatingThaiPhrases';
+import CitySelector from './components/CitySelector';
+import TransitInfo from './components/TransitInfo';
 
 const App = () => {
   const { 
@@ -349,6 +351,8 @@ const App = () => {
       case 'Tools&Info':
         return (
           <div className="space-y-8">
+            <CitySelector />
+            <TransitInfo />
             <CurrencyConverter />
             <PriceGuide />
             <KidComfortChecklist />
