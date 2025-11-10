@@ -33,7 +33,73 @@ const FALLBACK_RATES: Record<string, number> = {
 };
 
 /**
- * Fetch FX rate from serverless API with caching
+ * Try fetching rate from Frankfurter API (backup #1)
+ */
+async function tryFrankfurterAPI(base: string, quote: string): Promise<FxRate | null> {
+  try {
+    const url = `https://api.frankfurter.app/latest?from=${encodeURIComponent(
+      base
+    )}&to=${encodeURIComponent(quote)}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+
+    if (!res.ok) {
+      throw new Error(`Frankfurter API failed: ${res.status}`);
+    }
+
+    const data = await res.json();
+    const rate = data?.rates?.[quote];
+    if (!rate) {
+      throw new Error('Rate not found in Frankfurter response');
+    }
+
+    return {
+      base,
+      quote,
+      rate: Number(rate),
+      asOf: data.date ? `${data.date}T00:00:00.000Z` : new Date().toISOString(),
+      status: 'live'
+    };
+  } catch (error) {
+    console.warn('Frankfurter API failed:', error);
+    return null;
+  }
+}
+
+/**
+ * Try fetching rate from ExchangeRate-API (backup #2)
+ */
+async function tryExchangeRateAPI(base: string, quote: string): Promise<FxRate | null> {
+  try {
+    const url = `https://open.er-api.com/v6/latest/${encodeURIComponent(base)}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+
+    if (!res.ok) {
+      throw new Error(`ExchangeRate-API failed: ${res.status}`);
+    }
+
+    const data = await res.json();
+    const rate = data?.rates?.[quote];
+    if (!rate) {
+      throw new Error('Rate not found in ExchangeRate-API response');
+    }
+
+    return {
+      base,
+      quote,
+      rate: Number(rate),
+      asOf: data.time_last_update_utc
+        ? new Date(data.time_last_update_utc).toISOString()
+        : new Date().toISOString(),
+      status: 'live'
+    };
+  } catch (error) {
+    console.warn('ExchangeRate-API failed:', error);
+    return null;
+  }
+}
+
+/**
+ * Fetch FX rate from primary and backup APIs with caching
  */
 export async function getFxRate(base: string, quote: string): Promise<FxRate> {
   // Return 1:1 if same currency
@@ -59,11 +125,12 @@ export async function getFxRate(base: string, quote: string): Promise<FxRate> {
     }
   }
 
+  // Try primary API
   try {
     const url = `https://api.exchangerate.host/latest?base=${encodeURIComponent(
       base
     )}&symbols=${encodeURIComponent(quote)}&places=6`;
-    const res = await fetch(url);
+    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
 
     if (!res.ok) {
       throw new Error(`FX fetch failed: ${res.status}`);
@@ -85,16 +152,32 @@ export async function getFxRate(base: string, quote: string): Promise<FxRate> {
     fxCache.set(cacheKey, fx);
     return fx;
   } catch (error) {
-    console.error('Error fetching FX rate:', error);
+    console.error('Primary FX API failed:', error);
 
+    // Try backup API #1: Frankfurter
+    const frankfurterResult = await tryFrankfurterAPI(base, quote);
+    if (frankfurterResult) {
+      fxCache.set(cacheKey, frankfurterResult);
+      return frankfurterResult;
+    }
+
+    // Try backup API #2: ExchangeRate-API
+    const exchangeRateResult = await tryExchangeRateAPI(base, quote);
+    if (exchangeRateResult) {
+      fxCache.set(cacheKey, exchangeRateResult);
+      return exchangeRateResult;
+    }
+
+    // Fall back to stale cache if available
     if (cached) {
-      console.warn('Using stale FX rate');
+      console.warn('All APIs failed, using stale FX rate');
       return { ...cached, status: 'stale' };
     }
 
+    // Use hardcoded fallback rates
     const fallback = FALLBACK_RATES[`${base}-${quote}`];
     if (fallback) {
-      console.warn('Using fallback FX rate');
+      console.warn('Using hardcoded fallback FX rate');
       return {
         base,
         quote,
@@ -104,6 +187,7 @@ export async function getFxRate(base: string, quote: string): Promise<FxRate> {
       };
     }
 
+    // Last resort: 1:1 rate
     console.warn('No FX rate available, using 1:1');
     return {
       base,
