@@ -18,6 +18,8 @@ import PriceGuide from './components/PriceGuide';
 import FloatingThaiPhrases from './components/FloatingThaiPhrases';
 import CitySelector from './components/CitySelector';
 import TransitInfo from './components/TransitInfo';
+import ItineraryImporter from './components/ItineraryImporter';
+import QuickAddBooking from './components/QuickAddBooking';
 
 const App = () => {
   const { 
@@ -339,13 +341,21 @@ const App = () => {
             </div>
           </div>
         );
-        
+
+      case 'Import':
+        return (
+          <div className="space-y-8">
+            <ItineraryImporter />
+            <QuickAddBooking />
+          </div>
+        );
+
       case 'JetLag':
-        const currentDate = planData && planData[currentDayIndex] 
-          ? planData[currentDayIndex].date 
+        const currentDate = planData && planData[currentDayIndex]
+          ? planData[currentDayIndex].date
           : '2025-08-20';
         return <SmartJetLagScheduler currentDate={currentDate} />;
-        
+
       case 'FoodHelper':
         return <FoodHelperTab />;
         
