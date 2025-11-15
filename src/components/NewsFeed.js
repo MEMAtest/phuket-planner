@@ -134,8 +134,8 @@ const NewsFeed = ({ date }) => {
   }, [fetchAndProcessNews]);
 
   const dismissAlert = (id) => {
-    setDismissedAlerts([...dismissedAlerts, id]);
-    setEvents(events.filter(e => e.id !== id));
+    setDismissedAlerts(prev => [...prev, id]);
+    setEvents(prev => prev.filter(e => e.id !== id));
   };
 
   const resetAlerts = () => {

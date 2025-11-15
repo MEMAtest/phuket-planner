@@ -60,24 +60,8 @@ const App = () => {
       }
     }
 
-    const todayIndex = planData.findIndex(day => {
-      const dayDate = new Date(day.date);
-      dayDate.setHours(0, 0, 0, 0);
-      return dayDate.getTime() === today.getTime();
-    });
-
-    if (todayIndex >= 0) {
-      return todayIndex;
-    }
-
-    const firstDay = new Date(planData[0].date);
-    firstDay.setHours(0, 0, 0, 0);
-
-    if (today < firstDay) {
-      return 0;
-    }
-
-    return planData.length - 1;
+    // If no travel dates set, day 0 = today (matching the dynamic date display logic)
+    return 0;
   }, [planData, tripDates, country.iso2]);
 
   const getDisplayDateForIndex = useCallback(

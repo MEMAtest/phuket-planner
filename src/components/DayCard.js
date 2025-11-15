@@ -410,13 +410,14 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
                       ${expandedActivity === block.id ? 'rotate-180' : ''}`}>
                       ▼
                     </span>
-                    <button 
+                    <button
                       onClick={(e) => {
                         e.stopPropagation();
                         handleRemoveItem(block.id);
                       }}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity 
+                      className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity
                                text-rose-500 hover:text-rose-700 p-1 ml-2"
+                      title="Delete activity"
                     >
                       <span>🗑️</span>
                     </button>
