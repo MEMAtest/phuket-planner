@@ -6,7 +6,18 @@ const NewsFeed = ({ date }) => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
-  const [dismissedAlerts, setDismissedAlerts] = useState([]);
+  const [dismissedAlerts, setDismissedAlerts] = useState(() => {
+    // Load dismissed alerts from localStorage
+    try {
+      const saved = localStorage.getItem('dismissedNewsAlerts');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (error) {
+      console.error('Error loading dismissed alerts:', error);
+    }
+    return [];
+  });
   const [lastUpdate, setLastUpdate] = useState(null);
 
   const fetchAndProcessNews = useCallback(async () => {
@@ -126,6 +137,11 @@ const NewsFeed = ({ date }) => {
     setLastUpdate(new Date());
     setLoading(false);
   }, [date, dismissedAlerts, country]);
+
+  // Persist dismissed alerts to localStorage
+  useEffect(() => {
+    localStorage.setItem('dismissedNewsAlerts', JSON.stringify(dismissedAlerts));
+  }, [dismissedAlerts]);
 
   useEffect(() => {
     void fetchAndProcessNews();
