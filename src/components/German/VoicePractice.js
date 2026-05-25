@@ -10,6 +10,14 @@ const VoicePractice = ({ theme, scenario, onComplete }) => {
   const [error, setError] = useState(null);
 
   const recognitionRef = useRef(null);
+  const themeRef = useRef(theme);
+  const scenarioRef = useRef(scenario);
+
+  // Keep refs updated
+  useEffect(() => {
+    themeRef.current = theme;
+    scenarioRef.current = scenario;
+  }, [theme, scenario]);
 
   const handleGetFeedback = async (text) => {
     setIsProcessing(true);
@@ -18,22 +26,13 @@ const VoicePractice = ({ theme, scenario, onComplete }) => {
     try {
       const feedback = await reviewGermanSpeech({
         spokenText: text,
-        context: scenario.situation,
-        prompt: scenario.prompt,
-        expectedPattern: scenario.expectedPattern,
-        themeTitle: theme.title
+        context: scenarioRef.current.situation,
+        prompt: scenarioRef.current.prompt,
+        expectedPattern: scenarioRef.current.expectedPattern,
+        themeTitle: themeRef.current.title
       });
 
       setAiFeedback(feedback);
-
-      // Call onComplete callback if provided
-      if (onComplete) {
-        onComplete({
-          transcription: text,
-          feedback,
-          score: feedback.overallScore
-        });
-      }
     } catch (err) {
       console.error('Error getting AI feedback:', err);
       setError('Could not get AI feedback. Please check your internet connection.');
@@ -87,6 +86,11 @@ const VoicePractice = ({ theme, scenario, onComplete }) => {
       return;
     }
 
+    // Prevent starting if already recording
+    if (isRecording) {
+      return;
+    }
+
     setTranscription('');
     setAiFeedback(null);
     setError(null);
@@ -96,7 +100,13 @@ const VoicePractice = ({ theme, scenario, onComplete }) => {
       setIsRecording(true);
     } catch (err) {
       console.error('Error starting recognition:', err);
-      setError('Could not start recording. Please try again.');
+      // Check if it's already started
+      if (err.message && err.message.includes('already started')) {
+        setError('Recording already in progress');
+      } else {
+        setError('Could not start recording. Please try again.');
+      }
+      setIsRecording(false);
     }
   };
 
@@ -330,7 +340,13 @@ const VoicePractice = ({ theme, scenario, onComplete }) => {
             </button>
             {onComplete && aiFeedback && (
               <button
-                onClick={() => onComplete({ transcription, feedback: aiFeedback, score: aiFeedback.overallScore })}
+                onClick={() => {
+                  // Call onComplete with full result
+                  onComplete({ transcription, feedback: aiFeedback, score: aiFeedback.overallScore });
+                  // Reset for next scenario
+                  setTranscription('');
+                  setAiFeedback(null);
+                }}
                 className="flex-1 bg-sky-600 text-white px-4 py-3 rounded-lg font-semibold hover:bg-sky-700 transition-colors"
               >
                 ➡️ Next Exercise

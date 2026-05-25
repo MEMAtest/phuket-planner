@@ -149,7 +149,7 @@ export function GermanProvider({ children }: { children: ReactNode }) {
   const addSession = useCallback((session: Omit<PracticeSession, 'id'>) => {
     const newSession: PracticeSession = {
       ...session,
-      id: `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+      id: `session-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
     };
 
     setSessions(prev => [...prev, newSession]);
@@ -160,7 +160,7 @@ export function GermanProvider({ children }: { children: ReactNode }) {
   const addRecording = useCallback((recording: Omit<Recording, 'id' | 'timestamp'>) => {
     const newRecording: Recording = {
       ...recording,
-      id: `rec-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: `rec-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
       timestamp: new Date().toISOString()
     };
 

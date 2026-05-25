@@ -73,8 +73,15 @@ Be specific in corrections. If everything is perfect, say so! If there are issue
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(`Groq API error: ${errorData.error?.message || response.statusText}`);
+      let errorMessage = response.statusText;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error?.message || errorMessage;
+      } catch (parseError) {
+        // Error response wasn't JSON, use status text
+        console.warn('Non-JSON error response from Groq API');
+      }
+      throw new Error(`Groq API error (${response.status}): ${errorMessage}`);
     }
 
     const data = await response.json();
