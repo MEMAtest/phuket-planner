@@ -6,6 +6,7 @@ import App from './App';
 import { TripProvider } from './context/TripContext';
 import { CountryProvider } from './state/CountryContext';
 import { ProfileProvider } from './state/ProfileContext';
+import { GermanProvider } from './state/GermanContext';
 import * as serviceWorkerRegistration from './serviceWorkerRegistration';
 
 const root = ReactDOM.createRoot(
@@ -16,9 +17,11 @@ root.render(
   <React.StrictMode>
     <CountryProvider>
       <ProfileProvider>
-        <TripProvider>
-          <App />
-        </TripProvider>
+        <GermanProvider>
+          <TripProvider>
+            <App />
+          </TripProvider>
+        </GermanProvider>
       </ProfileProvider>
     </CountryProvider>
   </React.StrictMode>
