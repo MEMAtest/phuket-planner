@@ -118,9 +118,13 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
         return projected;
       }
     }
-    const fallback = new Date(dayData.date);
-    return Number.isNaN(fallback.getTime()) ? new Date() : fallback;
-  }, [tripDates, country.iso2, dayIndex, dayData.date]);
+    // If no travel dates set, use today + dayIndex instead of hardcoded preset dates
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const projected = new Date(today);
+    projected.setDate(today.getDate() + dayIndex);
+    return projected;
+  }, [tripDates, country.iso2, dayIndex]);
   const displayDateISO = useMemo(() => displayDate.toISOString().split('T')[0], [displayDate]);
   const displayDOW = useMemo(() => {
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -406,13 +410,14 @@ const DayCard = ({ dayData, dayIndex, onUpdatePlan, planData }) => {
                       ${expandedActivity === block.id ? 'rotate-180' : ''}`}>
                       ▼
                     </span>
-                    <button 
+                    <button
                       onClick={(e) => {
                         e.stopPropagation();
                         handleRemoveItem(block.id);
                       }}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity 
+                      className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity
                                text-rose-500 hover:text-rose-700 p-1 ml-2"
+                      title="Delete activity"
                     >
                       <span>🗑️</span>
                     </button>

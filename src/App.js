@@ -61,24 +61,8 @@ const App = () => {
       }
     }
 
-    const todayIndex = planData.findIndex(day => {
-      const dayDate = new Date(day.date);
-      dayDate.setHours(0, 0, 0, 0);
-      return dayDate.getTime() === today.getTime();
-    });
-
-    if (todayIndex >= 0) {
-      return todayIndex;
-    }
-
-    const firstDay = new Date(planData[0].date);
-    firstDay.setHours(0, 0, 0, 0);
-
-    if (today < firstDay) {
-      return 0;
-    }
-
-    return planData.length - 1;
+    // If no travel dates set, day 0 = today (matching the dynamic date display logic)
+    return 0;
   }, [planData, tripDates, country.iso2]);
 
   const getDisplayDateForIndex = useCallback(
@@ -92,10 +76,14 @@ const App = () => {
           return projected;
         }
       }
-      const fallback = planData?.[index]?.date ? new Date(planData[index].date) : new Date();
-      return Number.isNaN(fallback.getTime()) ? new Date() : fallback;
+      // If no travel dates set, use today + index instead of hardcoded preset dates
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const projected = new Date(today);
+      projected.setDate(today.getDate() + index);
+      return projected;
     },
-    [tripDates, country.iso2, planData]
+    [tripDates, country.iso2]
   );
   
   // Auto-navigate to today on mount and when planData loads

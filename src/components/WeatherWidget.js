@@ -276,8 +276,8 @@ const WeatherWidget = ({ date }) => {
         </div>
       </div>
       
-      {/* Tab Navigation - SIMPLE FIX: Just stopPropagation */}
-      <div className="flex gap-1 p-1 bg-white rounded-lg shadow-sm">
+      {/* Tab Navigation */}
+      <div className="flex gap-1 p-1 bg-white rounded-lg shadow-sm relative z-10" style={{ touchAction: 'manipulation' }}>
         {['overview', 'insights', 'alerts'].map((tab) => (
           <button
             key={tab}
@@ -286,10 +286,11 @@ const WeatherWidget = ({ date }) => {
               setActiveTab(tab);
             }}
             className={`flex-1 py-1.5 px-2 rounded-md text-xs font-semibold transition-all ${
-              activeTab === tab 
-                ? 'bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-md' 
+              activeTab === tab
+                ? 'bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-md'
                 : 'text-slate-600 hover:bg-slate-50'
             }`}
+            style={{ touchAction: 'manipulation' }}
           >
             {tab === 'overview' && '📊 Overview'}
             {tab === 'insights' && '🕒 Dayparts'}

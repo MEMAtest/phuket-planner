@@ -12,7 +12,7 @@ const VoicePractice = ({ theme, scenario, onComplete }) => {
   // Conversation mode state
   const [conversationMode, setConversationMode] = useState(false);
   const [conversationHistory, setConversationHistory] = useState([]);
-  const [aiResponse, setAiResponse] = useState(null);
+  const [, setAiResponse] = useState(null);
   const [turnCount, setTurnCount] = useState(0);
 
   // Grammar drill mode
@@ -188,11 +188,6 @@ const VoicePractice = ({ theme, scenario, onComplete }) => {
     setTranscription('');
     setAiFeedback(null);
     setError(null);
-  };
-
-  const endConversation = () => {
-    setConversationMode(false);
-    // Final feedback will be shown automatically
   };
 
   return (

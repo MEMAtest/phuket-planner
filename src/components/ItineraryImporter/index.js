@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Icons } from '../../data/staticData';
 import { useTrip } from '../../context/TripContext';
 import { parseBookingText, bookingToActivity } from '../../utils/bookingParser';
 
@@ -124,7 +123,7 @@ Booking Ref: XYZ789`;
       <div className="flex items-start justify-between mb-4">
         <div>
           <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100 flex items-center gap-2">
-            <Icons.Calendar className="w-6 h-6 text-sky-600"/>
+            <span className="text-2xl">📅</span>
             Import Bookings
           </h3>
           <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
@@ -154,12 +153,12 @@ Booking Ref: XYZ789`;
             >
               {isExtracting ? (
                 <>
-                  <Icons.Loader className="w-4 h-4 animate-spin"/>
+                  <span className="animate-spin">⏳</span>
                   Extracting...
                 </>
               ) : (
                 <>
-                  <Icons.Search className="w-4 h-4"/>
+                  <span>🔍</span>
                   Extract Bookings
                 </>
               )}
@@ -251,14 +250,14 @@ Booking Ref: XYZ789`;
                           className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-600 rounded transition-colors"
                           title="Edit"
                         >
-                          <Icons.Edit className="w-4 h-4 text-slate-600 dark:text-slate-300"/>
+                          <span>✏️</span>
                         </button>
                         <button
                           onClick={() => handleRemove(booking.id)}
                           className="p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
                           title="Remove"
                         >
-                          <Icons.Trash className="w-4 h-4 text-red-600 dark:text-red-400"/>
+                          <span>🗑️</span>
                         </button>
                       </div>
                     </div>
@@ -316,7 +315,7 @@ Booking Ref: XYZ789`;
               onClick={handleAddAll}
               className="flex-1 bg-sky-600 text-white px-4 py-3 rounded-lg text-sm font-semibold hover:bg-sky-700 transition-colors flex items-center justify-center gap-2"
             >
-              <Icons.Plus className="w-5 h-5"/>
+              <span className="text-xl">➕</span>
               Add All to Itinerary ({extractedBookings.length})
             </button>
           </div>

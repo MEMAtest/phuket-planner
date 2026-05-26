@@ -66,6 +66,9 @@ export const CountryProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const setCountry = useCallback((iso2: CountryIso2) => {
     const cfg = COUNTRIES[iso2];
+    // Remove OLD country's city before switching
+    localStorage.removeItem(`city_${country.iso2}`);
+
     setCountryState(cfg);
     localStorage.setItem('global_country', iso2);
 
@@ -77,8 +80,7 @@ export const CountryProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     // Reset city when changing countries
     setCityState(null);
-    localStorage.removeItem(`city_${iso2}`);
-  }, [language]);
+  }, [language, country]);
 
   const setCity = useCallback((cityId: string | null) => {
     if (!cityId) {

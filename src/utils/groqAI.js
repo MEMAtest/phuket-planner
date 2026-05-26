@@ -8,7 +8,7 @@
 const GROQ_API_KEY = process.env.REACT_APP_GROQ_API_KEY || '';
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const MODEL = 'llama-3.1-70b-versatile'; // 70B param model, very capable
+const MODEL = 'llama-3.3-70b-versatile'; // 70B param model, very capable
 
 /**
  * Review German speech and provide detailed feedback

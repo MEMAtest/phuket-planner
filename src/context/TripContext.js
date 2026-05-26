@@ -32,7 +32,20 @@ export const TripProvider = ({ children }) => {
     const saved = localStorage.getItem(planStorageKey);
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        // Check if saved plan has old dates (more than 30 days ago)
+        if (parsed.length > 0 && parsed[0].date) {
+          const firstDate = new Date(parsed[0].date);
+          const thirtyDaysAgo = new Date();
+          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+          if (!isNaN(firstDate.getTime()) && firstDate < thirtyDaysAgo) {
+            console.log(`🧹 Clearing old ${country.iso2} itinerary from ${parsed[0].date}`);
+            localStorage.removeItem(planStorageKey);
+            return clonePlan(planPreset.initialPlan);
+          }
+        }
+        return parsed;
       } catch (e) {
         console.error('Error loading saved plan:', e);
       }
@@ -57,7 +70,24 @@ export const TripProvider = ({ children }) => {
     const saved = localStorage.getItem('trip_dates_v1');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        const cleaned = {};
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        // Clean up old dates (more than 30 days in the past)
+        Object.entries(parsed).forEach(([countryCode, dates]) => {
+          if (dates?.startDate) {
+            const startDate = new Date(dates.startDate);
+            if (!isNaN(startDate.getTime()) && startDate >= thirtyDaysAgo) {
+              cleaned[countryCode] = dates;
+            } else {
+              console.log(`🧹 Cleaned up old trip dates for ${countryCode}: ${dates.startDate}`);
+            }
+          }
+        });
+
+        return cleaned;
       } catch (error) {
         console.error('Error parsing trip dates:', error);
       }

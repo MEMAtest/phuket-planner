@@ -1,6 +1,5 @@
 import React from 'react';
 import { useCountry } from '../state/CountryContext';
-import { Icons } from '../data/staticData';
 
 const TransitInfo = () => {
   const { country, city } = useCountry();
@@ -30,7 +29,7 @@ const TransitInfo = () => {
   return (
     <div className="bg-white p-4 sm:p-6 rounded-xl shadow-lg">
       <h3 className="font-bold text-lg text-slate-800 mb-4 flex items-center gap-2">
-        <Icons.Navigation className="w-6 h-6 text-sky-600" />
+        <span className="text-2xl">🚇</span>
         {city ? `${city.name} Transit` : 'Local Transit'}
       </h3>
 
