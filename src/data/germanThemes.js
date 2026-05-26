@@ -854,6 +854,198 @@ export const GERMAN_THEMES = {
         }
       ]
     }
+  ],
+
+  // ============ FAMILY LIFE (5 bonus themes) ============
+  FAMILY: [
+    {
+      id: 'fam-1',
+      number: 37,
+      level: 'B1',
+      title: 'Talking with Your Partner',
+      description: 'Daily conversations with your spouse - planning, discussing, problem-solving',
+      estimatedTime: 30,
+      realWorldContext: true,
+      keyPhrases: [
+        'Was hältst du davon?',
+        'Sollen wir... oder lieber...?',
+        'Ich finde, dass...',
+        'Hast du schon... gemacht?',
+        'Lass uns darüber reden'
+      ],
+      grammarFocus: ['Subjunctive II', 'Modal verbs', 'Subordinate clauses', 'Future tense'],
+      scenarios: [
+        {
+          id: 's1',
+          situation: 'Planning the weekend with your wife',
+          prompt: 'Discuss what you should do Saturday - kids activities, shopping, visiting family',
+          expectedPattern: 'Am Wochenende könnten wir... Sollen wir... oder würdest du lieber...?',
+          grammarDrill: {
+            pattern: 'Modal verbs + infinitive',
+            exercise: 'Practice: Wir müssen/sollen/können/wollen + [activity]'
+          }
+        },
+        {
+          id: 's2',
+          situation: 'Discussing finances and household decisions',
+          prompt: 'Talk about a big purchase, budget concerns, or home repairs needed',
+          expectedPattern: 'Ich denke, wir sollten... Was meinst du? Können wir uns das leisten?',
+          grammarDrill: {
+            pattern: 'Subordinate clauses with "dass", "ob", "weil"',
+            exercise: 'Ich finde, dass... / Ich weiß nicht, ob... / Wir können es kaufen, weil...'
+          }
+        },
+        {
+          id: 's3',
+          situation: 'Resolving a disagreement calmly',
+          prompt: 'You disagree about something - express your view, listen, find compromise',
+          expectedPattern: 'Ich verstehe deinen Punkt, aber... Vielleicht könnten wir...',
+          culturalNotes: 'Germans value direct communication - be honest but respectful'
+        }
+      ]
+    },
+    {
+      id: 'fam-2',
+      number: 38,
+      level: 'A2',
+      title: 'Parenting in German',
+      description: 'Essential phrases for daily parenting - instructions, praise, discipline, bedtime',
+      estimatedTime: 30,
+      realWorldContext: true,
+      keyPhrases: [
+        'Zieh dich an!',
+        'Räum dein Zimmer auf!',
+        'Gut gemacht!',
+        'Das darfst du nicht!',
+        'Komm, wir gehen ins Bett',
+        'Hast du deine Hausaufgaben gemacht?'
+      ],
+      grammarFocus: ['Imperative mood', 'Separable verbs', 'Perfect tense', 'Reflexive verbs'],
+      scenarios: [
+        {
+          id: 's1',
+          situation: 'Morning routine - getting kids ready',
+          prompt: 'Tell kids to wake up, get dressed, brush teeth, eat breakfast, hurry up',
+          expectedPattern: 'Steh auf! Zieh dich an! Beeil dich!',
+          vocabulary: ['sich anziehen', 'sich beeilen', 'Zähne putzen', 'frühstücken'],
+          grammarDrill: {
+            pattern: 'Imperative + separable verbs',
+            exercise: 'aufstehen → Steh auf! / sich anziehen → Zieh dich an!'
+          }
+        },
+        {
+          id: 's2',
+          situation: 'Homework and school talk',
+          prompt: 'Ask about school day, check homework, help with problems, praise effort',
+          expectedPattern: 'Wie war die Schule? Was hast du gelernt? Zeig mir deine Hausaufgaben.',
+          vocabulary: ['Hausaufgaben', 'Klassenarbeit', 'Note', 'Lehrer/in']
+        },
+        {
+          id: 's3',
+          situation: 'Bedtime routine',
+          prompt: 'Bath, pajamas, story time, goodnight kisses, expressing love',
+          expectedPattern: 'Zeit fürs Bett. Ich lese dir eine Geschichte vor. Gute Nacht, Schatz. Ich hab dich lieb.',
+          emotionalVocabulary: ['Ich hab dich lieb', 'Schlaf gut', 'Träum was Schönes']
+        }
+      ]
+    },
+    {
+      id: 'fam-3',
+      number: 39,
+      level: 'B1',
+      title: 'German Family Gatherings',
+      description: 'Navigate visits with in-laws and extended family',
+      estimatedTime: 30,
+      realWorldContext: true,
+      keyPhrases: [
+        'Vielen Dank für die Einladung',
+        'Der Kuchen schmeckt hervorragend',
+        'Wie geht es [Name]?',
+        'Schön, euch zu sehen'
+      ],
+      grammarFocus: ['Formal Sie vs informal du', 'Adjective endings'],
+      scenarios: [
+        {
+          id: 's1',
+          situation: 'Arriving at in-laws for Kaffee und Kuchen',
+          prompt: 'Greet family, thank for invitation, compliment the cake, make small talk',
+          expectedPattern: 'Guten Tag! Danke für die Einladung. Der Kuchen sieht toll aus.',
+          culturalNotes: ['Bring cake or flowers', 'Take shoes off at door', 'Arrive on time']
+        },
+        {
+          id: 's2',
+          situation: 'Family dinner - catching up',
+          prompt: 'Ask about their lives, share news, discuss current events',
+          expectedPattern: 'Was gibt es Neues bei euch? Wir haben gerade...',
+          vocabulary: ['Verwandtschaft', 'Schwiegermutter', 'Schwager', 'Schwägerin']
+        }
+      ]
+    },
+    {
+      id: 'fam-4',
+      number: 40,
+      level: 'A2',
+      title: 'Kids Activities & Socializing',
+      description: 'Talk with other parents at playground, school, parties',
+      estimatedTime: 20,
+      realWorldContext: true,
+      keyPhrases: [
+        'Wie alt ist dein Kind?',
+        'In welche Klasse geht er/sie?',
+        'Wollen wir uns treffen?'
+      ],
+      grammarFocus: ['Question formation', 'Reflexive verbs'],
+      scenarios: [
+        {
+          id: 's1',
+          situation: 'Meeting parents at playground',
+          prompt: 'Introduce yourself, ask about their kids, arrange playdates',
+          expectedPattern: 'Hallo, ich bin [Name]. Das ist mein Sohn/meine Tochter.',
+          vocabulary: ['Spielplatz', 'Sandkasten', 'Schaukel']
+        },
+        {
+          id: 's2',
+          situation: 'School pickup small talk',
+          prompt: 'Chat with other parents about school, events, weekend plans',
+          expectedPattern: 'Wie war die Schule heute? Was macht ihr am Wochenende?'
+        }
+      ]
+    },
+    {
+      id: 'fam-5',
+      number: 41,
+      level: 'B1',
+      title: 'Complex Family Topics',
+      description: 'Discuss emotions, relationships, future plans, difficult subjects',
+      estimatedTime: 30,
+      realWorldContext: true,
+      keyPhrases: [
+        'Ich mache mir Sorgen um...',
+        'Können wir über... sprechen?',
+        'Was hältst du von der Idee...?',
+        'Ich fühle mich...'
+      ],
+      grammarFocus: ['Subjunctive II', 'Reflexive verbs', 'Complex subordinate clauses'],
+      scenarios: [
+        {
+          id: 's1',
+          situation: 'Discussing concerns about one of the kids',
+          prompt: 'Share worries, ask for perspective, discuss solutions',
+          expectedPattern: 'Ich mache mir Sorgen um [Name]. Ist dir aufgefallen, dass...?',
+          vocabulary: ['sich Sorgen machen', 'auffallen', 'Verhalten']
+        },
+        {
+          id: 's2',
+          situation: 'Planning a big life change',
+          prompt: 'Discuss options, pros and cons, make decisions together',
+          expectedPattern: 'Was wäre, wenn wir...? Einerseits... andererseits...',
+          grammarDrill: {
+            pattern: 'Subjunctive II (Konjunktiv II)',
+            exercise: 'Was wäre, wenn...? / Wir könnten...'
+          }
+        }
+      ]
+    }
   ]
 };
 
@@ -861,7 +1053,14 @@ export const GERMAN_THEMES = {
  * Get all themes as flat array
  */
 export function getAllThemes() {
-  return [...GERMAN_THEMES.A1, ...GERMAN_THEMES.A2, ...GERMAN_THEMES.B1];
+  return [...GERMAN_THEMES.A1, ...GERMAN_THEMES.A2, ...GERMAN_THEMES.B1, ...GERMAN_THEMES.FAMILY];
+}
+
+/**
+ * Get family themes
+ */
+export function getFamilyThemes() {
+  return GERMAN_THEMES.FAMILY;
 }
 
 /**
@@ -883,7 +1082,7 @@ export function getThemesByLevel(level) {
  * Calculate progress percentage
  */
 export function calculateProgress(completedThemeIds) {
-  const total = 36;
+  const total = 41; // 36 original + 5 family themes
   const completed = completedThemeIds.length;
   return Math.round((completed / total) * 100);
 }

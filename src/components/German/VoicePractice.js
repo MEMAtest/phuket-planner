@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Icons } from '../../data/staticData';
-import { reviewGermanSpeech } from '../../utils/groqAI';
+import { reviewGermanSpeech, generateConversationResponse } from '../../utils/groqAI';
 
 const VoicePractice = ({ theme, scenario, onComplete }) => {
   const [isRecording, setIsRecording] = useState(false);
@@ -8,6 +8,16 @@ const VoicePractice = ({ theme, scenario, onComplete }) => {
   const [aiFeedback, setAiFeedback] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState(null);
+
+  // Conversation mode state
+  const [conversationMode, setConversationMode] = useState(false);
+  const [conversationHistory, setConversationHistory] = useState([]);
+  const [aiResponse, setAiResponse] = useState(null);
+  const [turnCount, setTurnCount] = useState(0);
+
+  // Grammar drill mode
+  const [grammarDrillMode, setGrammarDrillMode] = useState(false);
+  const [showGrammarHelp, setShowGrammarHelp] = useState(false);
 
   const recognitionRef = useRef(null);
   const themeRef = useRef(theme);
@@ -24,15 +34,62 @@ const VoicePractice = ({ theme, scenario, onComplete }) => {
     setError(null);
 
     try {
-      const feedback = await reviewGermanSpeech({
-        spokenText: text,
-        context: scenarioRef.current.situation,
-        prompt: scenarioRef.current.prompt,
-        expectedPattern: scenarioRef.current.expectedPattern,
-        themeTitle: themeRef.current.title
-      });
+      // If in conversation mode, get AI response
+      if (conversationMode) {
+        const aiText = await generateConversationResponse({
+          conversationHistory,
+          userMessage: text,
+          context: scenarioRef.current.situation,
+          difficulty: themeRef.current.level
+        });
 
-      setAiFeedback(feedback);
+        setAiResponse(aiText);
+        setConversationHistory(prev => [
+          ...prev,
+          { role: 'user', content: text },
+          { role: 'assistant', content: aiText }
+        ]);
+
+        // Speak AI response
+        if ('speechSynthesis' in window) {
+          const utterance = new SpeechSynthesisUtterance(aiText);
+          utterance.lang = 'de-DE';
+          utterance.rate = 0.9;
+          window.speechSynthesis.speak(utterance);
+        }
+
+        setTurnCount(prev => prev + 1);
+
+        // After 5 turns, offer to end conversation and get feedback
+        if (turnCount >= 4) {
+          // Get overall feedback on the conversation
+          const fullConversation = conversationHistory
+            .map(msg => `${msg.role === 'user' ? 'You' : 'AI'}: ${msg.content}`)
+            .join('\n');
+
+          const feedback = await reviewGermanSpeech({
+            spokenText: fullConversation,
+            context: scenarioRef.current.situation,
+            prompt: 'Full conversation practice',
+            expectedPattern: scenarioRef.current.expectedPattern,
+            themeTitle: themeRef.current.title
+          });
+
+          setAiFeedback(feedback);
+          setConversationMode(false);
+        }
+      } else {
+        // Regular feedback mode
+        const feedback = await reviewGermanSpeech({
+          spokenText: text,
+          context: scenarioRef.current.situation,
+          prompt: scenarioRef.current.prompt,
+          expectedPattern: scenarioRef.current.expectedPattern,
+          themeTitle: themeRef.current.title
+        });
+
+        setAiFeedback(feedback);
+      }
     } catch (err) {
       console.error('Error getting AI feedback:', err);
       setError('Could not get AI feedback. Please check your internet connection.');
@@ -121,24 +178,108 @@ const VoicePractice = ({ theme, scenario, onComplete }) => {
     setTranscription('');
     setAiFeedback(null);
     setError(null);
+    setAiResponse(null);
+  };
+
+  const startConversation = () => {
+    setConversationMode(true);
+    setConversationHistory([]);
+    setTurnCount(0);
+    setTranscription('');
+    setAiFeedback(null);
+    setError(null);
+  };
+
+  const endConversation = () => {
+    setConversationMode(false);
+    // Final feedback will be shown automatically
   };
 
   return (
     <div className="bg-white dark:bg-slate-800 rounded-xl p-6 space-y-6">
+      {/* Grammar Drill (if available) */}
+      {scenario.grammarDrill && !conversationMode && !transcription && (
+        <div className="bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-200 dark:border-amber-800 rounded-lg p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h5 className="font-semibold text-amber-900 dark:text-amber-200 flex items-center gap-2">
+              📚 Grammar Focus: {scenario.grammarDrill.pattern}
+            </h5>
+            <button
+              onClick={() => setShowGrammarHelp(!showGrammarHelp)}
+              className="text-xs text-amber-700 dark:text-amber-300 hover:underline"
+            >
+              {showGrammarHelp ? 'Hide' : 'Show'} drill
+            </button>
+          </div>
+          {showGrammarHelp && (
+            <div className="mt-2 p-3 bg-white dark:bg-slate-800 rounded border border-amber-200 dark:border-amber-700">
+              <p className="text-sm text-slate-700 dark:text-slate-300 mb-2">
+                <strong>Practice:</strong> {scenario.grammarDrill.exercise}
+              </p>
+              <button
+                onClick={() => setGrammarDrillMode(true)}
+                className="text-xs bg-amber-600 text-white px-3 py-1 rounded hover:bg-amber-700 transition-colors"
+              >
+                Start Grammar Drill
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Scenario */}
       <div className="bg-sky-50 dark:bg-sky-900/20 border-2 border-sky-200 dark:border-sky-800 rounded-lg p-4">
-        <h4 className="font-semibold text-slate-800 dark:text-slate-100 mb-2">
-          📝 Scenario: {scenario.situation}
-        </h4>
+        <div className="flex items-start justify-between mb-2">
+          <h4 className="font-semibold text-slate-800 dark:text-slate-100">
+            {grammarDrillMode ? '📚 Grammar Drill' : '📝 Scenario'}: {scenario.situation}
+          </h4>
+          {!conversationMode && !transcription && !grammarDrillMode && (
+            <button
+              onClick={startConversation}
+              className="text-xs bg-purple-600 text-white px-3 py-1 rounded-full hover:bg-purple-700 transition-colors"
+            >
+              💬 Conversation Mode
+            </button>
+          )}
+        </div>
         <p className="text-slate-700 dark:text-slate-300 text-sm mb-3">
-          {scenario.prompt}
+          {grammarDrillMode && scenario.grammarDrill
+            ? `📚 ${scenario.grammarDrill.exercise}`
+            : conversationMode
+            ? '💬 Having a conversation - AI will respond to you. Speak naturally!'
+            : scenario.prompt
+          }
         </p>
-        {scenario.expectedPattern && (
+        {scenario.expectedPattern && !conversationMode && !grammarDrillMode && (
           <div className="text-xs text-slate-600 dark:text-slate-400 mt-2">
             💡 Pattern: <code className="bg-white dark:bg-slate-700 px-2 py-1 rounded">{scenario.expectedPattern}</code>
           </div>
         )}
       </div>
+
+      {/* Conversation History */}
+      {conversationMode && conversationHistory.length > 0 && (
+        <div className="bg-slate-50 dark:bg-slate-700 rounded-lg p-4 max-h-60 overflow-y-auto">
+          <h5 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
+            💬 Conversation ({turnCount}/5 turns)
+          </h5>
+          {conversationHistory.map((msg, i) => (
+            <div
+              key={i}
+              className={`mb-2 p-2 rounded ${
+                msg.role === 'user'
+                  ? 'bg-blue-100 dark:bg-blue-900/30 ml-8'
+                  : 'bg-green-100 dark:bg-green-900/30 mr-8'
+              }`}
+            >
+              <div className="text-xs text-slate-600 dark:text-slate-400 font-semibold mb-1">
+                {msg.role === 'user' ? '👤 You' : '🤖 AI'}
+              </div>
+              <div className="text-sm text-slate-800 dark:text-slate-100">{msg.content}</div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Recording Controls */}
       {!transcription && !isProcessing && (
