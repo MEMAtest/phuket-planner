@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { Icons } from '../../data/staticData';
 import { useGerman } from '../../state/GermanContext';
-import { getAllThemes, getThemeById } from '../../data/germanThemes';
+import { getAllThemes, getThemeById, getFamilyThemes } from '../../data/germanThemes';
 import { isGroqConfigured, getGroqSetupInstructions } from '../../utils/groqAI';
 import VoicePractice from './VoicePractice';
+import PlacementTest from './PlacementTest';
 
 const GermanLearning = () => {
   const {
@@ -20,8 +21,15 @@ const GermanLearning = () => {
     getCurrentLevel
   } = useGerman();
 
-  const [view, setView] = useState('dashboard'); // 'dashboard' | 'themes' | 'practice'
+  const [view, setView] = useState('dashboard'); // 'dashboard' | 'themes' | 'practice' | 'placement'
   const [currentScenarioIndex, setCurrentScenarioIndex] = useState(0);
+  const [placementComplete, setPlacementComplete] = useState(
+    localStorage.getItem('german_placement_complete') === 'true'
+  );
+  const [skippedThemes, setSkippedThemes] = useState(() => {
+    const saved = localStorage.getItem('german_skipped_themes');
+    return saved ? JSON.parse(saved) : [];
+  });
 
   const allThemes = getAllThemes();
   const currentTheme = currentThemeId ? getThemeById(currentThemeId) : null;
@@ -32,12 +40,35 @@ const GermanLearning = () => {
 
   // Group themes by level
   const themesByLevel = useMemo(() => {
+    const familyThemes = getFamilyThemes();
     return {
-      A1: allThemes.filter(t => t.level === 'A1'),
-      A2: allThemes.filter(t => t.level === 'A2'),
-      B1: allThemes.filter(t => t.level === 'B1')
+      A1: allThemes.filter(t => t.level === 'A1' && t.number <= 12),
+      A2: allThemes.filter(t => t.level === 'A2' && t.number <= 24),
+      B1: allThemes.filter(t => t.level === 'B1' && t.number <= 36),
+      FAMILY: familyThemes
     };
   }, [allThemes]);
+
+  const handlePlacementComplete = (result) => {
+    // Mark skipped themes as completed
+    result.skipThemes.forEach(themeId => {
+      if (!completedThemes.includes(themeId)) {
+        markThemeComplete(themeId);
+      }
+    });
+
+    setSkippedThemes(result.skipThemes);
+    localStorage.setItem('german_skipped_themes', JSON.stringify(result.skipThemes));
+    localStorage.setItem('german_placement_complete', 'true');
+    setPlacementComplete(true);
+    setView('dashboard');
+
+    alert(`✅ ${result.recommendation}\n\n${result.skipThemes.length} themes unlocked automatically.`);
+  };
+
+  const startPlacementTest = () => {
+    setView('placement');
+  };
 
   const handleStartTheme = (themeId) => {
     setCurrentTheme(themeId);
@@ -137,7 +168,7 @@ const GermanLearning = () => {
           {/* Progress Bar */}
           <div className="mb-6">
             <div className="flex justify-between text-sm text-slate-600 dark:text-slate-400 mb-2">
-              <span>{completedThemes.length} of 36 themes completed</span>
+              <span>{completedThemes.length} of 41 themes completed</span>
               <span>{progress}%</span>
             </div>
             <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3">
@@ -148,14 +179,24 @@ const GermanLearning = () => {
             </div>
           </div>
 
-          {/* Action Button */}
-          <button
-            onClick={() => setView('themes')}
-            className="w-full bg-sky-600 text-white px-6 py-4 rounded-lg text-lg font-semibold hover:bg-sky-700 transition-colors flex items-center justify-center gap-2"
-          >
-            <Icons.Play className="w-6 h-6"/>
-            {completedThemes.length === 0 ? 'Start Learning' : 'Continue Learning'}
-          </button>
+          {/* Action Buttons */}
+          <div className="space-y-3">
+            {!placementComplete && completedThemes.length === 0 && (
+              <button
+                onClick={startPlacementTest}
+                className="w-full bg-purple-600 text-white px-6 py-4 rounded-lg text-lg font-semibold hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
+              >
+                🎯 Take Placement Test (Skip What You Know)
+              </button>
+            )}
+            <button
+              onClick={() => setView('themes')}
+              className="w-full bg-sky-600 text-white px-6 py-4 rounded-lg text-lg font-semibold hover:bg-sky-700 transition-colors flex items-center justify-center gap-2"
+            >
+              <Icons.Play className="w-6 h-6"/>
+              {completedThemes.length === 0 && placementComplete ? 'Start Learning' : 'Browse All Themes'}
+            </button>
+          </div>
         </div>
 
         {/* Recent Completions */}
@@ -188,6 +229,24 @@ const GermanLearning = () => {
     );
   }
 
+  // Placement Test View
+  if (view === 'placement') {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => setView('dashboard')}
+            className="text-sky-600 dark:text-sky-400 hover:underline flex items-center gap-2"
+          >
+            <Icons.ArrowLeft className="w-4 h-4"/>
+            Back to Dashboard
+          </button>
+        </div>
+        <PlacementTest onComplete={handlePlacementComplete} />
+      </div>
+    );
+  }
+
   // Theme Selector View
   if (view === 'themes') {
     return (
@@ -202,16 +261,23 @@ const GermanLearning = () => {
           </button>
         </div>
 
-        {['A1', 'A2', 'B1'].map(levelKey => (
-          <div key={levelKey} className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-lg">
-            <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4">
-              Level {levelKey} {levelKey === 'A1' && '(Beginner)'} {levelKey === 'A2' && '(Elementary)'} {levelKey === 'B1' && '(Intermediate)'}
+        {/* Family Themes Section (Priority) */}
+        {themesByLevel.FAMILY && themesByLevel.FAMILY.length > 0 && (
+          <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl p-6 shadow-lg border-2 border-purple-200 dark:border-purple-800">
+            <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2 flex items-center gap-2">
+              👨‍👩‍👧 Family Life Themes
+              <span className="text-xs bg-purple-600 text-white px-2 py-1 rounded-full">New!</span>
             </h3>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+              Real conversations for daily family life - partner, kids, in-laws, parenting
+            </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {themesByLevel[levelKey].map(theme => {
+              {themesByLevel.FAMILY.map(theme => {
                 const isCompleted = completedThemes.includes(theme.id);
-                const isLocked = theme.number > 1 && !completedThemes.includes(allThemes[theme.number - 2]?.id);
+                const isSkipped = skippedThemes.includes(theme.id);
+                const hasPrerequisites = completedThemes.length >= 20; // Need some A2 progress
+                const isLocked = !hasPrerequisites && !isCompleted && !isSkipped;
 
                 return (
                   <button
@@ -222,6 +288,62 @@ const GermanLearning = () => {
                       text-left p-4 rounded-lg border-2 transition-all
                       ${isCompleted
                         ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-800'
+                        : isSkipped
+                        ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-800'
+                        : isLocked
+                        ? 'bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600 opacity-50 cursor-not-allowed'
+                        : 'bg-white dark:bg-slate-700 border-purple-300 dark:border-purple-600 hover:border-purple-500 dark:hover:border-purple-400 hover:shadow-md'
+                      }
+                    `}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="text-2xl">
+                        {isCompleted ? '✅' : isSkipped ? '⏩' : isLocked ? '🔒' : '👨‍👩‍👧'}
+                      </div>
+                      <div className="flex-1">
+                        <div className="text-xs text-slate-600 dark:text-slate-400 mb-1">
+                          Theme {theme.number} • {theme.estimatedTime} min
+                          {theme.realWorldContext && ' • Real-world'}
+                        </div>
+                        <div className="font-semibold text-slate-800 dark:text-slate-100 mb-1">
+                          {theme.title}
+                        </div>
+                        <div className="text-xs text-slate-600 dark:text-slate-400">
+                          {theme.description}
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Standard Themes */}
+        {['A1', 'A2', 'B1'].map(levelKey => (
+          <div key={levelKey} className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-lg">
+            <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4">
+              Level {levelKey} {levelKey === 'A1' && '(Beginner)'} {levelKey === 'A2' && '(Elementary)'} {levelKey === 'B1' && '(Intermediate)'}
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {themesByLevel[levelKey].map(theme => {
+                const isCompleted = completedThemes.includes(theme.id);
+                const isSkipped = skippedThemes.includes(theme.id);
+                const isLocked = theme.number > 1 && !completedThemes.includes(allThemes[theme.number - 2]?.id) && !isSkipped;
+
+                return (
+                  <button
+                    key={theme.id}
+                    onClick={() => !isLocked && handleStartTheme(theme.id)}
+                    disabled={isLocked}
+                    className={`
+                      text-left p-4 rounded-lg border-2 transition-all
+                      ${isCompleted
+                        ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-800'
+                        : isSkipped
+                        ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-800'
                         : isLocked
                         ? 'bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600 opacity-50 cursor-not-allowed'
                         : 'bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 hover:border-sky-500 dark:hover:border-sky-400 hover:shadow-md'
@@ -230,7 +352,7 @@ const GermanLearning = () => {
                   >
                     <div className="flex items-start gap-3">
                       <div className="text-2xl">
-                        {isCompleted ? '✅' : isLocked ? '🔒' : '📚'}
+                        {isCompleted ? '✅' : isSkipped ? '⏩' : isLocked ? '🔒' : '📚'}
                       </div>
                       <div className="flex-1">
                         <div className="text-xs text-slate-600 dark:text-slate-400 mb-1">
