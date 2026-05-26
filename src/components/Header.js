@@ -110,7 +110,7 @@ const Header = () => {
     }
   };
 
-  const tabs = ['Itinerary', 'Import', 'Jet Lag', 'Food Helper', 'Tools & Info', 'Documents'];
+  const tabs = ['Itinerary', 'Import', 'German', 'Jet Lag', 'Food Helper', 'Tools & Info', 'Documents'];
 
   const dateLabel = useMemo(() => {
     if (activeDates?.startDate && activeDates?.endDate) {

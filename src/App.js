@@ -20,6 +20,7 @@ import CitySelector from './components/CitySelector';
 import TransitInfo from './components/TransitInfo';
 import ItineraryImporter from './components/ItineraryImporter';
 import QuickAddBooking from './components/QuickAddBooking';
+import GermanLearning from './components/German';
 
 const App = () => {
   const { 
@@ -337,6 +338,9 @@ const App = () => {
             <QuickAddBooking />
           </div>
         );
+
+      case 'German':
+        return <GermanLearning />;
 
       case 'JetLag':
         const currentDate = planData && planData[currentDayIndex]
