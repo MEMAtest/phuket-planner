@@ -5,6 +5,7 @@ import { getAllThemes, getThemeById, getFamilyThemes } from '../../data/germanTh
 import { isGroqConfigured, getGroqSetupInstructions } from '../../utils/groqAI';
 import VoicePractice from './VoicePractice';
 import PlacementTest from './PlacementTest';
+import ThemeLesson from './ThemeLesson';
 
 const GermanLearning = () => {
   const {
@@ -21,7 +22,7 @@ const GermanLearning = () => {
     getCurrentLevel
   } = useGerman();
 
-  const [view, setView] = useState('dashboard'); // 'dashboard' | 'themes' | 'practice' | 'placement'
+  const [view, setView] = useState('dashboard'); // 'dashboard' | 'themes' | 'lesson' | 'practice' | 'placement'
   const [currentScenarioIndex, setCurrentScenarioIndex] = useState(0);
   const [placementComplete, setPlacementComplete] = useState(
     localStorage.getItem('german_placement_complete') === 'true'
@@ -29,6 +30,9 @@ const GermanLearning = () => {
   const [skippedThemes, setSkippedThemes] = useState(() => {
     const saved = localStorage.getItem('german_skipped_themes');
     return saved ? JSON.parse(saved) : [];
+  });
+  const [allThemesUnlocked, setAllThemesUnlocked] = useState(() => {
+    return localStorage.getItem('german_all_unlocked') === 'true';
   });
 
   const allThemes = getAllThemes();
@@ -73,8 +77,18 @@ const GermanLearning = () => {
   const handleStartTheme = (themeId) => {
     setCurrentTheme(themeId);
     setCurrentScenarioIndex(0);
-    setView('practice');
+    setView('lesson');
     updateStreak();
+  };
+
+  const handleStartPractice = () => {
+    setView('practice');
+  };
+
+  const toggleUnlockAll = () => {
+    const newValue = !allThemesUnlocked;
+    setAllThemesUnlocked(newValue);
+    localStorage.setItem('german_all_unlocked', newValue.toString());
   };
 
   const handleScenarioComplete = (result) => {
@@ -259,6 +273,16 @@ const GermanLearning = () => {
             <Icons.ArrowLeft className="w-4 h-4"/>
             Back to Dashboard
           </button>
+          <button
+            onClick={toggleUnlockAll}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+              allThemesUnlocked
+                ? 'bg-green-600 text-white hover:bg-green-700'
+                : 'bg-amber-600 text-white hover:bg-amber-700'
+            }`}
+          >
+            {allThemesUnlocked ? '🔓 All Unlocked' : '🔒 Unlock All Themes'}
+          </button>
         </div>
 
         {/* Family Themes Section (Priority) */}
@@ -277,7 +301,7 @@ const GermanLearning = () => {
                 const isCompleted = completedThemes.includes(theme.id);
                 const isSkipped = skippedThemes.includes(theme.id);
                 const hasPrerequisites = completedThemes.length >= 20; // Need some A2 progress
-                const isLocked = !hasPrerequisites && !isCompleted && !isSkipped;
+                const isLocked = !allThemesUnlocked && !hasPrerequisites && !isCompleted && !isSkipped;
 
                 return (
                   <button
@@ -331,7 +355,7 @@ const GermanLearning = () => {
               {themesByLevel[levelKey].map(theme => {
                 const isCompleted = completedThemes.includes(theme.id);
                 const isSkipped = skippedThemes.includes(theme.id);
-                const isLocked = theme.number > 1 && !completedThemes.includes(allThemes[theme.number - 2]?.id) && !isSkipped;
+                const isLocked = !allThemesUnlocked && theme.number > 1 && !completedThemes.includes(allThemes[theme.number - 2]?.id) && !isSkipped;
 
                 return (
                   <button
@@ -372,6 +396,24 @@ const GermanLearning = () => {
             </div>
           </div>
         ))}
+      </div>
+    );
+  }
+
+  // Lesson View
+  if (view === 'lesson' && currentTheme) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => setView('themes')}
+            className="text-sky-600 dark:text-sky-400 hover:underline flex items-center gap-2"
+          >
+            <Icons.ArrowLeft className="w-4 h-4"/>
+            Back to Themes
+          </button>
+        </div>
+        <ThemeLesson theme={currentTheme} onStartPractice={handleStartPractice} />
       </div>
     );
   }
