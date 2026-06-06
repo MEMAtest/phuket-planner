@@ -301,3 +301,16 @@ select:focus-visible {
 .activity-travel { background-color: #e0f2fe; color: #0369a1; }
 .activity-eat { background-color: #ffe4e6; color: #be123c; }
 .activity-nap { background-color: #fef3c7; color: #b45309; }
+
+/* Screen reader only - for accessibility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
