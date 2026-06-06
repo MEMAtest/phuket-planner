@@ -27,8 +27,19 @@ const WeakSpotDrill = ({ errorType, onBack }) => {
   const [showFeedback, setShowFeedback] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
   const [score, setScore] = useState({ correct: 0, total: 0 });
+  const [hasDecremented, setHasDecremented] = useState(false);
 
   useEffect(() => {
+    // Validate errorType
+    const validTypes = ['case', 'word-order', 'verb-conjugation', 'gender-article',
+                        'preposition', 'spelling', 'vocabulary', 'tense', 'plural',
+                        'capitalization', 'other'];
+    if (!errorType || !validTypes.includes(errorType)) {
+      setError('invalid-error-type');
+      setLoading(false);
+      return;
+    }
+
     if (!isGroqConfigured()) {
       setError('groq-not-configured');
       setLoading(false);
@@ -62,10 +73,10 @@ const WeakSpotDrill = ({ errorType, onBack }) => {
 
   const normalizeAnswer = (text) => {
     return text
-      .toLowerCase()
       .trim()
-      .replace(/[.,!?;]/g, '')
-      .replace(/\s+/g, ' ');
+      .replace(/\s+/g, ' ')  // normalize multiple spaces
+      .replace(/[.,!?;]$/g, '') // only remove trailing punctuation
+      .toLowerCase();  // case-insensitive, but ß/ss remains distinct
   };
 
   const handleSubmit = () => {
@@ -91,13 +102,8 @@ const WeakSpotDrill = ({ errorType, onBack }) => {
 
     if (currentIndex < drill.exercises.length - 1) {
       setCurrentIndex(prev => prev + 1);
-    } else {
-      // Drill complete - decrease error count if score is good
-      const percentage = (score.correct / score.total) * 100;
-      if (percentage >= 60) {
-        decrementErrorCount(errorType);
-      }
     }
+    // Note: Completion logic moved to useEffect to avoid race condition
   };
 
   const handleRestart = () => {
@@ -106,7 +112,19 @@ const WeakSpotDrill = ({ errorType, onBack }) => {
     setShowFeedback(false);
     setIsCorrect(false);
     setScore({ correct: 0, total: 0 });
+    // Note: hasDecremented stays true - don't decrement again on restart
   };
+
+  // Check completion and apply decrement (avoids race condition)
+  useEffect(() => {
+    if (drill && currentIndex >= drill.exercises.length && score.total > 0 && !hasDecremented) {
+      const percentage = (score.correct / score.total) * 100;
+      if (percentage >= 60) {
+        decrementErrorCount(errorType);
+        setHasDecremented(true);
+      }
+    }
+  }, [currentIndex, drill, score, hasDecremented, decrementErrorCount, errorType]);
 
   if (loading) {
     return (
@@ -150,6 +168,41 @@ const WeakSpotDrill = ({ errorType, onBack }) => {
     );
   }
 
+  const handleRetry = () => {
+    setLoading(true);
+    setError(null);
+    // Re-trigger the useEffect by creating a new component mount
+    window.location.reload();
+  };
+
+  if (error === 'invalid-error-type') {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-4">
+        <div className="max-w-2xl mx-auto pt-8">
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 text-sky-600 dark:text-sky-400 hover:underline mb-4"
+          >
+            <Icons.ArrowLeft className="w-4 h-4" />
+            Back
+          </button>
+          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-lg text-center">
+            <Icons.AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <p className="text-slate-600 dark:text-slate-400 mb-4">
+              Invalid error type. This drill cannot be loaded.
+            </p>
+            <button
+              onClick={onBack}
+              className="px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700"
+            >
+              Back to Daily Home
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (error) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-4">
@@ -163,17 +216,26 @@ const WeakSpotDrill = ({ errorType, onBack }) => {
           </button>
           <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-lg text-center">
             <Icons.AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
-            <p className="text-slate-600 dark:text-slate-400">
+            <p className="text-slate-600 dark:text-slate-400 mb-4">
               {error === 'no-exercises'
                 ? 'Could not generate exercises. Please try again.'
                 : 'Failed to load drill. Check your internet connection.'}
             </p>
-            <button
-              onClick={() => window.location.reload()}
-              className="mt-4 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700"
-            >
-              Retry
-            </button>
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={handleRetry}
+                disabled={loading}
+                className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50"
+              >
+                {loading ? 'Retrying...' : 'Retry'}
+              </button>
+              <button
+                onClick={onBack}
+                className="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       </div>
