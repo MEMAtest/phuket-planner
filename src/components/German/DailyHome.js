@@ -27,7 +27,7 @@ const greeting = () => {
 const todayLabel = () =>
   new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
 
-const DailyHome = ({ onReview, onCapture, onDiary, onStartTheme, onBrowse }) => {
+const DailyHome = ({ onReview, onCapture, onDiary, onStartTheme, onBrowse, onDrillWeakSpot }) => {
   const {
     streak,
     flashcards,
@@ -158,12 +158,19 @@ const DailyHome = ({ onReview, onCapture, onDiary, onStartTheme, onBrowse }) => 
           </p>
           <div className="space-y-2">
             {weakAreas.map(({ tag, count }) => (
-              <div key={tag} className="flex items-center justify-between p-2 rounded-lg bg-amber-50 dark:bg-amber-900/20">
+              <button
+                key={tag}
+                onClick={() => onDrillWeakSpot(tag)}
+                className="w-full flex items-center justify-between p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 border-2 border-transparent hover:border-amber-400 transition-all"
+              >
                 <span className="text-sm font-medium text-amber-800 dark:text-amber-200">
                   {ERROR_LABELS[tag] || tag}
                 </span>
-                <span className="text-xs text-amber-600 dark:text-amber-400">{count} {count === 1 ? 'slip' : 'slips'}</span>
-              </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-amber-600 dark:text-amber-400">{count} {count === 1 ? 'slip' : 'slips'}</span>
+                  <Icons.ChevronRight className="w-4 h-4 text-amber-500" />
+                </div>
+              </button>
             ))}
           </div>
         </div>

@@ -386,6 +386,92 @@ ${list.map((p, i) => `${i + 1}. ${p}`).join('\n')}`;
 }
 
 /**
+ * Generate targeted grammar drill exercises for a specific weak area.
+ * Helps learners focus practice on recurring error patterns.
+ */
+export async function generateGrammarDrill({ errorType, level = 'A2', count = 5 }) {
+  const errorContext = {
+    case: 'German cases (nominative, accusative, dative, genitive) and their articles (der/den/dem/des, etc.)',
+    'word-order': 'German word order rules (TEKAMOLO, verb-second position, subordinate clauses)',
+    'verb-conjugation': 'German verb conjugation and agreement with subject',
+    'gender-article': 'German noun genders and their definite/indefinite articles (der/die/das, ein/eine)',
+    preposition: 'German prepositions and their required cases',
+    spelling: 'German spelling, including ß, umlauts, and compound words',
+    vocabulary: 'German vocabulary usage and word choice',
+    tense: 'German tenses (Präsens, Perfekt, Präteritum, Futur)',
+    plural: 'German plural forms and their patterns',
+    capitalization: 'German capitalization rules (all nouns capitalized)',
+    other: 'Mixed German grammar points'
+  };
+
+  const description = errorContext[errorType] || 'German grammar';
+
+  const systemPrompt = `You are a German grammar tutor creating targeted drill exercises. Generate practical, real-life exercises that help adult learners (living in Germany with German family) fix specific recurring mistakes.`;
+
+  const userPrompt = `Learner level: ${level}
+Error type to drill: ${errorType}
+Focus area: ${description}
+
+Generate ${count} interactive exercises. Each should:
+- Present a real-life scenario
+- Ask the learner to complete/correct a German sentence
+- Include the correct answer with a short explanation
+- Be practical (daily life, family situations, common interactions)
+
+Respond in JSON:
+{
+  "title": "<friendly drill title>",
+  "explanation": "<one-paragraph overview of this grammar point>",
+  "exercises": [
+    {
+      "id": 1,
+      "scenario": "<brief context, e.g., 'At the bakery'>",
+      "prompt": "<the task, e.g., 'Complete the sentence'>",
+      "question": "<German sentence with blank or error to fix, mark blank with ___>",
+      "correctAnswer": "<the correct German>",
+      "explanation": "<why this is right, what rule applies>",
+      "commonMistake": "<what learners often say instead>"
+    }
+  ]
+}
+
+Make exercises progressive (easier to harder).`;
+
+  const raw = await callGroq(
+    [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt }
+    ],
+    { temperature: 0.5, maxTokens: 2000 }
+  );
+
+  try {
+    const r = extractJson(raw);
+    const exercises = Array.isArray(r.exercises) ? r.exercises : [];
+    return {
+      title: r.title || `${errorType} drill`,
+      explanation: r.explanation || description,
+      exercises: exercises.map((ex, i) => ({
+        id: ex.id || i + 1,
+        scenario: ex.scenario || '',
+        prompt: ex.prompt || 'Complete the sentence',
+        question: ex.question || '',
+        correctAnswer: ex.correctAnswer || '',
+        explanation: ex.explanation || '',
+        commonMistake: ex.commonMistake || ''
+      }))
+    };
+  } catch (e) {
+    console.error('generateGrammarDrill parse error:', e, raw);
+    return {
+      title: `${errorType} practice`,
+      explanation: description,
+      exercises: []
+    };
+  }
+}
+
+/**
  * Check if Groq API is configured
  */
 export function isGroqConfigured() {

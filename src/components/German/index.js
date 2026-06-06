@@ -10,6 +10,7 @@ import DailyHome from './DailyHome';
 import SpacedReview from './SpacedReview';
 import PhraseCapture from './PhraseCapture';
 import GermanDiary from './GermanDiary';
+import WeakSpotDrill from './WeakSpotDrill';
 
 const GermanLearning = () => {
   const {
@@ -27,8 +28,9 @@ const GermanLearning = () => {
   } = useGerman();
 
   // 'daily' is the home loop; 'dashboard' is the stats/progress hub
-  const [view, setView] = useState('daily'); // daily | dashboard | themes | lesson | practice | placement | review | capture | diary
+  const [view, setView] = useState('daily'); // daily | dashboard | themes | lesson | practice | placement | review | capture | diary | drill
   const [currentScenarioIndex, setCurrentScenarioIndex] = useState(0);
+  const [drillErrorType, setDrillErrorType] = useState(null);
   const [placementComplete, setPlacementComplete] = useState(
     localStorage.getItem('german_placement_complete') === 'true'
   );
@@ -136,6 +138,10 @@ const GermanLearning = () => {
         onDiary={() => setView('diary')}
         onStartTheme={handleStartTheme}
         onBrowse={() => setView('themes')}
+        onDrillWeakSpot={(errorType) => {
+          setDrillErrorType(errorType);
+          setView('drill');
+        }}
       />
     );
   }
@@ -150,6 +156,15 @@ const GermanLearning = () => {
 
   if (view === 'diary') {
     return <GermanDiary onExit={() => setView('daily')} />;
+  }
+
+  if (view === 'drill') {
+    return (
+      <WeakSpotDrill
+        errorType={drillErrorType}
+        onBack={() => setView('daily')}
+      />
+    );
   }
 
   // Dashboard View
