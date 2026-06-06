@@ -1,5 +1,40 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { calculateProgress, getNextTheme, getCurrentLevel } from '../data/germanThemes';
+import { createCard, reviewCard, countDue } from '../utils/srs';
+
+/**
+ * A spaced-repetition flashcard (shape produced by utils/srs.createCard)
+ */
+export type Flashcard = any;
+
+/**
+ * A "How do I say...?" capture from real life
+ */
+export type Capture = {
+  id: string;
+  timestamp: string;
+  englishPhrase: string;
+  german: string;
+  literal: string;
+  breakdown: string[];
+  grammarNote: string;
+  formality: string;
+  context: string;
+};
+
+/**
+ * A German diary entry with AI correction + mined errors
+ */
+export type DiaryEntry = {
+  id: string;
+  date: string;
+  original: string;
+  corrected: string;
+  corrections: { original: string; fixed: string; explanation: string; errorType: string }[];
+  errorTags: string[];
+  encouragement: string;
+  score: number;
+};
 
 /**
  * Practice session record
@@ -50,6 +85,12 @@ export type GermanState = {
   sessions: PracticeSession[];
   recordings: Recording[];
 
+  // Living-curriculum layers
+  flashcards: Flashcard[];
+  captures: Capture[];
+  diaryEntries: DiaryEntry[];
+  errorLog: Record<string, number>; // errorType -> count
+
   // Methods
   markThemeComplete: (themeId: string) => void;
   setCurrentTheme: (themeId: string | null) => void;
@@ -59,6 +100,17 @@ export type GermanState = {
   getCurrentLevel: () => string;
   getNextTheme: () => any;
   updateStreak: () => void;
+
+  // Flashcards / SRS
+  addFlashcards: (cards: { german: string; english: string; source?: string; note?: string; themeId?: string | null; example?: string }[]) => number;
+  reviewFlashcardById: (id: string, quality: number) => void;
+  dueCount: () => number;
+
+  // Capture & diary
+  addCapture: (capture: Omit<Capture, 'id' | 'timestamp'>) => void;
+  addDiaryEntry: (entry: Omit<DiaryEntry, 'id' | 'date'>) => void;
+  logErrors: (tags: string[]) => void;
+  getWeakAreas: () => { tag: string; count: number }[];
 };
 
 const GermanContext = createContext<GermanState | undefined>(undefined);
@@ -100,6 +152,26 @@ export function GermanProvider({ children }: { children: ReactNode }) {
     return saved ? JSON.parse(saved) : [];
   });
 
+  const [flashcards, setFlashcards] = useState<Flashcard[]>(() => {
+    const saved = localStorage.getItem('german_flashcards');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [captures, setCaptures] = useState<Capture[]>(() => {
+    const saved = localStorage.getItem('german_captures');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [diaryEntries, setDiaryEntries] = useState<DiaryEntry[]>(() => {
+    const saved = localStorage.getItem('german_diary');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [errorLog, setErrorLog] = useState<Record<string, number>>(() => {
+    const saved = localStorage.getItem('german_error_log');
+    return saved ? JSON.parse(saved) : {};
+  });
+
   // Save to localStorage whenever state changes
   useEffect(() => {
     localStorage.setItem('german_completed_themes', JSON.stringify(completedThemes));
@@ -134,6 +206,22 @@ export function GermanProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     localStorage.setItem('german_recordings', JSON.stringify(recordings));
   }, [recordings]);
+
+  useEffect(() => {
+    localStorage.setItem('german_flashcards', JSON.stringify(flashcards));
+  }, [flashcards]);
+
+  useEffect(() => {
+    localStorage.setItem('german_captures', JSON.stringify(captures));
+  }, [captures]);
+
+  useEffect(() => {
+    localStorage.setItem('german_diary', JSON.stringify(diaryEntries));
+  }, [diaryEntries]);
+
+  useEffect(() => {
+    localStorage.setItem('german_error_log', JSON.stringify(errorLog));
+  }, [errorLog]);
 
   const markThemeComplete = useCallback((themeId: string) => {
     setCompletedThemes(prev => {
@@ -211,6 +299,89 @@ export function GermanProvider({ children }: { children: ReactNode }) {
     setLastPracticeDate(today);
   }, [lastPracticeDate]);
 
+  // ---- Flashcards / SRS ----
+  const addFlashcards = useCallback((cards: { german: string; english: string; source?: string; note?: string; themeId?: string | null; example?: string }[]) => {
+    let added = 0;
+    setFlashcards(prev => {
+      const existing = new Set(prev.map((c: Flashcard) => c.german.toLowerCase().trim()));
+      const fresh = cards
+        .filter(c => c.german && c.german.trim() && !existing.has(c.german.toLowerCase().trim()))
+        .map((c: any) => createCard(c));
+      added = fresh.length;
+      return fresh.length ? [...prev, ...fresh] : prev;
+    });
+    return added;
+  }, []);
+
+  const reviewFlashcardById = useCallback((id: string, quality: number) => {
+    setFlashcards(prev => prev.map((c: Flashcard) => (c.id === id ? reviewCard(c, quality) : c)));
+  }, []);
+
+  const dueCount = useCallback(() => countDue(flashcards), [flashcards]);
+
+  // ---- Error log ----
+  const logErrors = useCallback((tags: string[]) => {
+    if (!tags || tags.length === 0) return;
+    setErrorLog(prev => {
+      const next = { ...prev };
+      tags.forEach(tag => {
+        if (!tag) return;
+        next[tag] = (next[tag] || 0) + 1;
+      });
+      return next;
+    });
+  }, []);
+
+  const getWeakAreas = useCallback(() => {
+    return Object.entries(errorLog)
+      .map(([tag, count]) => ({ tag, count: count as number }))
+      .sort((a, b) => b.count - a.count);
+  }, [errorLog]);
+
+  // ---- Capture ----
+  const addCapture = useCallback((capture: Omit<Capture, 'id' | 'timestamp'>) => {
+    const newCapture: Capture = {
+      ...capture,
+      id: `cap-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+      timestamp: new Date().toISOString()
+    };
+    setCaptures(prev => [newCapture, ...prev]);
+    // A capture is perfect flashcard material - both sides already known
+    if (newCapture.german && newCapture.englishPhrase) {
+      setFlashcards(prev => {
+        const exists = prev.some(c => c.german.toLowerCase().trim() === newCapture.german.toLowerCase().trim());
+        if (exists) return prev;
+        return [...prev, createCard({
+          german: newCapture.german,
+          english: newCapture.englishPhrase,
+          source: 'capture',
+          note: newCapture.grammarNote
+        })];
+      });
+    }
+  }, []);
+
+  // ---- Diary ----
+  const addDiaryEntry = useCallback((entry: Omit<DiaryEntry, 'id' | 'date'>) => {
+    const newEntry: DiaryEntry = {
+      ...entry,
+      id: `diary-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+      date: new Date().toISOString().split('T')[0]
+    };
+    setDiaryEntries(prev => [newEntry, ...prev]);
+    // Mine the errors into the weak-area log
+    if (entry.errorTags && entry.errorTags.length) {
+      setErrorLog(prev => {
+        const next = { ...prev };
+        entry.errorTags.forEach(tag => {
+          if (!tag) return;
+          next[tag] = (next[tag] || 0) + 1;
+        });
+        return next;
+      });
+    }
+  }, []);
+
   const value: GermanState = {
     completedThemes,
     currentThemeId,
@@ -219,6 +390,10 @@ export function GermanProvider({ children }: { children: ReactNode }) {
     lastPracticeDate,
     sessions,
     recordings,
+    flashcards,
+    captures,
+    diaryEntries,
+    errorLog,
     markThemeComplete,
     setCurrentTheme,
     addSession,
@@ -226,7 +401,14 @@ export function GermanProvider({ children }: { children: ReactNode }) {
     getProgress,
     getCurrentLevel: getLevel,
     getNextTheme: getNext,
-    updateStreak
+    updateStreak,
+    addFlashcards,
+    reviewFlashcardById,
+    dueCount,
+    addCapture,
+    addDiaryEntry,
+    logErrors,
+    getWeakAreas
   };
 
   return <GermanContext.Provider value={value}>{children}</GermanContext.Provider>;

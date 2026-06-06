@@ -1,8 +1,40 @@
 import React, { useState } from 'react';
 import { Icons } from '../../data/staticData';
+import { useGerman } from '../../state/GermanContext';
+import { explainGermanPhrases, isGroqConfigured } from '../../utils/groqAI';
 
 const ThemeLesson = ({ theme, onStartPractice }) => {
   const [currentStep, setCurrentStep] = useState(0);
+  const { addFlashcards } = useGerman();
+  const [seeding, setSeeding] = useState(false);
+  const [seededCount, setSeededCount] = useState(null);
+
+  const handleAddToDeck = async () => {
+    if (!theme.keyPhrases || theme.keyPhrases.length === 0) return;
+    setSeeding(true);
+    try {
+      let pairs;
+      if (isGroqConfigured()) {
+        pairs = await explainGermanPhrases({ phrases: theme.keyPhrases, level: theme.level });
+      } else {
+        // Offline fallback: store the German with a blank meaning to fill in later
+        pairs = theme.keyPhrases.map(p => ({ german: p, english: '' }));
+      }
+      const cards = pairs.map(p => ({
+        german: p.german,
+        english: p.english,
+        source: 'theme',
+        themeId: theme.id
+      }));
+      const added = addFlashcards(cards);
+      setSeededCount(added);
+    } catch (e) {
+      console.error('Failed to seed deck from theme:', e);
+      setSeededCount(0);
+    } finally {
+      setSeeding(false);
+    }
+  };
 
   const steps = [
     {
@@ -154,6 +186,25 @@ const ThemeLesson = ({ theme, onStartPractice }) => {
                 <strong>💡 Tip:</strong> Click the play button to hear native pronunciation. Try saying each phrase out loud several times before moving on.
               </p>
             </div>
+
+            {/* Seed these phrases into the spaced-repetition deck */}
+            {seededCount !== null ? (
+              <div className="mt-3 py-3 px-4 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-lg text-center font-semibold">
+                ✅ Added {seededCount} card{seededCount === 1 ? '' : 's'} to your review deck
+              </div>
+            ) : (
+              <button
+                onClick={handleAddToDeck}
+                disabled={seeding}
+                className="mt-3 w-full py-3 bg-sky-600 text-white rounded-lg font-semibold hover:bg-sky-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+              >
+                {seeding ? (
+                  <><Icons.Loader className="w-5 h-5 animate-spin" /> Adding to deck…</>
+                ) : (
+                  <><Icons.Plus className="w-5 h-5" /> Add these phrases to my review deck</>
+                )}
+              </button>
+            )}
           </div>
         );
 

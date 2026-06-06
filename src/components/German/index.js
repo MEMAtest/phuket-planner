@@ -6,6 +6,10 @@ import { isGroqConfigured, getGroqSetupInstructions } from '../../utils/groqAI';
 import VoicePractice from './VoicePractice';
 import PlacementTest from './PlacementTest';
 import ThemeLesson from './ThemeLesson';
+import DailyHome from './DailyHome';
+import SpacedReview from './SpacedReview';
+import PhraseCapture from './PhraseCapture';
+import GermanDiary from './GermanDiary';
 
 const GermanLearning = () => {
   const {
@@ -22,7 +26,8 @@ const GermanLearning = () => {
     getCurrentLevel
   } = useGerman();
 
-  const [view, setView] = useState('dashboard'); // 'dashboard' | 'themes' | 'lesson' | 'practice' | 'placement'
+  // 'daily' is the home loop; 'dashboard' is the stats/progress hub
+  const [view, setView] = useState('daily'); // daily | dashboard | themes | lesson | practice | placement | review | capture | diary
   const [currentScenarioIndex, setCurrentScenarioIndex] = useState(0);
   const [placementComplete, setPlacementComplete] = useState(
     localStorage.getItem('german_placement_complete') === 'true'
@@ -122,10 +127,44 @@ const GermanLearning = () => {
     }
   };
 
+  // Daily Home (the living-curriculum loop)
+  if (view === 'daily') {
+    return (
+      <DailyHome
+        onReview={() => setView('review')}
+        onCapture={() => setView('capture')}
+        onDiary={() => setView('diary')}
+        onStartTheme={handleStartTheme}
+        onBrowse={() => setView('themes')}
+      />
+    );
+  }
+
+  if (view === 'review') {
+    return <SpacedReview onExit={() => setView('daily')} />;
+  }
+
+  if (view === 'capture') {
+    return <PhraseCapture onExit={() => setView('daily')} />;
+  }
+
+  if (view === 'diary') {
+    return <GermanDiary onExit={() => setView('daily')} />;
+  }
+
   // Dashboard View
   if (view === 'dashboard') {
     return (
       <div className="space-y-6">
+        {/* Top nav back to Today */}
+        <button
+          onClick={() => setView('daily')}
+          className="text-sky-600 dark:text-sky-400 hover:underline flex items-center gap-2"
+        >
+          <Icons.ArrowLeft className="w-4 h-4"/>
+          Back to Today
+        </button>
+
         {/* Groq Setup Warning */}
         {!groqConfigured && (
           <div className="bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-200 dark:border-amber-800 rounded-xl p-4">
@@ -267,11 +306,11 @@ const GermanLearning = () => {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <button
-            onClick={() => setView('dashboard')}
+            onClick={() => setView('daily')}
             className="text-sky-600 dark:text-sky-400 hover:underline flex items-center gap-2"
           >
             <Icons.ArrowLeft className="w-4 h-4"/>
-            Back to Dashboard
+            Back to Today
           </button>
           <button
             onClick={toggleUnlockAll}
