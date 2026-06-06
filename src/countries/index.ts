@@ -10,6 +10,7 @@ import FR from './FR/config';
 import ES from './ES/config';
 import PT from './PT/config';
 import DE from './DE/config';
+import GB from './GB/config';
 
 export * from './types';
 
@@ -21,7 +22,8 @@ export const COUNTRIES = {
   FR,
   ES,
   PT,
-  DE
+  DE,
+  GB
 } as const;
 
 export type CountryIso2 = keyof typeof COUNTRIES;

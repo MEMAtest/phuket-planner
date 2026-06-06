@@ -478,6 +478,14 @@ const DE_PLAN: TripPreset = {
   facts: []
 };
 
+const GB_PLAN: TripPreset = {
+  hotel: { name: 'London Hotel' },
+  forecast: [{ date: '2025-09-15', dow: 'Mon', hi: 18, lo: 12, summary: 'Partly cloudy' }],
+  initialPlan: [{ date: '2025-09-15', dow: 'Mon', location: 'london', focus: 'Arrival', blocks: [] }],
+  recommendations: {},
+  facts: []
+};
+
 const TRIP_PRESETS: Record<CountryIso2, TripPreset> = {
   TH: TH_PLAN,
   HK: HK_PLAN,
@@ -485,7 +493,8 @@ const TRIP_PRESETS: Record<CountryIso2, TripPreset> = {
   FR: FR_PLAN,
   ES: ES_PLAN,
   PT: PT_PLAN,
-  DE: DE_PLAN
+  DE: DE_PLAN,
+  GB: GB_PLAN
 };
 
 export const getTripPreset = (iso2: CountryIso2): TripPreset => {
