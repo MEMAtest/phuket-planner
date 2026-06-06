@@ -112,6 +112,8 @@ export type GermanState = {
   logErrors: (tags: string[]) => void;
   getWeakAreas: () => { tag: string; count: number }[];
   decrementErrorCount: (tag: string) => void;
+  incrementErrorCount: (tag: string) => void;
+  getErrorCount: (tag: string) => number;
 };
 
 const GermanContext = createContext<GermanState | undefined>(undefined);
@@ -352,6 +354,18 @@ export function GermanProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const incrementErrorCount = useCallback((tag: string) => {
+    setErrorLog(prev => {
+      const next = { ...prev };
+      next[tag] = (next[tag] || 0) + 1;
+      return next;
+    });
+  }, []);
+
+  const getErrorCount = useCallback((tag: string) => {
+    return errorLog[tag] || 0;
+  }, [errorLog]);
+
   // ---- Capture ----
   const addCapture = useCallback((capture: Omit<Capture, 'id' | 'timestamp'>) => {
     const newCapture: Capture = {
@@ -423,7 +437,9 @@ export function GermanProvider({ children }: { children: ReactNode }) {
     addDiaryEntry,
     logErrors,
     getWeakAreas,
-    decrementErrorCount
+    decrementErrorCount,
+    incrementErrorCount,
+    getErrorCount
   };
 
   return <GermanContext.Provider value={value}>{children}</GermanContext.Provider>;

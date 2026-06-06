@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Icons } from '../../data/staticData';
 import { generateGrammarDrill, isGroqConfigured, getGroqSetupInstructions } from '../../utils/groqAI';
 import { useGerman } from '../../state/GermanContext';
@@ -17,19 +17,43 @@ const ERROR_LABELS = {
   other: 'Mixed'
 };
 
+const STORAGE_KEY_PREFIX = 'german_drill_';
+
 const WeakSpotDrill = ({ errorType, onBack }) => {
-  const { decrementErrorCount } = useGerman();
+  const { decrementErrorCount, incrementErrorCount, getErrorCount } = useGerman();
   const [loading, setLoading] = useState(true);
+  const [retrying, setRetrying] = useState(false);
   const [error, setError] = useState(null);
   const [drill, setDrill] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userAnswer, setUserAnswer] = useState('');
   const [showFeedback, setShowFeedback] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
-  const [score, setScore] = useState({ correct: 0, total: 0 });
+  const [score, setScore] = useState({ correct: 0, total: 0, weighted: 0 });
   const [hasDecremented, setHasDecremented] = useState(false);
+  const setFlaggedQuestions = useState([])[1]; // Only setter needed for flag feature
+  const [showRuleReminder, setShowRuleReminder] = useState(false);
+  const [initialErrorCount, setInitialErrorCount] = useState(0);
+  const nextButtonRef = useRef(null);
 
+  // Load persisted state on mount
   useEffect(() => {
+    const storageKey = `${STORAGE_KEY_PREFIX}${errorType}`;
+    const saved = localStorage.getItem(storageKey);
+    if (saved) {
+      try {
+        const state = JSON.parse(saved);
+        setDrill(state.drill);
+        setCurrentIndex(state.currentIndex || 0);
+        setScore(state.score || { correct: 0, total: 0, weighted: 0 });
+        setHasDecremented(state.hasDecremented || false);
+        setLoading(false);
+        return;
+      } catch (e) {
+        console.warn('Failed to restore drill state:', e);
+      }
+    }
+
     // Validate errorType
     const validTypes = ['case', 'word-order', 'verb-conjugation', 'gender-article',
                         'preposition', 'spelling', 'vocabulary', 'tense', 'plural',
@@ -45,6 +69,9 @@ const WeakSpotDrill = ({ errorType, onBack }) => {
       setLoading(false);
       return;
     }
+
+    // Capture initial error count
+    setInitialErrorCount(getErrorCount(errorType));
 
     const fetchDrill = async () => {
       try {
@@ -69,7 +96,27 @@ const WeakSpotDrill = ({ errorType, onBack }) => {
     };
 
     fetchDrill();
-  }, [errorType]);
+  }, [errorType, getErrorCount]);
+
+  // Persist state on changes (Issue #2: Persistence)
+  useEffect(() => {
+    if (drill && !error) {
+      const storageKey = `${STORAGE_KEY_PREFIX}${errorType}`;
+      const state = {
+        drill,
+        currentIndex,
+        score,
+        hasDecremented
+      };
+      localStorage.setItem(storageKey, JSON.stringify(state));
+    }
+  }, [drill, currentIndex, score, hasDecremented, errorType, error]);
+
+  // Clear persisted state on completion
+  const clearPersistedState = () => {
+    const storageKey = `${STORAGE_KEY_PREFIX}${errorType}`;
+    localStorage.removeItem(storageKey);
+  };
 
   const normalizeAnswer = (text) => {
     return text
@@ -89,44 +136,130 @@ const WeakSpotDrill = ({ errorType, onBack }) => {
     const match = normalized === correct;
     setIsCorrect(match);
     setShowFeedback(true);
+
+    // Issue #9: Weight by difficulty - later questions worth more
+    const difficultyWeight = 1 + (currentIndex * 0.2); // 1.0, 1.2, 1.4, 1.6, 1.8
+    const weightedPoints = match ? difficultyWeight : 0;
+
     setScore(prev => ({
       correct: prev.correct + (match ? 1 : 0),
-      total: prev.total + 1
+      total: prev.total + 1,
+      weighted: prev.weighted + weightedPoints
     }));
   };
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     setUserAnswer('');
     setShowFeedback(false);
     setIsCorrect(false);
+    setShowRuleReminder(false);
 
     if (currentIndex < drill.exercises.length - 1) {
       setCurrentIndex(prev => prev + 1);
     }
     // Note: Completion logic moved to useEffect to avoid race condition
-  };
+  }, [currentIndex, drill]);
+
+  // Issue #4: Keyboard shortcut for Next button
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (showFeedback && (e.key === 'Enter' || e.key === ' ')) {
+        e.preventDefault();
+        handleNext();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showFeedback, handleNext]);
+
+  // Focus Next button when feedback appears for accessibility
+  useEffect(() => {
+    if (showFeedback && nextButtonRef.current) {
+      nextButtonRef.current.focus();
+    }
+  }, [showFeedback]);
 
   const handleRestart = () => {
     setCurrentIndex(0);
     setUserAnswer('');
     setShowFeedback(false);
     setIsCorrect(false);
-    setScore({ correct: 0, total: 0 });
+    setScore({ correct: 0, total: 0, weighted: 0 });
     // Note: hasDecremented stays true - don't decrement again on restart
   };
 
-  // Check completion and apply decrement (avoids race condition)
+  // Issue #8: Skip drill option
+  const handleSkip = () => {
+    if (window.confirm(`Mark ${ERROR_LABELS[errorType]} as reviewed and reduce error count without completing drill?`)) {
+      decrementErrorCount(errorType);
+      clearPersistedState();
+      onBack();
+    }
+  };
+
+  // Issue #6: Flag bad questions
+  const handleFlagQuestion = () => {
+    const exercise = drill.exercises[currentIndex];
+    const flagged = {
+      errorType,
+      exerciseId: currentIndex,
+      question: exercise.question,
+      correctAnswer: exercise.correctAnswer,
+      timestamp: new Date().toISOString()
+    };
+    setFlaggedQuestions(prev => [...prev, flagged]);
+
+    // Store flagged questions for later review
+    const existing = JSON.parse(localStorage.getItem('german_flagged_questions') || '[]');
+    existing.push(flagged);
+    localStorage.setItem('german_flagged_questions', JSON.stringify(existing));
+
+    alert('Question flagged for review. Thank you for the feedback!');
+  };
+
+  // Check completion and apply increment/decrement (avoids race condition)
   useEffect(() => {
     if (drill && currentIndex >= drill.exercises.length && score.total > 0 && !hasDecremented) {
-      const percentage = (score.correct / score.total) * 100;
-      if (percentage >= 60) {
-        decrementErrorCount(errorType);
-        setHasDecremented(true);
-      }
-    }
-  }, [currentIndex, drill, score, hasDecremented, decrementErrorCount, errorType]);
+      const maxWeightedScore = drill.exercises.reduce((sum, _, i) => sum + (1 + i * 0.2), 0);
+      const weightedPercentage = (score.weighted / maxWeightedScore) * 100;
 
-  if (loading) {
+      // Issue #10: Increment on failure
+      if (weightedPercentage < 60) {
+        incrementErrorCount(errorType);
+      } else {
+        decrementErrorCount(errorType);
+      }
+      setHasDecremented(true);
+    }
+  }, [currentIndex, drill, score, hasDecremented, decrementErrorCount, incrementErrorCount, errorType]);
+
+  // Issue #7: Retry with loading state
+  const handleRetry = async () => {
+    setRetrying(true);
+    setError(null);
+    try {
+      const result = await generateGrammarDrill({
+        errorType,
+        level: 'A2',
+        count: 5
+      });
+      if (!result.exercises || result.exercises.length === 0) {
+        setError('no-exercises');
+      } else {
+        setDrill(result);
+        setCurrentIndex(0);
+        setScore({ correct: 0, total: 0, weighted: 0 });
+        setHasDecremented(false);
+      }
+    } catch (err) {
+      console.error('Error generating drill:', err);
+      setError('fetch-failed');
+    } finally {
+      setRetrying(false);
+    }
+  };
+
+  if (loading && !retrying) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-4">
         <div className="max-w-2xl mx-auto pt-8">
@@ -167,13 +300,6 @@ const WeakSpotDrill = ({ errorType, onBack }) => {
       </div>
     );
   }
-
-  const handleRetry = () => {
-    setLoading(true);
-    setError(null);
-    // Re-trigger the useEffect by creating a new component mount
-    window.location.reload();
-  };
 
   if (error === 'invalid-error-type') {
     return (
@@ -224,10 +350,11 @@ const WeakSpotDrill = ({ errorType, onBack }) => {
             <div className="flex gap-3 justify-center">
               <button
                 onClick={handleRetry}
-                disabled={loading}
-                className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50"
+                disabled={retrying}
+                className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 flex items-center gap-2"
               >
-                {loading ? 'Retrying...' : 'Retry'}
+                {retrying && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}
+                {retrying ? 'Retrying...' : 'Retry'}
               </button>
               <button
                 onClick={onBack}
@@ -246,14 +373,29 @@ const WeakSpotDrill = ({ errorType, onBack }) => {
 
   const isComplete = currentIndex >= drill.exercises.length;
   const exercise = !isComplete ? drill.exercises[currentIndex] : null;
-  const percentage = score.total > 0 ? Math.round((score.correct / score.total) * 100) : 0;
+
+  // Issue #1: Progress bar shows completed, not current
+  const completedCount = score.total;
+  const progressPercentage = isComplete ? 100 : (completedCount / drill.exercises.length) * 100;
+
+  // Calculate final percentage with weighted score
+  const maxWeightedScore = drill.exercises.reduce((sum, _, i) => sum + (1 + i * 0.2), 0);
+  const weightedPercentage = score.total > 0 ? Math.round((score.weighted / maxWeightedScore) * 100) : 0;
+  const simplePercentage = score.total > 0 ? Math.round((score.correct / score.total) * 100) : 0;
+
+  // Issue #3: Show error count delta
+  const currentErrorCount = getErrorCount(errorType);
+  const delta = currentErrorCount - initialErrorCount;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-4">
       <div className="max-w-2xl mx-auto pt-8 pb-12">
         {/* Header */}
         <button
-          onClick={onBack}
+          onClick={() => {
+            clearPersistedState();
+            onBack();
+          }}
           className="flex items-center gap-2 text-sky-600 dark:text-sky-400 hover:underline mb-4"
         >
           <Icons.ArrowLeft className="w-4 h-4" />
@@ -268,14 +410,24 @@ const WeakSpotDrill = ({ errorType, onBack }) => {
                 <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">
                   {drill.title}
                 </h2>
-                <span className="text-sm text-slate-500 dark:text-slate-400">
-                  {currentIndex + 1} / {drill.exercises.length}
-                </span>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-slate-500 dark:text-slate-400">
+                    {completedCount} / {drill.exercises.length} completed
+                  </span>
+                  {/* Issue #8: Skip option */}
+                  <button
+                    onClick={handleSkip}
+                    className="text-xs text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 underline"
+                    title="Already know this? Skip and mark as reviewed"
+                  >
+                    Skip
+                  </button>
+                </div>
               </div>
               <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-300"
-                  style={{ width: `${((currentIndex + 1) / drill.exercises.length) * 100}%` }}
+                  style={{ width: `${progressPercentage}%` }}
                 />
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-3">
@@ -285,11 +437,21 @@ const WeakSpotDrill = ({ errorType, onBack }) => {
 
             {/* Exercise */}
             <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-lg">
-              <div className="mb-4">
-                <span className="inline-block px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-sm font-medium rounded-full mb-2">
-                  {exercise.scenario}
-                </span>
-                <p className="text-slate-600 dark:text-slate-400 text-sm">{exercise.prompt}</p>
+              <div className="mb-4 flex items-start justify-between">
+                <div className="flex-1">
+                  <span className="inline-block px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-sm font-medium rounded-full mb-2">
+                    {exercise.scenario}
+                  </span>
+                  <p className="text-slate-600 dark:text-slate-400 text-sm">{exercise.prompt}</p>
+                </div>
+                {/* Issue #6: Flag question button */}
+                <button
+                  onClick={handleFlagQuestion}
+                  className="ml-2 p-2 text-slate-400 hover:text-red-500 transition-colors"
+                  title="Flag this question as incorrect or confusing"
+                >
+                  <Icons.Flag className="w-4 h-4" />
+                </button>
               </div>
 
               <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-4 mb-4">
@@ -358,18 +520,32 @@ const WeakSpotDrill = ({ errorType, onBack }) => {
                     </div>
 
                     {!isCorrect && exercise.commonMistake && (
-                      <div>
+                      <div className="mb-2">
                         <p className="text-sm text-slate-600 dark:text-slate-400">Common mistake:</p>
                         <p className="text-sm text-slate-700 dark:text-slate-300">{exercise.commonMistake}</p>
+                      </div>
+                    )}
+
+                    {/* Issue #5: Rule reminder */}
+                    <button
+                      onClick={() => setShowRuleReminder(!showRuleReminder)}
+                      className="text-sm text-sky-600 dark:text-sky-400 hover:underline mt-2"
+                    >
+                      {showRuleReminder ? '▼' : '▶'} Review the rule
+                    </button>
+                    {showRuleReminder && (
+                      <div className="mt-2 p-3 bg-sky-50 dark:bg-sky-900/20 rounded border-l-4 border-sky-500">
+                        <p className="text-sm text-sky-900 dark:text-sky-200">{drill.explanation}</p>
                       </div>
                     )}
                   </div>
 
                   <button
+                    ref={nextButtonRef}
                     onClick={handleNext}
                     className="w-full py-3 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition-all"
                   >
-                    {currentIndex < drill.exercises.length - 1 ? 'Next Exercise' : 'Finish Drill'}
+                    {currentIndex < drill.exercises.length - 1 ? 'Next Exercise (Enter ↵)' : 'Finish Drill (Enter ↵)'}
                   </button>
                 </>
               )}
@@ -379,28 +555,41 @@ const WeakSpotDrill = ({ errorType, onBack }) => {
           /* Completion Screen */
           <div className="bg-white dark:bg-slate-800 rounded-xl p-8 shadow-lg text-center">
             <div className="text-6xl mb-4">
-              {percentage >= 80 ? '🎉' : percentage >= 60 ? '👍' : '💪'}
+              {weightedPercentage >= 80 ? '🎉' : weightedPercentage >= 60 ? '👍' : '💪'}
             </div>
             <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-2">
-              {percentage >= 80 ? 'Excellent work!' : percentage >= 60 ? 'Good effort!' : 'Keep practicing!'}
+              {weightedPercentage >= 80 ? 'Excellent work!' : weightedPercentage >= 60 ? 'Good effort!' : 'Keep practicing!'}
             </h2>
-            <p className="text-slate-600 dark:text-slate-400 mb-6">
-              You got {score.correct} out of {score.total} correct ({percentage}%)
+            <p className="text-slate-600 dark:text-slate-400 mb-2">
+              You got {score.correct} out of {score.total} correct ({simplePercentage}%)
+            </p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+              Weighted score: {weightedPercentage}% (harder questions count more)
             </p>
 
-            {percentage >= 60 && (
+            {weightedPercentage >= 60 && delta !== 0 && (
               <div className="bg-green-50 dark:bg-green-900/20 border-2 border-green-500 rounded-lg p-4 mb-6">
-                <p className="text-green-800 dark:text-green-200 font-medium">
-                  Great progress! Your {ERROR_LABELS[errorType]} error count has been reduced.
+                <p className="text-green-800 dark:text-green-200 font-medium mb-2">
+                  Great progress! Your {ERROR_LABELS[errorType]} errors have been reduced.
+                </p>
+                {/* Issue #3: Show delta */}
+                <p className="text-sm text-green-700 dark:text-green-300">
+                  {ERROR_LABELS[errorType]}: {initialErrorCount} → {currentErrorCount} ({delta > 0 ? '+' : ''}{delta})
                 </p>
               </div>
             )}
 
-            {percentage < 60 && (
+            {weightedPercentage < 60 && (
               <div className="bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-500 rounded-lg p-4 mb-6">
-                <p className="text-amber-800 dark:text-amber-200">
-                  Keep practicing {ERROR_LABELS[errorType]} — consistency is key!
+                <p className="text-amber-800 dark:text-amber-200 mb-2">
+                  Keep practicing {ERROR_LABELS[errorType]} — this area needs more work!
                 </p>
+                {/* Issue #10: Show increment */}
+                {delta !== 0 && (
+                  <p className="text-sm text-amber-700 dark:text-amber-300">
+                    {ERROR_LABELS[errorType]}: {initialErrorCount} → {currentErrorCount} ({delta > 0 ? '+' : ''}{delta})
+                  </p>
+                )}
               </div>
             )}
 
@@ -412,7 +601,10 @@ const WeakSpotDrill = ({ errorType, onBack }) => {
                 Practice Again
               </button>
               <button
-                onClick={onBack}
+                onClick={() => {
+                  clearPersistedState();
+                  onBack();
+                }}
                 className="flex-1 py-3 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition-all"
               >
                 Back to Daily Home
