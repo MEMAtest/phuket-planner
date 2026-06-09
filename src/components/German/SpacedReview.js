@@ -37,7 +37,7 @@ const SpacedReview = ({ onExit }) => {
     if (!card) return;
     reviewFlashcardById(card.id, quality);
     setReviewedCount(c => c + 1);
-    if (index === 0) updateStreak();
+    updateStreak(); // idempotent per day — safe to call on every rating
 
     if (index < queue.length - 1) {
       setIndex(index + 1);

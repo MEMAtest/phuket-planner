@@ -74,3 +74,6 @@ firestore.indexes.json
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Claude Code local config
+.claude/

@@ -256,7 +256,8 @@ const WeakSpotDrill = ({ errorType, onBack }) => {
     setShowRuleReminder(false);
     setLiveRegionMessage('');
 
-    if (currentIndex < drill.exercises.length - 1) {
+    // Advance to the next exercise, or one past the last to trigger completion.
+    if (currentIndex < drill.exercises.length) {
       setCurrentIndex(prev => prev + 1);
     }
   }, [currentIndex, drill]);

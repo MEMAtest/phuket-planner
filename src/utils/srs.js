@@ -26,18 +26,37 @@ export const REVIEW_QUALITY = {
   EASY: 5   // Instant recall
 };
 
+// Format a Date as a YYYY-MM-DD string using LOCAL calendar components.
+// Using local (not UTC) keeps "today" aligned with the user's perceived day,
+// so cards aren't scheduled a day early/late for users far from UTC.
+function toLocalISODate(d) {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function startOfTodayISO() {
-  return new Date().toISOString().split('T')[0];
+  return toLocalISODate(new Date());
 }
 
 function addDays(isoDate, days) {
-  const d = new Date(isoDate);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().split('T')[0];
+  // Parse the date parts explicitly to avoid UTC interpretation of "YYYY-MM-DD".
+  const [y, m, d] = isoDate.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  date.setDate(date.getDate() + days);
+  return toLocalISODate(date);
 }
 
 /**
  * Create a fresh SRS card. Front/back plus optional metadata.
+ * @param {object} options
+ * @param {string} [options.german]
+ * @param {string} [options.english]
+ * @param {string} [options.source]
+ * @param {string} [options.note]
+ * @param {string|null} [options.themeId]
+ * @param {string} [options.example]
  */
 export function createCard({ german, english, source = 'manual', note = '', themeId = null, example = '' }) {
   const today = startOfTodayISO();
