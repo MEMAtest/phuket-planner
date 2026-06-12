@@ -2,15 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Icons } from '../../data/staticData';
 import { useGerman } from '../../state/GermanContext';
 import { getDueCards, REVIEW_QUALITY } from '../../utils/srs';
-
-const speak = (text) => {
-  if ('speechSynthesis' in window && text) {
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'de-DE';
-    u.rate = 0.9;
-    window.speechSynthesis.speak(u);
-  }
-};
+import { speakGerman as speak } from '../../utils/helpers';
 
 const RATINGS = [
   { label: 'Again', quality: REVIEW_QUALITY.AGAIN, color: 'bg-red-600 hover:bg-red-700', hint: 'Forgot' },

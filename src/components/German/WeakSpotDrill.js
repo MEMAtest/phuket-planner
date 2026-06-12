@@ -3,6 +3,7 @@ import { Icons } from '../../data/staticData';
 import { generateGrammarDrill, isGroqConfigured, getGroqSetupInstructions } from '../../utils/groqAI';
 import { useGerman } from '../../state/GermanContext';
 import { normalizeGermanAnswer } from '../../utils/helpers';
+import { cefrForAI } from '../../data/germanThemes';
 
 const ERROR_LABELS = {
   case: 'Cases (der/den/dem)',
@@ -50,10 +51,17 @@ const WeakSpotDrill = ({ errorType, onBack }) => {
   const isMounted = useRef(true);
   const isMobile = useRef(isMobileDevice());
 
-  // Drill at the learner's real level. 'B1+' isn't a CEFR band the model
-  // knows, so cap the prompt level at B1.
-  const rawLevel = getCurrentLevel();
-  const drillLevel = rawLevel === 'B1+' ? 'B1' : rawLevel;
+  // Drill at the learner's real level, mapped to a CEFR band the model knows.
+  const drillLevel = cefrForAI(getCurrentLevel());
+
+  // Spelling and capitalization drills test exactly the distinctions the
+  // default normalizer folds away, so keep matching strict for those types:
+  // a spelling drill must not fold ä/ß, a capitalization drill must not
+  // lowercase. All other types keep the forgiving defaults.
+  const matchOpts =
+    errorType === 'spelling' ? { foldUmlauts: false }
+    : errorType === 'capitalization' ? { lowercase: false }
+    : undefined;
 
   // Cleanup old drills on mount
   useEffect(() => {
@@ -229,8 +237,8 @@ const WeakSpotDrill = ({ errorType, onBack }) => {
     // Accept the primary answer plus any AI-supplied valid variants.
     // (Older persisted drills have no acceptableAnswers — guard with [].)
     const candidates = [exercise.correctAnswer, ...(exercise.acceptableAnswers || [])];
-    const normalized = normalizeGermanAnswer(userAnswer);
-    const match = candidates.some(c => normalizeGermanAnswer(c) === normalized);
+    const normalized = normalizeGermanAnswer(userAnswer, matchOpts);
+    const match = candidates.some(c => normalizeGermanAnswer(c, matchOpts) === normalized);
     setIsCorrect(match);
     setShowFeedback(true);
 

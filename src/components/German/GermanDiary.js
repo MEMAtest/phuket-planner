@@ -2,15 +2,8 @@ import React, { useState, useRef } from 'react';
 import { Icons } from '../../data/staticData';
 import { useGerman } from '../../state/GermanContext';
 import { correctGermanText, isGroqConfigured } from '../../utils/groqAI';
-
-const speak = (text) => {
-  if ('speechSynthesis' in window && text) {
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'de-DE';
-    u.rate = 0.9;
-    window.speechSynthesis.speak(u);
-  }
-};
+import { speakGerman as speak } from '../../utils/helpers';
+import { cefrForAI } from '../../data/germanThemes';
 
 // Rotating prompts grounded in the learner's real family life
 const PROMPTS = [
@@ -50,7 +43,7 @@ const GermanDiary = ({ onExit }) => {
   const [listening, setListening] = useState(false);
 
   const recognitionRef = useRef(null);
-  const level = getCurrentLevel();
+  const level = cefrForAI(getCurrentLevel());
 
   const startVoice = () => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;

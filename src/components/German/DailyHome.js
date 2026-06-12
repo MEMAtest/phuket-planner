@@ -1,7 +1,7 @@
 import React from 'react';
 import { Icons } from '../../data/staticData';
 import { useGerman } from '../../state/GermanContext';
-import { deckStats } from '../../utils/srs';
+import { deckStats, isListenable } from '../../utils/srs';
 
 const ERROR_LABELS = {
   case: 'Cases (der/den/dem)',
@@ -41,7 +41,8 @@ const DailyHome = ({ onReview, onCapture, onDiary, onStartTheme, onBrowse, onDri
   const nextTheme = getNextTheme();
   const weakAreas = getWeakAreas().slice(0, 3);
   const g = greeting();
-  const listenable = flashcards.filter(c => c.german && c.english && c.repetitions >= 1).length;
+  const listenable = flashcards.filter(isListenable).length;
+  const audioSupported = typeof window !== 'undefined' && 'speechSynthesis' in window;
 
   const today = new Date().toISOString().split('T')[0];
   const journaledToday = diaryEntries.some(e => e.date === today);
@@ -145,7 +146,9 @@ const DailyHome = ({ onReview, onCapture, onDiary, onStartTheme, onBrowse, onDri
                 Listening practice
               </div>
               <div className="text-sm text-slate-500 dark:text-slate-400">
-                {listenable > 0
+                {!audioSupported
+                  ? 'Needs a browser with audio support'
+                  : listenable > 0
                   ? `Train your ear with ${listenable} learned card${listenable === 1 ? '' : 's'}`
                   : 'Unlocks after your first reviews'}
               </div>

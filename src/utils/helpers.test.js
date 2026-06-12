@@ -42,3 +42,28 @@ describe('normalizeGermanAnswer', () => {
     expect(normalizeGermanAnswer('Aerobic')).toBe('aerobic');
   });
 });
+
+describe('normalizeGermanAnswer options', () => {
+  test('foldUmlauts:false keeps umlaut/ß spellings distinct (for spelling drills)', () => {
+    // The whole point of a spelling drill: "Strasse" must NOT pass as "Straße".
+    expect(normalizeGermanAnswer('Straße', { foldUmlauts: false }))
+      .not.toBe(normalizeGermanAnswer('Strasse', { foldUmlauts: false }));
+    expect(normalizeGermanAnswer('schön', { foldUmlauts: false }))
+      .not.toBe(normalizeGermanAnswer('schoen', { foldUmlauts: false }));
+    // ...but the correct spelling still matches itself (case/punctuation forgiven)
+    expect(normalizeGermanAnswer('Straße', { foldUmlauts: false }))
+      .toBe(normalizeGermanAnswer('straße.', { foldUmlauts: false }));
+  });
+
+  test('lowercase:false keeps capitalization distinct (for capitalization drills)', () => {
+    expect(normalizeGermanAnswer('der Hund', { lowercase: false }))
+      .not.toBe(normalizeGermanAnswer('der hund', { lowercase: false }));
+    expect(normalizeGermanAnswer('Das Mädchen', { lowercase: false }))
+      .toBe(normalizeGermanAnswer('Das Mädchen', { lowercase: false }));
+  });
+
+  test('defaults remain fully forgiving (both folds on)', () => {
+    expect(normalizeGermanAnswer('Straße')).toBe('strasse');
+    expect(normalizeGermanAnswer('der Hund')).toBe('der hund');
+  });
+});

@@ -21,6 +21,13 @@ const VALID_ERROR_TAGS = [
 const asArray = (v) => (Array.isArray(v) ? v : []);
 const asString = (v, fallback = '') => (typeof v === 'string' ? v : fallback);
 
+// Coerce a model-supplied score to a 0-10 number. Unlike `x || 5`, a real 0
+// is preserved; only a non-numeric/absent value falls back to the neutral 5.
+const clampScore = (v) => {
+  const n = Number(v);
+  return isFinite(n) ? Math.max(0, Math.min(10, n)) : 5;
+};
+
 /**
  * Pull the first complete JSON object or array out of an AI response,
  * tolerating any prose the model adds around it.
@@ -168,12 +175,14 @@ Be specific in corrections. If everything is perfect, say so! If there are issue
 
       const feedback = JSON.parse(jsonMatch[0]);
 
-      // Validate and ensure all fields exist
+      // Validate and ensure all fields exist. Use clampScore (not `|| 5`) so a
+      // legitimate score of 0 — newly possible now that intelligibility can be
+      // genuinely zero for a garbled transcript — survives instead of reading 5.
       return {
-        grammarScore: feedback.grammarScore || 5,
-        pronunciationScore: feedback.pronunciationScore || 5,
-        fluencyScore: feedback.fluencyScore || 5,
-        overallScore: feedback.overallScore || 5,
+        grammarScore: clampScore(feedback.grammarScore),
+        pronunciationScore: clampScore(feedback.pronunciationScore),
+        fluencyScore: clampScore(feedback.fluencyScore),
+        overallScore: clampScore(feedback.overallScore),
         corrections: feedback.corrections || [],
         betterAlternatives: feedback.betterAlternatives || [],
         suggestions: feedback.suggestions || []
@@ -288,15 +297,27 @@ Do NOT include the correctAnswer itself in acceptableAnswers, and never include 
   const parsed = extractJson(raw);
 
   const exercises = asArray(parsed.exercises)
-    .map((e) => ({
-      scenario: asString(e.scenario, 'Practice'),
-      prompt: asString(e.prompt, 'Complete the sentence'),
-      question: asString(e.question),
-      correctAnswer: asString(e.correctAnswer),
-      acceptableAnswers: asArray(e.acceptableAnswers).map((a) => asString(a)).filter(Boolean),
-      explanation: asString(e.explanation),
-      commonMistake: asString(e.commonMistake)
-    }))
+    .map((e) => {
+      const correctAnswer = asString(e.correctAnswer);
+      const commonMistake = asString(e.commonMistake);
+      // Models sometimes ignore "don't include wrong answers" and slip the
+      // common mistake (or a dupe of the correct answer) into acceptableAnswers,
+      // which would mark a wrong answer correct. Drop those defensively.
+      const reject = new Set([correctAnswer, commonMistake].map((s) => s.trim().toLowerCase()).filter(Boolean));
+      const acceptableAnswers = asArray(e.acceptableAnswers)
+        .map((a) => asString(a))
+        .filter(Boolean)
+        .filter((a) => !reject.has(a.trim().toLowerCase()));
+      return {
+        scenario: asString(e.scenario, 'Practice'),
+        prompt: asString(e.prompt, 'Complete the sentence'),
+        question: asString(e.question),
+        correctAnswer,
+        acceptableAnswers,
+        explanation: asString(e.explanation),
+        commonMistake
+      };
+    })
     .filter((e) => e.question && e.correctAnswer);
 
   return {

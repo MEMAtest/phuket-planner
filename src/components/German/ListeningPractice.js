@@ -1,19 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { Icons } from '../../data/staticData';
 import { useGerman } from '../../state/GermanContext';
-import { normalizeGermanAnswer } from '../../utils/helpers';
+import { isListenable } from '../../utils/srs';
+import { speakGerman as speak, normalizeGermanAnswer } from '../../utils/helpers';
 
 const hasTTS = () => 'speechSynthesis' in window;
-
-const speak = (text, rate = 0.9) => {
-  if (!hasTTS() || !text) return;
-  // Cancel any in-flight utterance so replays don't queue and overlap.
-  window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = 'de-DE';
-  u.rate = rate;
-  window.speechSynthesis.speak(u);
-};
 
 // Fisher–Yates shuffle (non-mutating).
 const shuffle = (arr) => {
@@ -32,14 +23,19 @@ const SESSION_SIZE = 10;
  * hidden), type what you heard or reveal and self-rate. Deliberately does
  * NOT touch SRS scheduling — the deck's intervals are calibrated for the
  * EN->DE production direction; this trains the ear as a separate skill.
+ *
+ * Scoring goes through one path (markRated): a typed answer that exactly
+ * matches counts immediately (a dictation bonus), but anything else does NOT
+ * auto-fail — the learner self-rates whether they understood it, so a single
+ * mis-typed word in a long sentence can't under-report comprehension.
  */
 const ListeningPractice = ({ onExit }) => {
   const { flashcards, updateStreak } = useGerman();
 
-  // Cards the learner has successfully reviewed at least once and that have
-  // a meaning to confirm against. Frozen for the session.
+  // Cards the learner has already learned (shared predicate with DailyHome's
+  // tile count, so the two can't drift). Frozen for the session.
   const queueIds = useMemo(() => {
-    const eligible = flashcards.filter(c => c.german && c.english && c.repetitions >= 1);
+    const eligible = flashcards.filter(isListenable);
     return shuffle(eligible).slice(0, SESSION_SIZE).map(c => c.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -47,32 +43,33 @@ const ListeningPractice = ({ onExit }) => {
   const [index, setIndex] = useState(0);
   const [typed, setTyped] = useState('');
   const [phase, setPhase] = useState('listen'); // 'listen' | 'reveal'
-  const [wasCorrect, setWasCorrect] = useState(null); // null = reveal-only, awaiting self-rate
+  const [exactMatch, setExactMatch] = useState(null); // null until checked; true/false after a typed check
+  const [rated, setRated] = useState(false); // has this card's comprehension been recorded?
   const [gotIt, setGotIt] = useState(0);
-  const [rated, setRated] = useState(false);
 
   const card = flashcards.find(c => c.id === queueIds[index]);
   const done = index >= queueIds.length;
 
-  const handleCheck = () => {
-    if (phase !== 'listen' || !typed.trim()) return;
-    const correct = normalizeGermanAnswer(typed) === normalizeGermanAnswer(card.german);
-    setWasCorrect(correct);
-    setRated(true);
-    if (correct) setGotIt(c => c + 1);
-    setPhase('reveal');
-  };
-
-  const handleRevealOnly = () => {
-    setWasCorrect(null);
-    setRated(false);
-    setPhase('reveal');
-  };
-
-  const handleSelfRate = (understood) => {
+  // Single source of truth for scoring — both the exact-dictation fast path
+  // and the self-rate buttons funnel through here, and the `rated` guard makes
+  // it idempotent per card (no double-count).
+  const markRated = (understood) => {
     if (rated) return;
     setRated(true);
     if (understood) setGotIt(c => c + 1);
+  };
+
+  const handleCheck = () => {
+    if (phase !== 'listen' || !typed.trim()) return;
+    const exact = normalizeGermanAnswer(typed) === normalizeGermanAnswer(card.german);
+    setExactMatch(exact);
+    setPhase('reveal');
+    if (exact) markRated(true); // perfect dictation counts automatically
+  };
+
+  const handleRevealOnly = () => {
+    setExactMatch(null);
+    setPhase('reveal');
   };
 
   const handleNext = () => {
@@ -82,11 +79,11 @@ const ListeningPractice = ({ onExit }) => {
     setIndex(i => i + 1);
     setTyped('');
     setPhase('listen');
-    setWasCorrect(null);
+    setExactMatch(null);
     setRated(false);
   };
 
-  // Browser without speech synthesis (also covers jsdom in tests after the
+  // Browser without speech synthesis (also covers jsdom in tests, after the
   // empty-deck branch below).
   if (queueIds.length > 0 && !hasTTS()) {
     return (
@@ -133,7 +130,7 @@ const ListeningPractice = ({ onExit }) => {
 
   // Session complete
   if (done) {
-    const pct = queueIds.length > 0 ? gotIt / queueIds.length : 0;
+    const pct = gotIt / queueIds.length;
     return (
       <div className="bg-white dark:bg-slate-800 rounded-xl p-8 shadow-lg text-center">
         <div className="text-5xl mb-4">{pct >= 0.8 ? '🎉' : pct >= 0.5 ? '👂' : '💪'}</div>
@@ -167,7 +164,11 @@ const ListeningPractice = ({ onExit }) => {
     );
   }
 
-  const progress = (index / queueIds.length) * 100;
+  // Progress reflects cards completed: a card counts once it's in the reveal
+  // phase, so the bar reaches 100% on the last card's reveal (and the counter
+  // "{index+1} / N" tracks the current card).
+  const completed = index + (phase === 'reveal' ? 1 : 0);
+  const progress = (completed / queueIds.length) * 100;
 
   return (
     <div className="space-y-4">
@@ -229,7 +230,7 @@ const ListeningPractice = ({ onExit }) => {
                 value={typed}
                 onChange={(e) => setTyped(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleCheck()}
-                placeholder="Type what you heard…"
+                placeholder="Type what you heard… (optional)"
                 className="w-full px-4 py-3 border-2 border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:border-teal-500 focus:outline-none"
                 aria-label="Type what you heard"
               />
@@ -244,22 +245,20 @@ const ListeningPractice = ({ onExit }) => {
                 onClick={handleRevealOnly}
                 className="w-full text-sm text-sky-600 dark:text-sky-400 hover:underline"
               >
-                Just reveal — I'll rate myself
+                Reveal — I'll rate myself
               </button>
             </div>
           </>
         ) : (
           <>
-            {wasCorrect !== null && (
-              <div
-                className={`w-full max-w-sm mb-4 p-3 rounded-lg border-2 text-sm ${
-                  wasCorrect
-                    ? 'bg-green-50 dark:bg-green-900/20 border-green-500 text-green-800 dark:text-green-200'
-                    : 'bg-red-50 dark:bg-red-900/20 border-red-500 text-red-800 dark:text-red-200'
-                }`}
-                role="status"
-              >
-                {wasCorrect ? '✅ You heard it right!' : <>❌ You typed: <em>{typed}</em></>}
+            {exactMatch === true && (
+              <div className="w-full max-w-sm mb-4 p-3 rounded-lg border-2 bg-green-50 dark:bg-green-900/20 border-green-500 text-green-800 dark:text-green-200 text-sm" role="status">
+                ✅ Exact — you heard it perfectly!
+              </div>
+            )}
+            {exactMatch === false && (
+              <div className="w-full max-w-sm mb-4 p-3 rounded-lg border-2 bg-slate-50 dark:bg-slate-700/40 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 text-sm" role="status">
+                You typed: <em>{typed}</em>
               </div>
             )}
 
@@ -277,24 +276,27 @@ const ListeningPractice = ({ onExit }) => {
             </div>
             <p className="text-slate-600 dark:text-slate-400 mb-6">{card.english}</p>
 
-            {wasCorrect === null && !rated && (
-              <div className="flex gap-3 mb-4">
-                <button
-                  onClick={() => handleSelfRate(true)}
-                  className="px-5 py-2.5 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors"
-                >
-                  Got it
-                </button>
-                <button
-                  onClick={() => handleSelfRate(false)}
-                  className="px-5 py-2.5 bg-amber-600 text-white rounded-lg font-semibold hover:bg-amber-700 transition-colors"
-                >
-                  Missed it
-                </button>
-              </div>
-            )}
-
-            {(wasCorrect !== null || rated) && (
+            {!rated ? (
+              <>
+                <div className="flex gap-3 mb-2">
+                  <button
+                    onClick={() => markRated(true)}
+                    className="px-5 py-2.5 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors"
+                  >
+                    Got it
+                  </button>
+                  <button
+                    onClick={() => markRated(false)}
+                    className="px-5 py-2.5 bg-amber-600 text-white rounded-lg font-semibold hover:bg-amber-700 transition-colors"
+                  >
+                    Missed it
+                  </button>
+                </div>
+                <p className="text-xs text-slate-400 dark:text-slate-500">
+                  Heard it right? Mark “Got it” — typing it exactly is just a bonus.
+                </p>
+              </>
+            ) : (
               <button
                 onClick={handleNext}
                 className="px-8 py-3 bg-sky-600 text-white rounded-lg font-semibold hover:bg-sky-700 transition-colors"

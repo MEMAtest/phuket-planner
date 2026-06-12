@@ -2,23 +2,53 @@ import { Icons } from '../data/staticData';
 
 /**
  * Normalize a German answer for forgiving comparison:
- * trims, collapses whitespace, strips trailing punctuation, lowercases,
- * and folds umlauts/eszett so "schoen" matches "schön".
+ * trims, collapses whitespace, strips trailing punctuation, and (by default)
+ * lowercases and folds umlauts/eszett so "schoen" matches "schön".
  * Fold direction is umlaut -> digraph only (the reverse would corrupt
  * genuine "ae"/"oe" words). Apply to BOTH sides of a comparison.
+ *
+ * The two folds are opt-OUT so drills that test exactly those distinctions
+ * can stay strict: a spelling drill must NOT fold umlauts/ß (else "Strasse"
+ * wrongly matches "Straße"), and a capitalization drill must NOT lowercase
+ * (else "der hund" wrongly matches "der Hund").
+ *
  * @param {string} text
+ * @param {{ foldUmlauts?: boolean, lowercase?: boolean }} [opts]
  * @returns {string}
  */
-export const normalizeGermanAnswer = (text) =>
-  (text || '')
+export const normalizeGermanAnswer = (text, opts = {}) => {
+  const { foldUmlauts = true, lowercase = true } = opts;
+  let s = (text || '')
     .trim()
     .replace(/\s+/g, ' ')
-    .replace(/[.,!?;]+$/g, '')
-    .toLowerCase()
-    .replace(/ä/g, 'ae')
-    .replace(/ö/g, 'oe')
-    .replace(/ü/g, 'ue')
-    .replace(/ß/g, 'ss');
+    .replace(/[.,!?;]+$/g, '');
+  if (lowercase) s = s.toLowerCase();
+  if (foldUmlauts) {
+    s = s
+      .replace(/ä/g, 'ae').replace(/Ä/g, 'Ae')
+      .replace(/ö/g, 'oe').replace(/Ö/g, 'Oe')
+      .replace(/ü/g, 'ue').replace(/Ü/g, 'Ue')
+      .replace(/ß/g, 'ss');
+  }
+  return s;
+};
+
+/**
+ * Speak German text via the Web Speech API. Cancels any in-flight utterance
+ * first so rapid replays/taps don't queue and overlap (a real bug on iOS
+ * Safari, where queued utterances can wedge the synth). No-op when the
+ * browser lacks speechSynthesis or text is empty.
+ * @param {string} text
+ * @param {number} [rate=0.9]
+ */
+export const speakGerman = (text, rate = 0.9) => {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window) || !text) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'de-DE';
+  u.rate = rate;
+  window.speechSynthesis.speak(u);
+};
 
 // Weather Icon Helper
 export const getWeatherIcon = (summary) => {

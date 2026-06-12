@@ -1105,3 +1105,13 @@ export function getCurrentLevel(completedThemeIds) {
   if (count < 36) return 'B1';
   return 'B1+';
 }
+
+/**
+ * Map a learner level to a CEFR band an LLM actually understands.
+ * 'B1+' is our internal progress label, not a CEFR band — any prompt that
+ * interpolates the level must pass it through here first, or advanced
+ * learners send the model a band it doesn't recognise.
+ */
+export function cefrForAI(level) {
+  return level === 'B1+' ? 'B1' : level;
+}

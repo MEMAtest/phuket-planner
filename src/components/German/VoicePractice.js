@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Icons } from '../../data/staticData';
 import { reviewGermanSpeech, generateConversationResponse } from '../../utils/groqAI';
+import { speakGerman as speak } from '../../utils/helpers';
 
 const VoicePractice = ({ theme, scenario, onComplete }) => {
   const [isRecording, setIsRecording] = useState(false);
@@ -51,12 +52,7 @@ const VoicePractice = ({ theme, scenario, onComplete }) => {
         ]);
 
         // Speak AI response
-        if ('speechSynthesis' in window) {
-          const utterance = new SpeechSynthesisUtterance(aiText);
-          utterance.lang = 'de-DE';
-          utterance.rate = 0.9;
-          window.speechSynthesis.speak(utterance);
-        }
+        speak(aiText);
 
         setTurnCount(prev => prev + 1);
 

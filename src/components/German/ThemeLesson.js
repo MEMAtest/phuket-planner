@@ -2,19 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { Icons } from '../../data/staticData';
 import { useGerman } from '../../state/GermanContext';
 import { explainGermanPhrases, enrichTheme, isGroqConfigured } from '../../utils/groqAI';
-
-const speak = (text) => {
-  if ('speechSynthesis' in window && text) {
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'de-DE';
-    u.rate = 0.9;
-    window.speechSynthesis.speak(u);
-  }
-};
+import { speakGerman as speak } from '../../utils/helpers';
 
 // ---- AI enrichment cache ---------------------------------------------------
-// Enrichment is generated once per theme and cached permanently (themes are
-// static content); ENRICHMENT_VERSION is the invalidation lever.
+// Enrichment is cached PERMANENTLY (no TTL), unlike the weak-spot drill cache
+// (german_drill_*, which uses DRILL_TTL_DAYS): a drill is ephemeral generated
+// practice, but theme enrichment describes static lesson content keyed to the
+// theme's own CEFR level, so it never goes stale on its own. ENRICHMENT_VERSION
+// is the only invalidation lever — bump it when the enrichment schema/prompt
+// changes. `timestamp` is kept purely as a creation marker for debugging /
+// future migrations; it is intentionally not read as an expiry.
 
 const ENRICHMENT_KEY_PREFIX = 'german_theme_enrichment_';
 const ENRICHMENT_VERSION = 1;
@@ -49,30 +46,40 @@ const saveCachedEnrichment = (themeId, data) => {
 
 /**
  * Load (or lazily generate + cache) AI enrichment for a theme.
- * Returns { enrichment, enriching }; enrichment is null when offline /
- * unconfigured / failed, in which case the lesson falls back to base content.
+ * Returns { enrichment, enriching, failed, retry }; enrichment is null when
+ * offline / unconfigured / failed, in which case the lesson falls back to base
+ * content. `retry` re-attempts a failed generation (the effect alone won't,
+ * since it only re-runs on theme.id change).
  */
 function useThemeEnrichment(theme) {
   const [enrichment, setEnrichment] = useState(() => loadCachedEnrichment(theme.id));
   const [enriching, setEnriching] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0); // bump to force a re-fetch
 
   useEffect(() => {
     if (enrichment || !isGroqConfigured()) return;
     let cancelled = false;
     setEnriching(true);
+    setFailed(false);
     enrichTheme({ theme, level: theme.level })
       .then(data => {
         if (cancelled) return;
         saveCachedEnrichment(theme.id, data);
         setEnrichment(data);
       })
-      .catch(e => console.warn('Theme enrichment unavailable:', e))
+      .catch(e => {
+        console.warn('Theme enrichment unavailable:', e);
+        if (!cancelled) setFailed(true);
+      })
       .finally(() => { if (!cancelled) setEnriching(false); });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [theme.id]);
+  }, [theme.id, attempt]);
 
-  return { enrichment, enriching };
+  const retry = () => { if (!enriching) setAttempt(a => a + 1); };
+
+  return { enrichment, enriching, failed, retry };
 }
 
 const ThemeLesson = ({ theme, onStartPractice }) => {
@@ -80,7 +87,7 @@ const ThemeLesson = ({ theme, onStartPractice }) => {
   const { addFlashcards } = useGerman();
   const [seeding, setSeeding] = useState(false);
   const [seededCount, setSeededCount] = useState(null);
-  const { enrichment, enriching } = useThemeEnrichment(theme);
+  const { enrichment, enriching, failed: enrichFailed, retry: retryEnrich } = useThemeEnrichment(theme);
 
   const handleAddToDeck = async () => {
     if (!theme.keyPhrases || theme.keyPhrases.length === 0) return;
@@ -274,11 +281,15 @@ const ThemeLesson = ({ theme, onStartPractice }) => {
             ) : (
               <button
                 onClick={handleAddToDeck}
-                disabled={seeding}
-                className="mt-3 w-full py-3 bg-sky-600 text-white rounded-lg font-semibold hover:bg-sky-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                disabled={seeding || enriching}
+                className="mt-3 w-full py-3 bg-sky-600 text-white rounded-lg font-semibold hover:bg-sky-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
               >
                 {seeding ? (
                   <><Icons.Loader className="w-5 h-5 animate-spin" /> Adding to deck…</>
+                ) : enriching ? (
+                  // Wait for enrichment so we seed the rich vocab (with meanings)
+                  // rather than firing a duplicate bare-phrases AI call.
+                  <><Icons.Loader className="w-5 h-5 animate-spin" /> Preparing richer cards…</>
                 ) : (
                   <><Icons.Plus className="w-5 h-5" /> Add these phrases to my review deck</>
                 )}
@@ -586,6 +597,14 @@ const ThemeLesson = ({ theme, onStartPractice }) => {
         <div className="mb-4 flex items-center gap-2 text-sm text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-900/20 rounded-lg px-4 py-2">
           <Icons.Loader className="w-4 h-4 animate-spin" aria-hidden="true" />
           Generating personalised lesson content…
+        </div>
+      )}
+      {!enriching && enrichFailed && (
+        <div className="mb-4 flex items-center justify-between gap-2 text-sm text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-4 py-2">
+          <span>Couldn't load extra lesson content. Showing the basics.</span>
+          <button onClick={retryEnrich} className="font-semibold underline hover:no-underline shrink-0">
+            Retry
+          </button>
         </div>
       )}
 

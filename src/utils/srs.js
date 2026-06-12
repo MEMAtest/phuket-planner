@@ -150,6 +150,16 @@ export function isMastered(card) {
 }
 
 /**
+ * A card is eligible for listening practice once it's been successfully
+ * reviewed at least once (so the learner already knows it) and has both
+ * sides to play/confirm. Single source of truth shared by the listening
+ * session queue and the home-screen tile count, so they can't drift.
+ */
+export function isListenable(card) {
+  return !!(card && card.german && card.english && card.repetitions >= 1);
+}
+
+/**
  * Summary stats for the dashboard.
  */
 export function deckStats(cards) {
