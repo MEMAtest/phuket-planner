@@ -371,7 +371,12 @@ const VoicePractice = ({ theme, scenario, onComplete }) => {
                 </div>
 
                 <div className="bg-white dark:bg-slate-800 rounded-lg p-3">
-                  <div className="text-xs text-slate-600 dark:text-slate-400 mb-1">Pronunciation</div>
+                  <div
+                    className="text-xs text-slate-600 dark:text-slate-400 mb-1 flex items-center gap-1"
+                    title="Estimated from what the speech recognizer transcribed — not a true audio pronunciation analysis"
+                  >
+                    Intelligibility <span className="text-slate-400 cursor-help">ⓘ</span>
+                  </div>
                   <div className="flex items-center gap-2">
                     <div className="flex-1 bg-slate-200 dark:bg-slate-700 rounded-full h-2">
                       <div
@@ -415,6 +420,10 @@ const VoicePractice = ({ theme, scenario, onComplete }) => {
                   </div>
                 </div>
               </div>
+
+              <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                Scores are based on the speech recognizer's transcript of what you said.
+              </p>
 
               {/* Corrections */}
               {aiFeedback.corrections && aiFeedback.corrections.length > 0 && (

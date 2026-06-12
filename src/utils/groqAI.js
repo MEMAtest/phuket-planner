@@ -99,7 +99,7 @@ export async function reviewGermanSpeech({
 
 Review criteria:
 1. Grammar: Correct verb conjugation, word order, article usage
-2. Pronunciation: Identify common pronunciation issues (based on transcription patterns)
+2. Intelligibility: you only see a speech-recognizer TRANSCRIPT, not audio. Judge how cleanly the recognizer understood the learner (garbled words, missing endings, non-words suggest unclear speech). Do NOT claim to analyze actual pronunciation.
 3. Fluency: Natural flow, appropriate connecting words
 4. Cultural appropriateness: Is this how native speakers would actually say it?
 
@@ -115,7 +115,7 @@ Student said: "${spokenText}"
 Please review this German speech and provide feedback in JSON format:
 {
   "grammarScore": <0-10>,
-  "pronunciationScore": <0-10>,
+  "pronunciationScore": <0-10, intelligibility: how clearly the recognizer understood the speech>,
   "fluencyScore": <0-10>,
   "overallScore": <0-10>,
   "corrections": [<list of grammar/word choice errors>],
@@ -274,15 +274,17 @@ Each question should be a short fill-in-the-blank or correction task grounded in
       "scenario": "<2-4 word tag, e.g. 'At the Kita'>",
       "prompt": "<short instruction, e.g. 'Fill in the correct article'>",
       "question": "<the sentence with a ___ blank, or the sentence to correct>",
-      "correctAnswer": "<the single expected answer>",
+      "correctAnswer": "<the single best answer>",
+      "acceptableAnswers": ["<other fully valid answers: word-order variants, contractions (e.g. 'in dem'/'im'), synonyms that fit the blank; empty array if none>"],
       "explanation": "<why this is correct>",
       "commonMistake": "<the typical wrong answer and why it's wrong>"
     }
   ]
 }
-Provide exactly ${count} exercises. Keep answers short so they can be typed exactly.`;
+Provide exactly ${count} exercises. Keep answers short so they can be typed exactly.
+Do NOT include the correctAnswer itself in acceptableAnswers, and never include wrong answers there.`;
 
-  const raw = await callGroq({ system, user, temperature: 0.4, maxTokens: 1800 });
+  const raw = await callGroq({ system, user, temperature: 0.4, maxTokens: 2000 });
   const parsed = extractJson(raw);
 
   const exercises = asArray(parsed.exercises)
@@ -291,6 +293,7 @@ Provide exactly ${count} exercises. Keep answers short so they can be typed exac
       prompt: asString(e.prompt, 'Complete the sentence'),
       question: asString(e.question),
       correctAnswer: asString(e.correctAnswer),
+      acceptableAnswers: asArray(e.acceptableAnswers).map((a) => asString(a)).filter(Boolean),
       explanation: asString(e.explanation),
       commonMistake: asString(e.commonMistake)
     }))
@@ -421,6 +424,68 @@ Return a JSON array in exactly this shape:
     return list.map((p) => ({ german: asString(p), english: '' }));
   }
   return pairs;
+}
+
+/**
+ * AI-enrich a lesson theme with vocab meanings, grammar explanations,
+ * an example dialogue and a cultural tip. Pass the THEME's own level
+ * (not the learner's) so results stay valid forever and can be cached.
+ *
+ * @param {{ theme: { id: string, title: string, description: string, level: string,
+ *           keyPhrases?: string[], grammarFocus?: string[] }, level?: string }} args
+ * @returns {Promise<{
+ *   vocabulary: Array<{german: string, english: string, note: string}>,
+ *   grammarFocus: Array<{name: string, explanation: string, example: string}>,
+ *   dialogue: Array<{speaker: string, german: string, english: string}>,
+ *   culturalTip: string
+ * }>}
+ */
+export async function enrichTheme({ theme, level = 'A2' }) {
+  const system = `You are an expert German curriculum designer. Always respond with valid JSON only, no extra prose.`;
+  const existingGrammar = Array.isArray(theme.grammarFocus) && theme.grammarFocus.length > 0
+    ? `Existing grammar focus: ${theme.grammarFocus.join(', ')}`
+    : '';
+  const user = `Enrich this German lesson theme for a CEFR ${level} learner.
+Theme: "${theme.title}" — ${theme.description}
+Key phrases: ${(theme.keyPhrases || []).join(' | ')}
+${existingGrammar}
+
+Return JSON in exactly this shape:
+{
+  "vocabulary": [
+    { "german": "<key phrase or important word from this theme>", "english": "<concise natural meaning>", "note": "<short usage/gender/register note, or empty string>" }
+  ],
+  "grammarFocus": [
+    { "name": "<grammar point name>", "explanation": "<2-3 sentence plain-English explanation>", "example": "<one German example sentence using theme vocabulary>" }
+  ],
+  "dialogue": [
+    { "speaker": "<short role name, e.g. 'Kellner' or 'Du'>", "german": "<line>", "english": "<translation>" }
+  ],
+  "culturalTip": "<one practical cultural tip relevant to this theme>"
+}
+Cover every key phrase in "vocabulary" (plus 2-4 extra useful words), give 1-2 grammarFocus items, and a 4-6 line dialogue.`;
+
+  const raw = await callGroq({ system, user, temperature: 0.4, maxTokens: 2000 });
+  const parsed = extractJson(raw);
+
+  const result = {
+    vocabulary: asArray(parsed.vocabulary)
+      .map((v) => ({ german: asString(v.german), english: asString(v.english), note: asString(v.note) }))
+      .filter((v) => v.german),
+    grammarFocus: asArray(parsed.grammarFocus)
+      .map((g) => ({ name: asString(g.name), explanation: asString(g.explanation), example: asString(g.example) }))
+      .filter((g) => g.name),
+    dialogue: asArray(parsed.dialogue)
+      .map((d) => ({ speaker: asString(d.speaker, '—'), german: asString(d.german), english: asString(d.english) }))
+      .filter((d) => d.german),
+    culturalTip: asString(parsed.culturalTip)
+  };
+
+  // Refuse to return (and let the caller cache) a useless enrichment.
+  if (result.vocabulary.length === 0 && result.dialogue.length === 0) {
+    throw new Error('AI enrichment came back empty');
+  }
+  return result;
 }
 
 /**

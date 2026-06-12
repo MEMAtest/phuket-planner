@@ -1,5 +1,25 @@
 import { Icons } from '../data/staticData';
 
+/**
+ * Normalize a German answer for forgiving comparison:
+ * trims, collapses whitespace, strips trailing punctuation, lowercases,
+ * and folds umlauts/eszett so "schoen" matches "schön".
+ * Fold direction is umlaut -> digraph only (the reverse would corrupt
+ * genuine "ae"/"oe" words). Apply to BOTH sides of a comparison.
+ * @param {string} text
+ * @returns {string}
+ */
+export const normalizeGermanAnswer = (text) =>
+  (text || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(/[.,!?;]+$/g, '')
+    .toLowerCase()
+    .replace(/ä/g, 'ae')
+    .replace(/ö/g, 'oe')
+    .replace(/ü/g, 'ue')
+    .replace(/ß/g, 'ss');
+
 // Weather Icon Helper
 export const getWeatherIcon = (summary) => {
   const s = summary.toLowerCase();

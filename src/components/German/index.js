@@ -11,6 +11,7 @@ import PhraseCapture from './PhraseCapture';
 import GermanDiary from './GermanDiary';
 import SpacedReview from './SpacedReview';
 import WeakSpotDrill from './WeakSpotDrill';
+import ListeningPractice from './ListeningPractice';
 
 const GermanLearning = () => {
   const {
@@ -27,7 +28,7 @@ const GermanLearning = () => {
     getCurrentLevel
   } = useGerman();
 
-  // 'home' | 'dashboard' | 'themes' | 'lesson' | 'practice' | 'placement' | 'review' | 'capture' | 'diary' | 'drill'
+  // 'home' | 'dashboard' | 'themes' | 'lesson' | 'practice' | 'placement' | 'review' | 'capture' | 'diary' | 'drill' | 'listening'
   const [view, setView] = useState('home');
   const [currentScenarioIndex, setCurrentScenarioIndex] = useState(0);
   const [drillTag, setDrillTag] = useState(null);
@@ -136,6 +137,7 @@ const GermanLearning = () => {
           onStartTheme={(themeId) => handleStartTheme(themeId)}
           onBrowse={() => setView('themes')}
           onDrillWeakSpot={(tag) => { setDrillTag(tag); setView('drill'); }}
+          onListening={() => setView('listening')}
         />
       </div>
     );
@@ -146,6 +148,15 @@ const GermanLearning = () => {
     return (
       <div className="space-y-4">
         <SpacedReview onExit={() => setView('home')} />
+      </div>
+    );
+  }
+
+  // Listening comprehension practice
+  if (view === 'listening') {
+    return (
+      <div className="space-y-4">
+        <ListeningPractice onExit={() => setView('home')} />
       </div>
     );
   }
@@ -181,7 +192,7 @@ const GermanLearning = () => {
           <Icons.ArrowLeft className="w-4 h-4" />
           Back to Today
         </button>
-        <ThemeLesson theme={currentTheme} onStartPractice={() => setView('practice')} />
+        <ThemeLesson key={currentTheme.id} theme={currentTheme} onStartPractice={() => setView('practice')} />
       </div>
     );
   }

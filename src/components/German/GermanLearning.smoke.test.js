@@ -82,3 +82,25 @@ test('Progress & placement opens the dashboard and returns home', () => {
   clickText(/Back to Today/i);
   expect(container.textContent).toMatch(/Today's Plan/i);
 });
+
+test('Listening practice opens and shows empty state on an empty deck', () => {
+  mount();
+  clickText(/Listening practice/i);
+  expect(container.textContent).toMatch(/Listening practice unlocks once you've reviewed a few cards/i);
+  clickText(/Back to Today/i);
+  expect(container.textContent).toMatch(/Today's Plan/i);
+});
+
+test('Theme lesson renders offline (no Groq) with base content', () => {
+  mount();
+  // DailyHome's next-theme tile reads "Learn: <title>"
+  clickText(/Learn:/i);
+  expect(container.textContent).toMatch(/What you'll learn/i);
+  // No enrichment banner without an API key
+  expect(container.textContent).not.toMatch(/Generating personalised lesson content/i);
+  // Step to vocabulary, then grammar — both must render via the fallback path
+  clickText(/^\s*Next\s*$/);
+  expect(container.textContent).toMatch(/Key Phrases & Vocabulary/i);
+  clickText(/^\s*Next\s*$/);
+  expect(container.textContent).toMatch(/Grammar Focus/i);
+});

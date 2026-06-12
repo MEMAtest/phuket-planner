@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Icons } from '../../data/staticData';
 import { generateGrammarDrill, isGroqConfigured, getGroqSetupInstructions } from '../../utils/groqAI';
 import { useGerman } from '../../state/GermanContext';
+import { normalizeGermanAnswer } from '../../utils/helpers';
 
 const ERROR_LABELS = {
   case: 'Cases (der/den/dem)',
@@ -29,7 +30,7 @@ const isMobileDevice = () => {
 };
 
 const WeakSpotDrill = ({ errorType, onBack }) => {
-  const { decrementErrorCount, incrementErrorCount, getErrorCount } = useGerman();
+  const { decrementErrorCount, incrementErrorCount, getErrorCount, getCurrentLevel } = useGerman();
   const [loading, setLoading] = useState(true);
   const [retrying, setRetrying] = useState(false);
   const [error, setError] = useState(null);
@@ -48,6 +49,11 @@ const WeakSpotDrill = ({ errorType, onBack }) => {
   const nextButtonRef = useRef(null);
   const isMounted = useRef(true);
   const isMobile = useRef(isMobileDevice());
+
+  // Drill at the learner's real level. 'B1+' isn't a CEFR band the model
+  // knows, so cap the prompt level at B1.
+  const rawLevel = getCurrentLevel();
+  const drillLevel = rawLevel === 'B1+' ? 'B1' : rawLevel;
 
   // Cleanup old drills on mount
   useEffect(() => {
@@ -150,7 +156,7 @@ const WeakSpotDrill = ({ errorType, onBack }) => {
         setError(null);
         const result = await generateGrammarDrill({
           errorType,
-          level: 'A2',
+          level: drillLevel,
           count: 5
         });
         if (!isMounted.current) return;
@@ -173,7 +179,7 @@ const WeakSpotDrill = ({ errorType, onBack }) => {
     };
 
     fetchDrill();
-  }, [errorType, getErrorCount]);
+  }, [errorType, getErrorCount, drillLevel]);
 
   // Persist state on changes
   useEffect(() => {
@@ -215,23 +221,16 @@ const WeakSpotDrill = ({ errorType, onBack }) => {
     }
   }, [errorType]);
 
-  const normalizeAnswer = (text) => {
-    return text
-      .trim()
-      .replace(/\s+/g, ' ')
-      .replace(/[.,!?;]$/g, '')
-      .toLowerCase();
-  };
-
   const handleSubmit = () => {
     // Fix #4: Guard against spam clicks and already-showing feedback
     if (!userAnswer.trim() || showFeedback) return;
 
     const exercise = drill.exercises[currentIndex];
-    const normalized = normalizeAnswer(userAnswer);
-    const correct = normalizeAnswer(exercise.correctAnswer);
-
-    const match = normalized === correct;
+    // Accept the primary answer plus any AI-supplied valid variants.
+    // (Older persisted drills have no acceptableAnswers — guard with [].)
+    const candidates = [exercise.correctAnswer, ...(exercise.acceptableAnswers || [])];
+    const normalized = normalizeGermanAnswer(userAnswer);
+    const match = candidates.some(c => normalizeGermanAnswer(c) === normalized);
     setIsCorrect(match);
     setShowFeedback(true);
 
@@ -389,7 +388,7 @@ const WeakSpotDrill = ({ errorType, onBack }) => {
     try {
       const result = await generateGrammarDrill({
         errorType,
-        level: 'A2',
+        level: drillLevel,
         count: 5
       });
       if (!isMounted.current) return;
@@ -740,6 +739,11 @@ const WeakSpotDrill = ({ errorType, onBack }) => {
                     <div className="mb-2">
                       <p className="text-sm text-slate-600 dark:text-slate-400">Correct answer:</p>
                       <p className="font-medium text-slate-800 dark:text-slate-100">{exercise.correctAnswer}</p>
+                      {!isCorrect && exercise.acceptableAnswers?.length > 0 && (
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                          Also accepted: {exercise.acceptableAnswers.join(' · ')}
+                        </p>
+                      )}
                     </div>
 
                     <div className="mb-2">

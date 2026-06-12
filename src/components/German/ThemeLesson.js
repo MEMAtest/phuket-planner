@@ -1,20 +1,96 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Icons } from '../../data/staticData';
 import { useGerman } from '../../state/GermanContext';
-import { explainGermanPhrases, isGroqConfigured } from '../../utils/groqAI';
+import { explainGermanPhrases, enrichTheme, isGroqConfigured } from '../../utils/groqAI';
+
+const speak = (text) => {
+  if ('speechSynthesis' in window && text) {
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'de-DE';
+    u.rate = 0.9;
+    window.speechSynthesis.speak(u);
+  }
+};
+
+// ---- AI enrichment cache ---------------------------------------------------
+// Enrichment is generated once per theme and cached permanently (themes are
+// static content); ENRICHMENT_VERSION is the invalidation lever.
+
+const ENRICHMENT_KEY_PREFIX = 'german_theme_enrichment_';
+const ENRICHMENT_VERSION = 1;
+
+const loadCachedEnrichment = (themeId) => {
+  const key = `${ENRICHMENT_KEY_PREFIX}${themeId}`;
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed.version === ENRICHMENT_VERSION && parsed.data && Array.isArray(parsed.data.vocabulary)) {
+      return parsed.data;
+    }
+    localStorage.removeItem(key);
+  } catch (e) {
+    try { localStorage.removeItem(key); } catch (e2) { /* ignore */ }
+  }
+  return null;
+};
+
+const saveCachedEnrichment = (themeId, data) => {
+  try {
+    localStorage.setItem(
+      `${ENRICHMENT_KEY_PREFIX}${themeId}`,
+      JSON.stringify({ version: ENRICHMENT_VERSION, timestamp: Date.now(), themeId, data })
+    );
+  } catch (e) {
+    // Quota or disabled storage — keep the in-memory enrichment, skip caching.
+    console.warn('Could not cache theme enrichment:', e);
+  }
+};
+
+/**
+ * Load (or lazily generate + cache) AI enrichment for a theme.
+ * Returns { enrichment, enriching }; enrichment is null when offline /
+ * unconfigured / failed, in which case the lesson falls back to base content.
+ */
+function useThemeEnrichment(theme) {
+  const [enrichment, setEnrichment] = useState(() => loadCachedEnrichment(theme.id));
+  const [enriching, setEnriching] = useState(false);
+
+  useEffect(() => {
+    if (enrichment || !isGroqConfigured()) return;
+    let cancelled = false;
+    setEnriching(true);
+    enrichTheme({ theme, level: theme.level })
+      .then(data => {
+        if (cancelled) return;
+        saveCachedEnrichment(theme.id, data);
+        setEnrichment(data);
+      })
+      .catch(e => console.warn('Theme enrichment unavailable:', e))
+      .finally(() => { if (!cancelled) setEnriching(false); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [theme.id]);
+
+  return { enrichment, enriching };
+}
 
 const ThemeLesson = ({ theme, onStartPractice }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const { addFlashcards } = useGerman();
   const [seeding, setSeeding] = useState(false);
   const [seededCount, setSeededCount] = useState(null);
+  const { enrichment, enriching } = useThemeEnrichment(theme);
 
   const handleAddToDeck = async () => {
     if (!theme.keyPhrases || theme.keyPhrases.length === 0) return;
     setSeeding(true);
     try {
       let pairs;
-      if (isGroqConfigured()) {
+      if (enrichment?.vocabulary?.length) {
+        // Enriched vocab already has meanings — no extra AI round-trip needed.
+        pairs = enrichment.vocabulary.map(v => ({ german: v.german, english: v.english, note: v.note }));
+      } else if (isGroqConfigured()) {
         pairs = await explainGermanPhrases({ phrases: theme.keyPhrases, level: theme.level });
       } else {
         // Offline fallback: store the German with a blank meaning to fill in later
@@ -23,6 +99,7 @@ const ThemeLesson = ({ theme, onStartPractice }) => {
       const cards = pairs.map(p => ({
         german: p.german,
         english: p.english,
+        note: p.note || '',
         source: 'theme',
         themeId: theme.id
       }));
@@ -146,7 +223,10 @@ const ThemeLesson = ({ theme, onStartPractice }) => {
             </div>
 
             <div className="space-y-3">
-              {theme.keyPhrases && theme.keyPhrases.map((phrase, index) => (
+              {(enrichment?.vocabulary?.length
+                ? enrichment.vocabulary
+                : (theme.keyPhrases || []).map(p => ({ german: p, english: '', note: '' }))
+              ).map((item, index) => (
                 <div
                   key={index}
                   className="bg-white dark:bg-slate-700 border-2 border-slate-200 dark:border-slate-600 rounded-lg p-4 hover:border-sky-500 dark:hover:border-sky-400 transition-all"
@@ -158,19 +238,18 @@ const ThemeLesson = ({ theme, onStartPractice }) => {
                       </div>
                       <div className="flex-1">
                         <p className="text-lg font-semibold text-slate-800 dark:text-slate-100">
-                          {phrase}
+                          {item.german}
                         </p>
+                        {item.english && (
+                          <p className="text-sm text-slate-600 dark:text-slate-400">{item.english}</p>
+                        )}
+                        {item.note && (
+                          <p className="text-xs italic text-slate-500 dark:text-slate-400 mt-0.5">{item.note}</p>
+                        )}
                       </div>
                     </div>
                     <button
-                      onClick={() => {
-                        if ('speechSynthesis' in window) {
-                          const utterance = new SpeechSynthesisUtterance(phrase);
-                          utterance.lang = 'de-DE';
-                          utterance.rate = 0.85;
-                          window.speechSynthesis.speak(utterance);
-                        }
-                      }}
+                      onClick={() => speak(item.german)}
                       className="ml-3 p-2 bg-sky-100 dark:bg-sky-900/30 hover:bg-sky-200 dark:hover:bg-sky-900/50 rounded-full transition-colors"
                       title="Listen"
                     >
@@ -208,7 +287,15 @@ const ThemeLesson = ({ theme, onStartPractice }) => {
           </div>
         );
 
-      case 'grammar':
+      case 'grammar': {
+        // Enriched grammar (objects with explanation/example) wins; otherwise
+        // normalize legacy plain-string grammarFocus (family themes) into the
+        // same shape so one renderer handles both.
+        const grammarItems = enrichment?.grammarFocus?.length
+          ? enrichment.grammarFocus
+          : (theme.grammarFocus || []).map(f =>
+              typeof f === 'string' ? { name: f, explanation: '', example: '' } : f);
+
         return (
           <div className="space-y-4">
             <div className="text-center mb-4">
@@ -221,17 +308,38 @@ const ThemeLesson = ({ theme, onStartPractice }) => {
               </p>
             </div>
 
-            {theme.grammarFocus && theme.grammarFocus.length > 0 ? (
+            {grammarItems.length > 0 ? (
               <div className="space-y-4">
-                {theme.grammarFocus.map((focus, index) => (
+                {grammarItems.map((item, index) => (
                   <div
                     key={index}
                     className="bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-200 dark:border-amber-800 rounded-lg p-5"
                   >
                     <h4 className="font-bold text-amber-900 dark:text-amber-200 mb-3 flex items-center gap-2">
                       <span className="text-2xl">📚</span>
-                      {focus}
+                      {item.name}
                     </h4>
+
+                    {item.explanation && (
+                      <p className="text-sm text-amber-900 dark:text-amber-100 mb-3">
+                        {item.explanation}
+                      </p>
+                    )}
+
+                    {item.example && (
+                      <div className="p-3 bg-white dark:bg-slate-800 rounded-lg border border-amber-200 dark:border-amber-700 flex items-center justify-between gap-2">
+                        <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
+                          {item.example}
+                        </p>
+                        <button
+                          onClick={() => speak(item.example)}
+                          className="p-1.5 bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-200 rounded-full shrink-0"
+                          title="Listen"
+                        >
+                          <Icons.Play className="w-4 h-4 text-amber-700 dark:text-amber-300" />
+                        </button>
+                      </div>
+                    )}
 
                     {theme.scenarios && theme.scenarios[0]?.grammarDrill && index === 0 && (
                       <div className="mt-3 p-4 bg-white dark:bg-slate-800 rounded-lg border border-amber-200 dark:border-amber-700">
@@ -261,6 +369,7 @@ const ThemeLesson = ({ theme, onStartPractice }) => {
             )}
           </div>
         );
+      }
 
       case 'examples':
         return (
@@ -318,6 +427,45 @@ const ThemeLesson = ({ theme, onStartPractice }) => {
               ))}
             </div>
 
+            {enrichment?.dialogue?.length > 0 && (
+              <div className="bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border-2 border-purple-200 dark:border-purple-800 rounded-lg p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-2xl">🗣️</span>
+                  <h4 className="font-bold text-purple-900 dark:text-purple-200">Example dialogue</h4>
+                </div>
+                <div className="space-y-2">
+                  {enrichment.dialogue.map((line, i) => (
+                    <div key={i} className="bg-white dark:bg-slate-800 rounded-lg p-3 flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <span className="text-xs font-bold text-purple-700 dark:text-purple-300 uppercase tracking-wide">
+                          {line.speaker}
+                        </span>
+                        <p className="text-sm font-medium text-slate-800 dark:text-slate-100">{line.german}</p>
+                        {line.english && (
+                          <p className="text-xs text-slate-500 dark:text-slate-400">{line.english}</p>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => speak(line.german)}
+                        className="p-1.5 bg-purple-100 dark:bg-purple-900/30 hover:bg-purple-200 rounded-full shrink-0"
+                        title="Listen"
+                      >
+                        <Icons.Play className="w-4 h-4 text-purple-700 dark:text-purple-300" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {enrichment?.culturalTip && (
+              <div className="bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 p-4">
+                <p className="text-amber-800 dark:text-amber-200 text-sm">
+                  <strong>🌍 Cultural tip:</strong> {enrichment.culturalTip}
+                </p>
+              </div>
+            )}
+
             <div className="bg-sky-50 dark:bg-sky-900/20 border-l-4 border-sky-500 p-4">
               <p className="text-sky-800 dark:text-sky-200 text-sm">
                 <strong>🎤 Next step:</strong> You'll practice these scenarios with voice recognition. The AI will give you personalized feedback on your German!
@@ -350,7 +498,7 @@ const ThemeLesson = ({ theme, onStartPractice }) => {
                     🎤 Standard Practice
                   </h5>
                   <p className="text-sm text-slate-600 dark:text-slate-400">
-                    Speak your responses and get AI feedback on accuracy, pronunciation, and grammar
+                    Speak your responses and get AI feedback on accuracy, clarity, and grammar
                   </p>
                 </div>
 
@@ -432,6 +580,14 @@ const ThemeLesson = ({ theme, onStartPractice }) => {
           </span>
         </div>
       </div>
+
+      {/* Non-blocking enrichment indicator */}
+      {enriching && (
+        <div className="mb-4 flex items-center gap-2 text-sm text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-900/20 rounded-lg px-4 py-2">
+          <Icons.Loader className="w-4 h-4 animate-spin" aria-hidden="true" />
+          Generating personalised lesson content…
+        </div>
+      )}
 
       {/* Step Content */}
       <div className="mb-8">

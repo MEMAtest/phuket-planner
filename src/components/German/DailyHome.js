@@ -27,7 +27,7 @@ const greeting = () => {
 const todayLabel = () =>
   new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
 
-const DailyHome = ({ onReview, onCapture, onDiary, onStartTheme, onBrowse, onDrillWeakSpot }) => {
+const DailyHome = ({ onReview, onCapture, onDiary, onStartTheme, onBrowse, onDrillWeakSpot, onListening }) => {
   const {
     streak,
     flashcards,
@@ -41,6 +41,7 @@ const DailyHome = ({ onReview, onCapture, onDiary, onStartTheme, onBrowse, onDri
   const nextTheme = getNextTheme();
   const weakAreas = getWeakAreas().slice(0, 3);
   const g = greeting();
+  const listenable = flashcards.filter(c => c.german && c.english && c.repetitions >= 1).length;
 
   const today = new Date().toISOString().split('T')[0];
   const journaledToday = diaryEntries.some(e => e.date === today);
@@ -126,6 +127,27 @@ const DailyHome = ({ onReview, onCapture, onDiary, onStartTheme, onBrowse, onDri
               </div>
               <div className="text-sm text-slate-500 dark:text-slate-400">
                 {journaledToday ? 'Come back tomorrow — or write another' : 'A few sentences about your day, corrected for you'}
+              </div>
+            </div>
+            <Icons.ChevronRight className="w-5 h-5 text-slate-400 shrink-0" />
+          </button>
+
+          {/* 4. Listening */}
+          <button
+            onClick={onListening}
+            className="w-full text-left bg-white dark:bg-slate-800 rounded-xl p-4 shadow-lg border-2 border-transparent hover:border-teal-400 transition-all flex items-center gap-4"
+          >
+            <div className="w-12 h-12 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center shrink-0">
+              <Icons.Headphones className="w-6 h-6 text-teal-600 dark:text-teal-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-slate-800 dark:text-slate-100">
+                Listening practice
+              </div>
+              <div className="text-sm text-slate-500 dark:text-slate-400">
+                {listenable > 0
+                  ? `Train your ear with ${listenable} learned card${listenable === 1 ? '' : 's'}`
+                  : 'Unlocks after your first reviews'}
               </div>
             </div>
             <Icons.ChevronRight className="w-5 h-5 text-slate-400 shrink-0" />
