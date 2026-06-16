@@ -33,21 +33,64 @@ export const normalizeGermanAnswer = (text, opts = {}) => {
   return s;
 };
 
+// Which drill error types must keep matching STRICT on a dimension the default
+// normalizer would forgive. Declarative so adding a drill type forces an
+// explicit decision (rather than silently inheriting the lenient default):
+//  - spelling/plural: ß and umlauts ARE the answer (Straße≠Strasse,
+//    Mutter→Mütter is an umlaut plural), so don't fold umlauts.
+//  - capitalization: case IS the answer, so don't lowercase.
+const STRICT_NORMALIZE_BY_TYPE = {
+  spelling: { foldUmlauts: false },
+  plural: { foldUmlauts: false },
+  capitalization: { lowercase: false },
+};
+
 /**
- * Speak German text via the Web Speech API. Cancels any in-flight utterance
- * first so rapid replays/taps don't queue and overlap (a real bug on iOS
- * Safari, where queued utterances can wedge the synth). No-op when the
- * browser lacks speechSynthesis or text is empty.
+ * Normalization options for matching a weak-spot drill answer of the given
+ * error type. Returns undefined (= fully forgiving defaults) for types where
+ * folding is safe.
+ * @param {string} errorType
+ * @returns {{ foldUmlauts?: boolean, lowercase?: boolean } | undefined}
+ */
+export const germanAnswerOptsForErrorType = (errorType) => STRICT_NORMALIZE_BY_TYPE[errorType];
+
+/** True when the browser supports the Web Speech synthesis API. */
+export const hasSpeechSynthesis = () =>
+  typeof window !== 'undefined' && 'speechSynthesis' in window;
+
+// Cache the chosen German voice once found. Voices load asynchronously, so we
+// keep re-resolving (staying null) until the list is populated.
+let germanVoice = null;
+const resolveGermanVoice = () => {
+  if (germanVoice) return germanVoice;
+  const voices = window.speechSynthesis.getVoices() || [];
+  germanVoice =
+    voices.find(v => v.lang === 'de-DE') ||
+    voices.find(v => (v.lang || '').toLowerCase().startsWith('de')) ||
+    null;
+  return germanVoice;
+};
+
+/**
+ * Speak German text via the Web Speech API. Cancels an in-flight utterance
+ * first so rapid replays/taps don't queue and overlap — but only when one is
+ * actually playing/pending, to avoid the Chromium cancel()-then-speak() race
+ * that can swallow the new utterance on a fresh, idle synth. Picks a de-DE
+ * voice when available so German isn't read in the default (often English)
+ * voice. No-op when the browser lacks speechSynthesis or text is empty.
  * @param {string} text
  * @param {number} [rate=0.9]
  */
 export const speakGerman = (text, rate = 0.9) => {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window) || !text) return;
-  window.speechSynthesis.cancel();
+  if (!hasSpeechSynthesis() || !text) return;
+  const synth = window.speechSynthesis;
+  if (synth.speaking || synth.pending) synth.cancel();
   const u = new SpeechSynthesisUtterance(text);
   u.lang = 'de-DE';
   u.rate = rate;
-  window.speechSynthesis.speak(u);
+  const voice = resolveGermanVoice();
+  if (voice) u.voice = voice;
+  synth.speak(u);
 };
 
 // Weather Icon Helper

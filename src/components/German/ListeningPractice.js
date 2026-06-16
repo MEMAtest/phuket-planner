@@ -2,9 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Icons } from '../../data/staticData';
 import { useGerman } from '../../state/GermanContext';
 import { isListenable } from '../../utils/srs';
-import { speakGerman as speak, normalizeGermanAnswer } from '../../utils/helpers';
-
-const hasTTS = () => 'speechSynthesis' in window;
+import { speakGerman as speak, normalizeGermanAnswer, hasSpeechSynthesis } from '../../utils/helpers';
 
 // Fisher–Yates shuffle (non-mutating).
 const shuffle = (arr) => {
@@ -46,6 +44,7 @@ const ListeningPractice = ({ onExit }) => {
   const [exactMatch, setExactMatch] = useState(null); // null until checked; true/false after a typed check
   const [rated, setRated] = useState(false); // has this card's comprehension been recorded?
   const [gotIt, setGotIt] = useState(0);
+  const [missing, setMissing] = useState(0); // queued cards that vanished mid-session (excluded from the denominator)
 
   const card = flashcards.find(c => c.id === queueIds[index]);
   const done = index >= queueIds.length;
@@ -85,7 +84,7 @@ const ListeningPractice = ({ onExit }) => {
 
   // Browser without speech synthesis (also covers jsdom in tests, after the
   // empty-deck branch below).
-  if (queueIds.length > 0 && !hasTTS()) {
+  if (queueIds.length > 0 && !hasSpeechSynthesis()) {
     return (
       <div className="bg-white dark:bg-slate-800 rounded-xl p-8 shadow-lg text-center">
         <div className="text-5xl mb-4">🔇</div>
@@ -128,9 +127,11 @@ const ListeningPractice = ({ onExit }) => {
     );
   }
 
-  // Session complete
+  // Session complete. Exclude any cards that vanished mid-session from the
+  // denominator so a perfect run can't read as less than perfect.
   if (done) {
-    const pct = gotIt / queueIds.length;
+    const total = Math.max(0, queueIds.length - missing);
+    const pct = total > 0 ? gotIt / total : 0;
     return (
       <div className="bg-white dark:bg-slate-800 rounded-xl p-8 shadow-lg text-center">
         <div className="text-5xl mb-4">{pct >= 0.8 ? '🎉' : pct >= 0.5 ? '👂' : '💪'}</div>
@@ -138,7 +139,7 @@ const ListeningPractice = ({ onExit }) => {
           Listening session complete!
         </h3>
         <p className="text-slate-600 dark:text-slate-400 mb-6">
-          You understood <strong>{gotIt}</strong> of <strong>{queueIds.length}</strong>.
+          You understood <strong>{gotIt}</strong> of <strong>{total}</strong>.
           {pct >= 0.8
             ? ' Your ear is sharp — great work!'
             : pct >= 0.5
@@ -156,10 +157,15 @@ const ListeningPractice = ({ onExit }) => {
   }
 
   if (!card) {
-    // Card was somehow removed mid-session - skip
+    // Card was removed mid-session — skip it and drop it from the denominator.
     return (
       <div className="bg-white dark:bg-slate-800 rounded-xl p-8 text-center">
-        <button onClick={handleNext} className="text-sky-600 hover:underline">Skip</button>
+        <button
+          onClick={() => { setMissing(m => m + 1); handleNext(); }}
+          className="text-sky-600 hover:underline"
+        >
+          Skip
+        </button>
       </div>
     );
   }
@@ -253,7 +259,7 @@ const ListeningPractice = ({ onExit }) => {
           <>
             {exactMatch === true && (
               <div className="w-full max-w-sm mb-4 p-3 rounded-lg border-2 bg-green-50 dark:bg-green-900/20 border-green-500 text-green-800 dark:text-green-200 text-sm" role="status">
-                ✅ Exact — you heard it perfectly!
+                ✅ That matches — nicely heard!
               </div>
             )}
             {exactMatch === false && (

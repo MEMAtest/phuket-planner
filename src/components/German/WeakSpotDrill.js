@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Icons } from '../../data/staticData';
 import { generateGrammarDrill, isGroqConfigured, getGroqSetupInstructions } from '../../utils/groqAI';
 import { useGerman } from '../../state/GermanContext';
-import { normalizeGermanAnswer } from '../../utils/helpers';
+import { normalizeGermanAnswer, germanAnswerOptsForErrorType } from '../../utils/helpers';
 import { cefrForAI } from '../../data/germanThemes';
 
 const ERROR_LABELS = {
@@ -54,14 +54,11 @@ const WeakSpotDrill = ({ errorType, onBack }) => {
   // Drill at the learner's real level, mapped to a CEFR band the model knows.
   const drillLevel = cefrForAI(getCurrentLevel());
 
-  // Spelling and capitalization drills test exactly the distinctions the
-  // default normalizer folds away, so keep matching strict for those types:
-  // a spelling drill must not fold ä/ß, a capitalization drill must not
-  // lowercase. All other types keep the forgiving defaults.
-  const matchOpts =
-    errorType === 'spelling' ? { foldUmlauts: false }
-    : errorType === 'capitalization' ? { lowercase: false }
-    : undefined;
+  // Keep matching strict on the dimension a drill actually teaches (spelling /
+  // plural → umlauts/ß; capitalization → case); all other types keep the
+  // forgiving defaults. The policy lives in one declarative table next to the
+  // normalizer so adding a drill type forces an explicit decision.
+  const matchOpts = germanAnswerOptsForErrorType(errorType);
 
   // Cleanup old drills on mount
   useEffect(() => {

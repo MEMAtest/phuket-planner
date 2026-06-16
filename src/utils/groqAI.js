@@ -21,11 +21,20 @@ const VALID_ERROR_TAGS = [
 const asArray = (v) => (Array.isArray(v) ? v : []);
 const asString = (v, fallback = '') => (typeof v === 'string' ? v : fallback);
 
-// Coerce a model-supplied score to a 0-10 number. Unlike `x || 5`, a real 0
-// is preserved; only a non-numeric/absent value falls back to the neutral 5.
-const clampScore = (v) => {
+// The neutral score used when the model gives no usable value (absent / null /
+// non-numeric) or when a response can't be parsed at all — one constant so the
+// two fallback sites can't drift apart.
+const NEUTRAL_SCORE = 5;
+
+const clampToScoreRange = (n) => Math.max(0, Math.min(10, n));
+
+// Coerce a model-supplied score to a 0-10 number. Unlike `x || 5`, a real 0 is
+// preserved; only an absent (null/undefined) or non-numeric value falls back to
+// the neutral score. (Number(null) is 0, so null is handled explicitly first.)
+export const clampScore = (v) => {
+  if (v == null) return NEUTRAL_SCORE;
   const n = Number(v);
-  return isFinite(n) ? Math.max(0, Math.min(10, n)) : 5;
+  return isFinite(n) ? clampToScoreRange(n) : NEUTRAL_SCORE;
 };
 
 /**
@@ -191,12 +200,14 @@ Be specific in corrections. If everything is perfect, say so! If there are issue
       console.error('Error parsing AI response:', parseError);
       console.log('Raw response:', aiResponse);
 
-      // Fallback: provide basic feedback
+      // Fallback: neutral scores when the response can't be parsed at all (use
+      // the same NEUTRAL_SCORE as clampScore so a garbled answer doesn't get a
+      // flattering inflated score).
       return {
-        grammarScore: 7,
-        pronunciationScore: 7,
-        fluencyScore: 7,
-        overallScore: 7,
+        grammarScore: NEUTRAL_SCORE,
+        pronunciationScore: NEUTRAL_SCORE,
+        fluencyScore: NEUTRAL_SCORE,
+        overallScore: NEUTRAL_SCORE,
         corrections: [],
         betterAlternatives: [],
         suggestions: ['AI feedback parsing failed. Your response was recorded. Try again or continue to the next exercise.']
@@ -300,14 +311,18 @@ Do NOT include the correctAnswer itself in acceptableAnswers, and never include 
     .map((e) => {
       const correctAnswer = asString(e.correctAnswer);
       const commonMistake = asString(e.commonMistake);
-      // Models sometimes ignore "don't include wrong answers" and slip the
-      // common mistake (or a dupe of the correct answer) into acceptableAnswers,
-      // which would mark a wrong answer correct. Drop those defensively.
-      const reject = new Set([correctAnswer, commonMistake].map((s) => s.trim().toLowerCase()).filter(Boolean));
+      // Dedup: drop any acceptableAnswer that exactly echoes the correct answer
+      // (or, if the model emitted a bare token, the common mistake). Compare
+      // case-SENSITIVELY and without umlaut folding so this generation-time
+      // pass agrees with the strict match-time normalization used by
+      // capitalization/spelling drills. (Note: commonMistake is usually a prose
+      // explanation, so that half is best-effort only — we can't reliably strip
+      // model-hallucinated wrong answers, and don't pretend to.)
+      const reject = [correctAnswer, commonMistake].map((s) => s.trim()).filter(Boolean);
       const acceptableAnswers = asArray(e.acceptableAnswers)
         .map((a) => asString(a))
         .filter(Boolean)
-        .filter((a) => !reject.has(a.trim().toLowerCase()));
+        .filter((a) => !reject.includes(a.trim()));
       return {
         scenario: asString(e.scenario, 'Practice'),
         prompt: asString(e.prompt, 'Complete the sentence'),
@@ -404,7 +419,7 @@ If the entry is already correct, return an empty corrections array and a high sc
 
   let score = Number(parsed.score);
   if (!isFinite(score)) score = corrections.length === 0 ? 9 : 6;
-  score = Math.max(0, Math.min(10, Math.round(score)));
+  score = clampToScoreRange(Math.round(score));
 
   return {
     corrected: asString(parsed.corrected, text),

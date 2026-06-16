@@ -1,4 +1,4 @@
-import { normalizeGermanAnswer } from './helpers';
+import { normalizeGermanAnswer, germanAnswerOptsForErrorType } from './helpers';
 
 describe('normalizeGermanAnswer', () => {
   test('umlaut-less typing matches umlauted answers (both sides folded)', () => {
@@ -65,5 +65,25 @@ describe('normalizeGermanAnswer options', () => {
   test('defaults remain fully forgiving (both folds on)', () => {
     expect(normalizeGermanAnswer('Straße')).toBe('strasse');
     expect(normalizeGermanAnswer('der Hund')).toBe('der hund');
+  });
+});
+
+describe('germanAnswerOptsForErrorType', () => {
+  test('spelling and plural keep umlauts/ß strict (foldUmlauts:false)', () => {
+    // plural is the regression this guards: German plurals umlaut-alternate
+    // (Mutter -> Mütter), so "Muetter" must NOT pass for "Mütter".
+    expect(germanAnswerOptsForErrorType('spelling')).toEqual({ foldUmlauts: false });
+    expect(germanAnswerOptsForErrorType('plural')).toEqual({ foldUmlauts: false });
+    const opts = germanAnswerOptsForErrorType('plural');
+    expect(normalizeGermanAnswer('Mütter', opts)).not.toBe(normalizeGermanAnswer('Muetter', opts));
+  });
+
+  test('capitalization keeps case strict (lowercase:false)', () => {
+    expect(germanAnswerOptsForErrorType('capitalization')).toEqual({ lowercase: false });
+  });
+
+  test('other error types use forgiving defaults (undefined opts)', () => {
+    ['case', 'word-order', 'verb-conjugation', 'gender-article', 'preposition', 'vocabulary', 'tense', 'other']
+      .forEach(t => expect(germanAnswerOptsForErrorType(t)).toBeUndefined());
   });
 });

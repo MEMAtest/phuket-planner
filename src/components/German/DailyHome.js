@@ -2,6 +2,7 @@ import React from 'react';
 import { Icons } from '../../data/staticData';
 import { useGerman } from '../../state/GermanContext';
 import { deckStats, isListenable } from '../../utils/srs';
+import { hasSpeechSynthesis } from '../../utils/helpers';
 
 const ERROR_LABELS = {
   case: 'Cases (der/den/dem)',
@@ -42,7 +43,7 @@ const DailyHome = ({ onReview, onCapture, onDiary, onStartTheme, onBrowse, onDri
   const weakAreas = getWeakAreas().slice(0, 3);
   const g = greeting();
   const listenable = flashcards.filter(isListenable).length;
-  const audioSupported = typeof window !== 'undefined' && 'speechSynthesis' in window;
+  const audioSupported = hasSpeechSynthesis();
 
   const today = new Date().toISOString().split('T')[0];
   const journaledToday = diaryEntries.some(e => e.date === today);
